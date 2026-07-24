@@ -1,10 +1,3 @@
-//
-//  ContentView.swift
-//  fjallkartan
-//
-//  Created by Wallman, Daniel on 2026-07-23.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -24,16 +17,12 @@ struct ContentView: View {
                 }
                 .onDelete(perform: deleteItems)
             }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
+            .navigationTitle("Items")
             .toolbar {
-#if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     EditButton()
                 }
-#endif
-                ToolbarItem {
+                ToolbarItem(placement: .primaryAction) {
                     Button(action: addItem) {
                         Label("Add Item", systemImage: "plus")
                     }
@@ -62,15 +51,9 @@ fileprivate struct NavigationViewWrapper<Content: View>: View {
     let content: () -> Content
 
     var body: some View {
-#if os(macOS)
-        NavigationSplitView {
+        NavigationStack {
             content()
-        } detail: {
-            Text("Select an item")
         }
-#else
-        content()
-#endif
     }
 }
 

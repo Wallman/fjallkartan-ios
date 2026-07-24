@@ -1,10 +1,3 @@
-//
-//  Item.swift
-//  fjallkartan
-//
-//  Created by Wallman, Daniel on 2026-07-23.
-//
-
 import Foundation
 import SwiftData
 
