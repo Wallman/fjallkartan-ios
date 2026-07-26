@@ -41,7 +41,7 @@ final class TileCoverageResolver {
     private let sweden: MultiPolygon
     private var cache: [TileID: TileCoverage] = [:]
 
-    private init() {
+    init() {
         norway = try! loadMultiPolygon(bundleResource: "norway_coverage")
         sweden = try! loadMultiPolygon(bundleResource: "sweden_coverage")
     }
