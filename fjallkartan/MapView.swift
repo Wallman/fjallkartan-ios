@@ -43,6 +43,11 @@ struct MapView: UIViewRepresentable {
         map.addGestureRecognizer(tap)
 
         context.coordinator.locationManager.requestWhenInUseAuthorization()
+
+        map.subviews
+            .filter { String(describing: type(of: $0)).contains("Attribution") }
+            .forEach { $0.isHidden = true }
+
         return map
     }
 
