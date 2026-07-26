@@ -19,13 +19,21 @@ struct MapView: UIViewRepresentable {
         map.delegate = context.coordinator
         map.showsUserLocation = true
 
-        let center = CLLocationCoordinate2D(latitude: 63.0, longitude: 14.0)
+        let center = CLLocationCoordinate2D(latitude: 64.0, longitude: 12.5)
         map.setRegion(
             MKCoordinateRegion(center: center,
-                               latitudinalMeters: 2_000_000,
-                               longitudinalMeters: 2_000_000),
+                               latitudinalMeters: 800_000,
+                               longitudinalMeters: 800_000),
             animated: false
         )
+
+        map.cameraZoomRange = MKMapView.CameraZoomRange(maxCenterCoordinateDistance: 10_000_000)
+        
+        let europeBounds = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 64.0, longitude: 12.5),
+            span: MKCoordinateSpan(latitudeDelta: 10.0, longitudeDelta: 20.0)
+        )
+        map.cameraBoundary = MKMapView.CameraBoundary(coordinateRegion: europeBounds)
 
         map.addOverlay(CustomTileOverlay(server: .lantmateriet), level: .aboveLabels)
         map.addOverlay(CustomTileOverlay(server: .kartverket), level: .aboveLabels)
