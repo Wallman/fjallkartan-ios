@@ -1,11 +1,20 @@
 import MapKit
 
 final class CustomTileOverlay: MKTileOverlay {
-    private let session = URLSession.shared
+    private let tileCache: URLCache
+    private let session: URLSession
 
     init() {
+        tileCache = URLCache(
+            memoryCapacity: 0,
+            diskCapacity: 500 * 1024 * 1024 // 500 MB
+        )
+        let config = URLSessionConfiguration.default
+        config.urlCache = tileCache
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData // cache retrieval done manually, to put custom TTL
+        session = URLSession(configuration: config)
+
         super.init(urlTemplate: nil)
-//        canReplaceMapContent = false
     }
 
     override func loadTile(at path: MKTileOverlayPath,
@@ -20,7 +29,21 @@ final class CustomTileOverlay: MKTileOverlay {
     private func fetch(_ server: TileServer,
                        path: MKTileOverlayPath,
                        result: @escaping (Data?, Error?) -> Void) {
-        session.dataTask(with: tileURL(server, path)) { data, _, error in
+        let url = tileURL(server, path)
+        let request = URLRequest(url: url)
+
+        if let cached = tileCache.cachedResponse(for: request) {
+            result(cached.data, nil)
+            return
+        }
+
+        session.dataTask(with: request) { [tileCache] data, response, error in
+            if let data, let r = response as? HTTPURLResponse, error == nil,
+               let cacheResponse = HTTPURLResponse(url: url, statusCode: r.statusCode,
+                                                   httpVersion: nil,
+                                                   headerFields: ["Cache-Control": "max-age=31536000"]) {
+                tileCache.storeCachedResponse(CachedURLResponse(response: cacheResponse, data: data), for: request)
+            }
             result(data, error)
         }.resume()
     }
