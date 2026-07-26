@@ -17,6 +17,7 @@ final class CustomTileOverlay: MKTileOverlay {
     init(server: TileServer) {
         self.server = server
         super.init(urlTemplate: nil)
+        canReplaceMapContent = true
     }
 
     override func loadTile(at path: MKTileOverlayPath,
