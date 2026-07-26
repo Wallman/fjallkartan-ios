@@ -6,11 +6,11 @@ iOS app (SwiftUI + MapKit) that overlays topographic map tiles from Kartverket (
 ## Key files
 | File | Purpose |
 |---|---|
-| `MapView.swift` | `UIViewRepresentable` wrapping `MKMapView`; adds the tile overlay |
-| `CustomTileOverlay.swift` | `MKTileOverlay` subclass; fetches tiles from the correct server |
-| `TileServerResolver.swift` | Determines per-tile coverage (Norway / Sweden / none) using GeoJSON polygons |
-| `fjallkartanApp.swift` | App entry point |
-| `ContentView.swift` | Root SwiftUI view |
+| `fjallkartan/MapView.swift` | `UIViewRepresentable` wrapping `MKMapView`; adds the tile overlay |
+| `fjallkartan/CustomTileOverlay.swift` | `MKTileOverlay` subclass; fetches tiles from the correct server |
+| `fjallkartan/TileCoverageResolver.swift` | Determines per-tile coverage (Norway / Sweden / none) using GeoJSON polygons |
+| `fjallkartan/fjallkartanApp.swift` | App entry point |
+| `fjallkartan/ContentView.swift` | Root SwiftUI view |
 
 ## Architecture notes
 - **`TileCoverageResolver`**
