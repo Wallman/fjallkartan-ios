@@ -13,10 +13,12 @@ iOS app (SwiftUI + MapKit) that overlays topographic map tiles from Kartverket (
 | `ContentView.swift` | Root SwiftUI view |
 
 ## Architecture notes
-- **`TileServerResolver`**
-  - Coverage is determined by checking the centre point of each tile against `norway_coverage.geojson` and `sweden_coverage.geojson` using the [Turf](https://github.com/mapbox/turf-swift) library.
+- **`TileCoverageResolver`**
+  - Coverage is determined by checking all 4 tile corners + center against `norway_coverage.geojson` and `sweden_coverage.geojson` using the [Turf](https://github.com/mapbox/turf-swift) library.
+  - Returns `TileCoverage(norway: Bool, sweden: Bool)` — both can be true for border tiles.
 
 - **`CustomTileOverlay`**
-  - Uses a dedicated `URLCache` (500 MB disk, 0 MB memory), TTL is 1 year
+  - Two instances are created in `MapView.makeUIView` — one per server — added in order: Lantmäteriet first (opaque), Kartverket second (transparent on top), so MapKit composites them correctly at the border.
+  - Both instances share a single `URLCache` (500 MB disk, 0 MB memory), TTL is 1 year
   - Cache lookup and storage is done **manually**
   - Cache key = real tile URL

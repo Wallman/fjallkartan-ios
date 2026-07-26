@@ -1,54 +1,53 @@
 import MapKit
 
 final class CustomTileOverlay: MKTileOverlay {
-    private let tileCache: URLCache
-    private let session: URLSession
-
-    init() {
-        tileCache = URLCache(
-            memoryCapacity: 0,
-            diskCapacity: 500 * 1024 * 1024 // 500 MB
-        )
+    private static let sharedCache = URLCache(
+        memoryCapacity: 0,
+        diskCapacity: 500 * 1024 * 1024 // 500 MB
+    )
+    private static let sharedSession: URLSession = {
         let config = URLSessionConfiguration.default
-        config.urlCache = tileCache
+        config.urlCache = sharedCache
         config.requestCachePolicy = .reloadIgnoringLocalCacheData // cache retrieval done manually, to put custom TTL
-        session = URLSession(configuration: config)
+        return URLSession(configuration: config)
+    }()
 
+    private let server: TileServer
+
+    init(server: TileServer) {
+        self.server = server
         super.init(urlTemplate: nil)
     }
 
     override func loadTile(at path: MKTileOverlayPath,
                            result: @escaping (Data?, Error?) -> Void) {
-        guard let server = TileServerResolver.shared.getServer(for: path) else {
-            result(nil, nil)
-            return
-        }
-        fetch(server, path: path, result: result)
+        let tileCoverage = TileCoverageResolver.shared.coverage(for: path)
+        guard server.covers(coverage: tileCoverage) else { result(nil, nil); return }
+        fetch(path: path, result: result)
     }
 
-    private func fetch(_ server: TileServer,
-                       path: MKTileOverlayPath,
+    private func fetch(path: MKTileOverlayPath,
                        result: @escaping (Data?, Error?) -> Void) {
-        let url = tileURL(server, path)
+        let url = tileURL(path)
         let request = URLRequest(url: url)
 
-        if let cached = tileCache.cachedResponse(for: request) {
+        if let cached = Self.sharedCache.cachedResponse(for: request) {
             result(cached.data, nil)
             return
         }
 
-        session.dataTask(with: request) { [tileCache] data, response, error in
+        Self.sharedSession.dataTask(with: request) { data, response, error in
             if let data, let r = response as? HTTPURLResponse, error == nil,
                let cacheResponse = HTTPURLResponse(url: url, statusCode: r.statusCode,
                                                    httpVersion: nil,
                                                    headerFields: ["Cache-Control": "max-age=31536000"]) {
-                tileCache.storeCachedResponse(CachedURLResponse(response: cacheResponse, data: data), for: request)
+                Self.sharedCache.storeCachedResponse(CachedURLResponse(response: cacheResponse, data: data), for: request)
             }
             result(data, error)
         }.resume()
     }
 
-    private func tileURL(_ server: TileServer, _ path: MKTileOverlayPath) -> URL {
+    private func tileURL(_ path: MKTileOverlayPath) -> URL {
         switch server {
         case .kartverket:
             return URL(string:

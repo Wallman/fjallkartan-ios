@@ -18,7 +18,8 @@ struct MapView: UIViewRepresentable {
             animated: false
         )
 
-        map.addOverlay(CustomTileOverlay(), level: .aboveLabels)
+        map.addOverlay(CustomTileOverlay(server: .lantmateriet), level: .aboveLabels)
+        map.addOverlay(CustomTileOverlay(server: .kartverket), level: .aboveLabels)
 
         context.coordinator.locationManager.requestWhenInUseAuthorization()
         return map
