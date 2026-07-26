@@ -3,7 +3,7 @@ import MapKit
 import Turf
 
 struct TileID: Hashable {
-    let x, y, z: Int
+    let z, x, y: Int
 }
 
 enum TileServer {
@@ -47,7 +47,7 @@ final class TileCoverageResolver {
     }
 
     func coverage(for path: MKTileOverlayPath) -> TileCoverage {
-        let tileID = TileID(x: path.x, y: path.y, z: path.z)
+        let tileID = TileID(z: path.z, x: path.x, y: path.y)
         if let hit = cache[tileID] { return hit }
         let result = compute(path)
         cache[tileID] = result
@@ -55,15 +55,33 @@ final class TileCoverageResolver {
     }
 
     private func compute(_ path: MKTileOverlayPath) -> TileCoverage {
-        let points = tilePoints(x: path.x, y: path.y, z: path.z)
+        let ring = tileRing(z: path.z, x: path.x, y: path.y)
         return TileCoverage(
-            norway: points.contains { norway.contains($0) },
-            sweden: points.contains { sweden.contains($0) }
+            norway: intersects(tileRing: ring, coverage: norway),
+            sweden: intersects(tileRing: ring, coverage: sweden)
         )
     }
 
-    // Sample all corners and center
-    private func tilePoints(x: Int, y: Int, z: Int) -> [LocationCoordinate2D] {
+    //  Test geometric overlap:
+    //  1. any tile corner lies inside the coverage,
+    //  2. any coverage vertex lies inside the tile, or
+    //  3. a tile edge crosses a coverage edge.
+    private func intersects(tileRing: [LocationCoordinate2D], coverage: MultiPolygon) -> Bool {
+        if tileRing.contains(where: { coverage.contains($0) }) { return true }
+
+        let tilePolygon = Polygon([tileRing])
+        let tileLine = LineString(tileRing)
+        for polygon in coverage.polygons {
+            for coverageRing in polygon.coordinates {
+                if coverageRing.contains(where: { tilePolygon.contains($0) }) { return true }
+                if !tileLine.intersections(with: LineString(coverageRing)).isEmpty { return true }
+            }
+        }
+        return false
+    }
+
+    // Closed ring of the tile's four corners (NW, NE, SE, SW, NW).
+    private func tileRing(z: Int, x: Int, y: Int) -> [LocationCoordinate2D] {
         let n = Double(1 << z)
         func coord(dx: Double, dy: Double) -> LocationCoordinate2D {
             let lon = dx / n * 360.0 - 180.0
@@ -72,11 +90,11 @@ final class TileCoverageResolver {
         }
         let fx = Double(x), fy = Double(y)
         return [
-            coord(dx: fx,       dy: fy),
-            coord(dx: fx + 1,   dy: fy),
-            coord(dx: fx,       dy: fy + 1),
-            coord(dx: fx + 1,   dy: fy + 1),
-            coord(dx: fx + 0.5, dy: fy + 0.5),
+            coord(dx: fx,     dy: fy),      // NW
+            coord(dx: fx + 1, dy: fy),      // NE
+            coord(dx: fx + 1, dy: fy + 1),  // SE
+            coord(dx: fx,     dy: fy + 1),  // SW
+            coord(dx: fx,     dy: fy),      // close
         ]
     }
 }
