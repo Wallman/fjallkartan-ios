@@ -14,7 +14,7 @@ enum TileServer {
         case .kartverket:
             return coverage.norway
         case .lantmateriet:
-            return coverage.sweden
+            return true
         }
     }
 }
