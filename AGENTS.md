@@ -1,24 +1,27 @@
 # AGENTS.md
 
 ## Project overview
-iOS app (SwiftUI + MapKit) that overlays topographic map tiles from Kartverket (Norway) and Lantmäteriet (Sweden) on top of Apple Maps.
+iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (Norway) and Lantmäteriet (Sweden).
 
 ## Key files
 | File | Purpose |
 |---|---|
-| `fjallkartan/MapView.swift` | `UIViewRepresentable` wrapping `MKMapView`; adds the tile overlay |
-| `fjallkartan/CustomTileOverlay.swift` | `MKTileOverlay` subclass; fetches tiles from the correct server |
-| `fjallkartan/TileCoverageResolver.swift` | Determines per-tile coverage (Norway / Sweden / none) using GeoJSON polygons |
 | `fjallkartan/fjallkartanApp.swift` | App entry point |
-| `fjallkartan/ContentView.swift` | Root SwiftUI view |
+| `fjallkartan/ContentView.swift` | Root SwiftUI view; hosts `MapView` plus the scale bar, copyright notice and zoom-level overlays. |
+| `fjallkartan/MapView.swift` | `UIViewRepresentable` wrapping `MKMapView`; adds the tile overlays, sets camera limits, and reports zoom / scale. |
+| `fjallkartan/CustomTileOverlay.swift` | `MKTileOverlay` subclass; fetches, caches and post-processes tiles for one server |
 
 ## Architecture notes
-- **`TileCoverageResolver`**
-  - Coverage is determined by checking all 4 tile corners + center against `norway_coverage.geojson` and `sweden_coverage.geojson` using the [Turf](https://github.com/mapbox/turf-swift) library.
-  - Returns `TileCoverage(norway: Bool, sweden: Bool)` — both can be true for border tiles.
+
+- **`MapView`**
+  - Two `CustomTileOverlay` instances are added in `makeUIView`: Lantmäteriet first (opaque base), Kartverket second (composited on top). Order matters for the border to render correctly.
 
 - **`CustomTileOverlay`**
-  - Two instances are created in `MapView.makeUIView` — one per server — added in order: Lantmäteriet first (opaque), Kartverket second (transparent on top), so MapKit composites them correctly at the border.
-  - Both instances share a single `URLCache` (500 MB disk, 0 MB memory), TTL is 1 year
-  - Cache lookup and storage is done **manually**
-  - Cache key = real tile URL
+  - Tiles are always requested from both servers, and empty/no-data areas simply come back blank.
+  - Kartverket's no-data fill is transparent at low zoom but an opaque cream (~255,255,230) from ~z15; `kartverketNoDataToTransparentPNG` rewrites those pixels to transparent so Lantmäteriet shows through. Lantmäteriet tiles are passed through untouched.
+  - All instances share one `URLSession` / `URLCache` (64 MB memory, 500 MB disk).
+  - Cache lookup and storage is done **manually** with a TTL of 1 year.
+  - Cache key = the real tile URL.
+
+## Build & test
+- Xcode project: `fjallkartan.xcodeproj`, scheme `fjallkartan`, iOS deployment target 26.5.
