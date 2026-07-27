@@ -12,15 +12,33 @@ struct ContentView: View {
                     .padding([.bottom, .leading], 16)
             }
             .overlay(alignment: .bottomTrailing) {
+                CopyrightNoticeView()
+                    .padding([.bottom, .trailing], 16)
+            }
+            .overlay(alignment: .topTrailing) {
                 Text("Z \(Int(zoomLevel))")
                     .font(.system(size: 13, weight: .semibold, design: .monospaced))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
-                    .padding([.bottom, .trailing], 16)
+                    .padding([.top, .trailing], 16)
             }
     }
 }
+
+struct CopyrightNoticeView: View {
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 2) {
+            Text("©Kartverket")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+            Text("Topografisk webbkarta ©Lantmäteriet")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
 
 struct ScaleBarView: View {
     let metersPerPoint: Double
