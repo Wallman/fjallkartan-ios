@@ -23,7 +23,6 @@ final class CustomTileOverlay: MKTileOverlay {
         self.server = server
         super.init(urlTemplate: nil)
         canReplaceMapContent = true
-        maximumZ = 18
     }
 
     override func loadTile(at path: MKTileOverlayPath,

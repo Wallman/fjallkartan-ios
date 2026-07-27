@@ -20,7 +20,10 @@ struct MapView: UIViewRepresentable {
             animated: false
         )
 
-        map.cameraZoomRange = MKMapView.CameraZoomRange(maxCenterCoordinateDistance: 10_000_000)
+        map.cameraZoomRange = MKMapView.CameraZoomRange(
+            minCenterCoordinateDistance: 800,
+            maxCenterCoordinateDistance: 10_000_000
+        )
         
         let europeBounds = MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 64.0, longitude: 12.5),
