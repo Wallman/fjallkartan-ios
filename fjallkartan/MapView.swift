@@ -3,7 +3,9 @@ import MapKit
 import SwiftUI
 
 struct MapView: UIViewRepresentable {
-    func makeCoordinator() -> Coordinator { Coordinator() }
+    @Binding var zoomLevel: Double
+
+    func makeCoordinator() -> Coordinator { Coordinator(zoomLevel: $zoomLevel) }
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
@@ -42,6 +44,16 @@ struct MapView: UIViewRepresentable {
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         let locationManager = CLLocationManager()
+        @Binding var zoomLevel: Double
+
+        init(zoomLevel: Binding<Double>) {
+            _zoomLevel = zoomLevel
+        }
+
+        func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+            let longitudeDelta = mapView.region.span.longitudeDelta
+            zoomLevel = log2(360.0 / longitudeDelta)
+        }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             guard let tile = overlay as? MKTileOverlay else {
