@@ -11,7 +11,7 @@ struct MapView: UIViewRepresentable {
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
         map.delegate = context.coordinator
-        map.showsUserLocation = true
+        map.showsUserLocation = false
 
         let center = CLLocationCoordinate2D(latitude: 64.0, longitude: 12.5)
         map.setRegion(
@@ -35,7 +35,7 @@ struct MapView: UIViewRepresentable {
         map.addOverlay(CustomTileOverlay(server: .lantmateriet), level: .aboveLabels)
         map.addOverlay(CustomTileOverlay(server: .kartverket), level: .aboveLabels)
 
-        context.coordinator.locationManager.requestWhenInUseAuthorization()
+        context.coordinator.start(with: map)
 
         map.subviews
             .filter { String(describing: type(of: $0)).contains("Attribution") }
@@ -46,14 +46,30 @@ struct MapView: UIViewRepresentable {
 
     func updateUIView(_ uiView: MKMapView, context: Context) {}
 
-    final class Coordinator: NSObject, MKMapViewDelegate {
+    final class Coordinator: NSObject, MKMapViewDelegate, CLLocationManagerDelegate {
         let locationManager = CLLocationManager()
+        private weak var mapView: MKMapView?
         @Binding var zoomLevel: Double
         @Binding var metersPerPoint: Double
 
         init(zoomLevel: Binding<Double>, metersPerPoint: Binding<Double>) {
             _zoomLevel = zoomLevel
             _metersPerPoint = metersPerPoint
+        }
+
+        func start(with mapView: MKMapView) {
+            self.mapView = mapView
+            locationManager.delegate = self
+            locationManager.desiredAccuracy = kCLLocationAccuracyBest
+            if locationManager.authorizationStatus == .notDetermined {
+                locationManager.requestWhenInUseAuthorization()
+            }
+        }
+
+        func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+            let authorized = manager.authorizationStatus == .authorizedWhenInUse
+                || manager.authorizationStatus == .authorizedAlways
+            mapView?.showsUserLocation = authorized
         }
 
         func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {
