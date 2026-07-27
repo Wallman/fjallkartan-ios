@@ -27,8 +27,8 @@ struct MapView: UIViewRepresentable {
         )
         
         let mapBounds = MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 64.0, longitude: 12.5),
-            span: MKCoordinateSpan(latitudeDelta: 10.0, longitudeDelta: 20.0)
+            center: CLLocationCoordinate2D(latitude: 67.5, longitude: 18.0),
+            span: MKCoordinateSpan(latitudeDelta: 27.0, longitudeDelta: 28.0)
         )
         map.cameraBoundary = MKMapView.CameraBoundary(coordinateRegion: mapBounds)
 
