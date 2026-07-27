@@ -26,11 +26,11 @@ struct MapView: UIViewRepresentable {
             maxCenterCoordinateDistance: 10_000_000
         )
         
-        let europeBounds = MKCoordinateRegion(
+        let mapBounds = MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 64.0, longitude: 12.5),
             span: MKCoordinateSpan(latitudeDelta: 10.0, longitudeDelta: 20.0)
         )
-        map.cameraBoundary = MKMapView.CameraBoundary(coordinateRegion: europeBounds)
+        map.cameraBoundary = MKMapView.CameraBoundary(coordinateRegion: mapBounds)
 
         map.addOverlay(CustomTileOverlay(server: .lantmateriet), level: .aboveLabels)
         map.addOverlay(CustomTileOverlay(server: .kartverket), level: .aboveLabels)

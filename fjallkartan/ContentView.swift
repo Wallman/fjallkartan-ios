@@ -15,13 +15,13 @@ struct ContentView: View {
                 CopyrightNoticeView()
                     .padding([.bottom, .trailing], 16)
             }
-            .overlay(alignment: .topTrailing) {
+            .overlay(alignment: .topLeading) {
                 Text("Z \(Int(zoomLevel))")
                     .font(.system(size: 13, weight: .semibold, design: .monospaced))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
-                    .padding([.top, .trailing], 16)
+                    .padding([.top, .leading], 16)
             }
     }
 }
