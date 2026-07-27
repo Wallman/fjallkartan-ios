@@ -4,8 +4,9 @@ import SwiftUI
 
 struct MapView: UIViewRepresentable {
     @Binding var zoomLevel: Double
+    @Binding var metersPerPoint: Double
 
-    func makeCoordinator() -> Coordinator { Coordinator(zoomLevel: $zoomLevel) }
+    func makeCoordinator() -> Coordinator { Coordinator(zoomLevel: $zoomLevel, metersPerPoint: $metersPerPoint) }
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
@@ -48,14 +49,26 @@ struct MapView: UIViewRepresentable {
     final class Coordinator: NSObject, MKMapViewDelegate {
         let locationManager = CLLocationManager()
         @Binding var zoomLevel: Double
+        @Binding var metersPerPoint: Double
 
-        init(zoomLevel: Binding<Double>) {
+        init(zoomLevel: Binding<Double>, metersPerPoint: Binding<Double>) {
             _zoomLevel = zoomLevel
+            _metersPerPoint = metersPerPoint
+        }
+
+        func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {
+            updateRegion(for: mapView)
         }
 
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-            let longitudeDelta = mapView.region.span.longitudeDelta
-            zoomLevel = log2(360.0 / longitudeDelta)
+            updateRegion(for: mapView)
+        }
+
+        private func updateRegion(for mapView: MKMapView) {
+            let region = mapView.region
+            zoomLevel = log2(360.0 / region.span.longitudeDelta)
+            let metersPerDegree = cos(region.center.latitude * .pi / 180) * 111_319.5
+            metersPerPoint = region.span.longitudeDelta * metersPerDegree / mapView.bounds.width
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
