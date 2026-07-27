@@ -66,9 +66,21 @@ struct MapView: UIViewRepresentable {
 
         private func updateRegion(for mapView: MKMapView) {
             let region = mapView.region
-            zoomLevel = log2(360.0 / region.span.longitudeDelta)
+            let updatedZoomLevel = log2(360.0 / region.span.longitudeDelta)
             let metersPerDegree = cos(region.center.latitude * .pi / 180) * 111_319.5
-            metersPerPoint = region.span.longitudeDelta * metersPerDegree / mapView.bounds.width
+            let updatedMetersPerPoint = region.span.longitudeDelta * metersPerDegree / mapView.bounds.width
+
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+
+                if zoomLevel != updatedZoomLevel {
+                    zoomLevel = updatedZoomLevel
+                }
+
+                if metersPerPoint != updatedMetersPerPoint {
+                    metersPerPoint = updatedMetersPerPoint
+                }
+            }
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
