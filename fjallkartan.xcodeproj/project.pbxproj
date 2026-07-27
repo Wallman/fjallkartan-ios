@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		34CDC64F3015ED4500CB00A8 /* Turf in Frameworks */ = {isa = PBXBuildFile; productRef = 34CDC64E3015ED4500CB00A8 /* Turf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -43,7 +42,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				34CDC64F3015ED4500CB00A8 /* Turf in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -95,7 +93,6 @@
 			);
 			name = fjallkartan;
 			packageProductDependencies = (
-				34CDC64E3015ED4500CB00A8 /* Turf */,
 			);
 			productName = fjallkartan;
 			productReference = 34A3ECD93012055400F6C867 /* fjallkartan.app */;
@@ -153,7 +150,6 @@
 			mainGroup = 34A3ECD03012055300F6C867;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				34CDC64D3015ED4500CB00A8 /* XCRemoteSwiftPackageReference "turf-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 34A3ECDA3012055400F6C867 /* Products */;
@@ -487,22 +483,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		34CDC64D3015ED4500CB00A8 /* XCRemoteSwiftPackageReference "turf-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/mapbox/turf-swift.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 4.0.0;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		34CDC64E3015ED4500CB00A8 /* Turf */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 34CDC64D3015ED4500CB00A8 /* XCRemoteSwiftPackageReference "turf-swift" */;
-			productName = Turf;
-		};
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 34A3ECD13012055300F6C867 /* Project object */;
