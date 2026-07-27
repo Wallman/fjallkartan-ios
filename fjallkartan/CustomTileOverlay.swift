@@ -7,7 +7,7 @@ enum TileServer {
 
 final class CustomTileOverlay: MKTileOverlay {
     private static let sharedCache = URLCache(
-        memoryCapacity: 0,
+        memoryCapacity: 64 * 1024 * 1024, // 64 MB
         diskCapacity: 500 * 1024 * 1024 // 500 MB
     )
     private static let sharedSession: URLSession = {
