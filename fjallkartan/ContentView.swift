@@ -3,9 +3,14 @@ import SwiftUI
 struct ContentView: View {
     @State private var zoomLevel: Double = 0
     @State private var metersPerPoint: Double = 0
+    @State private var measurement = DistanceMeasurement()
 
     var body: some View {
-        MapView(zoomLevel: $zoomLevel, metersPerPoint: $metersPerPoint)
+        MapView(zoomLevel: $zoomLevel,
+                metersPerPoint: $metersPerPoint,
+                measurement: measurement,
+                isMeasuring: measurement.isMeasuring,
+                routeVersion: measurement.version)
             .ignoresSafeArea()
             .overlay(alignment: .bottomLeading) {
                 ScaleBarView(metersPerPoint: metersPerPoint)
@@ -23,6 +28,82 @@ struct ContentView: View {
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
                     .padding([.top, .leading], 16)
             }
+            .overlay(alignment: .topTrailing) {
+                MeasureControlsView(measurement: measurement)
+                    .padding([.top, .trailing], 16)
+            }
+            .overlay(alignment: .top) {
+                MeasureReadoutView(measurement: measurement)
+                    .padding(.top, 16)
+            }
+    }
+}
+
+struct MeasureControlsView: View {
+    @Bindable var measurement: DistanceMeasurement
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Button {
+                measurement.isMeasuring.toggle()
+            } label: {
+                Image(systemName: "ruler")
+                    .font(.system(size: 17, weight: .semibold))
+                    .symbolVariant(measurement.isMeasuring ? .fill : .none)
+                    .foregroundStyle(measurement.isMeasuring ? Color.orange : Color.primary)
+                    .frame(width: 40, height: 40)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+            }
+            .accessibilityLabel(measurement.isMeasuring ? "Stop measuring" : "Measure distance")
+
+            if measurement.isMeasuring {
+                Button {
+                    measurement.undoLastStroke()
+                } label: {
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 40, height: 40)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .disabled(!measurement.canUndo)
+                .accessibilityLabel("Undo last stroke")
+
+                Button {
+                    measurement.clear()
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 40, height: 40)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .disabled(measurement.isEmpty)
+                .accessibilityLabel("Clear measurement")
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: measurement.isMeasuring)
+    }
+}
+
+struct MeasureReadoutView: View {
+    let measurement: DistanceMeasurement
+
+    var body: some View {
+        if measurement.isMeasuring || !measurement.isEmpty {
+            VStack(spacing: 2) {
+                Text(measurement.formattedDistance)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                if measurement.isEmpty {
+                    Text("Drag to trace a route")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+            .accessibilityLabel("Measured distance \(measurement.formattedDistance)")
+        }
     }
 }
 
