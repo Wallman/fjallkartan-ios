@@ -19,7 +19,7 @@ struct SearchView: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
                     .symbolEffect(.pulse, isActive: isLoading)
-                TextField("Search places in Norway…", text: $query)
+                TextField("Search places…", text: $query)
                     .textFieldStyle(.plain)
                     .autocorrectionDisabled()
                     .submitLabel(.search)
@@ -122,11 +122,20 @@ private struct ResultRow: View {
 
     private func iconName(for placeType: String) -> String {
         switch placeType.lowercased() {
-        case "by", "tettsted", "bydel": return "building.2"
-        case "fjell", "fjelltopp": return "mountain.2"
-        case "elv", "bekk": return "water.waves"
-        case "innsjø", "vann", "tjern": return "drop"
-        default: return "mappin"
+        case "national park", "park":           return "tree"
+        case "airport":                         return "airplane"
+        case "campground":                      return "tent"
+        case "marina":                          return "ferry"
+        case "hotel":                           return "bed.double"
+        case "restaurant", "café":              return "fork.knife"
+        case "hospital", "pharmacy":            return "cross.case"
+        case "museum":                          return "building.columns"
+        case "school", "university":            return "graduationcap"
+        case "transit", "public transport":     return "tram"
+        case "parking":                         return "car"
+        case "address":                         return "mappin.and.ellipse"
+        case "place":                           return "building.2"
+        default:                                return "mappin"
         }
     }
 }
