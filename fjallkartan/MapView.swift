@@ -55,6 +55,11 @@ struct MapView: UIViewRepresentable {
     let isMeasuring: Bool
     let routeVersion: Int
 
+    /// Coordinate to fly to; paired with `cameraVersion` so the same location
+    /// can be navigated to twice in a row.
+    let cameraTarget: CLLocationCoordinate2D?
+    let cameraVersion: Int
+
     func makeCoordinator() -> Coordinator { Coordinator(zoomLevel: $zoomLevel, metersPerPoint: $metersPerPoint) }
 
     func makeUIView(context: Context) -> MKMapView {
@@ -100,6 +105,7 @@ struct MapView: UIViewRepresentable {
     func updateUIView(_ uiView: MKMapView, context: Context) {
         context.coordinator.setMeasuring(isMeasuring, on: uiView)
         context.coordinator.syncRoute(on: uiView, measurement: measurement, version: routeVersion)
+        context.coordinator.flyTo(cameraTarget, version: cameraVersion, on: uiView)
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate, CLLocationManagerDelegate {
@@ -108,6 +114,7 @@ struct MapView: UIViewRepresentable {
         private var captureView: MeasureCaptureView?
         private var routeOverlays: [MKOverlay] = []
         private var renderedVersion = -1
+        private var lastCameraVersion = -1
         @Binding var zoomLevel: Double
         @Binding var metersPerPoint: Double
 
@@ -178,6 +185,17 @@ struct MapView: UIViewRepresentable {
                 MeasurementEndpoint(coordinate: coordinates[0], kind: .start),
                 MeasurementEndpoint(coordinate: coordinates[coordinates.count - 1], kind: .end),
             ])
+        }
+
+        func flyTo(_ coordinate: CLLocationCoordinate2D?, version: Int, on map: MKMapView) {
+            guard version != lastCameraVersion, let coordinate else { return }
+            lastCameraVersion = version
+            let region = MKCoordinateRegion(
+                center: coordinate,
+                latitudinalMeters: 20_000,
+                longitudinalMeters: 20_000
+            )
+            map.setRegion(region, animated: true)
         }
 
         // MARK: - MKMapViewDelegate

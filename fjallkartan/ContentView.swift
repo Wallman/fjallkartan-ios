@@ -1,16 +1,22 @@
+import CoreLocation
 import SwiftUI
 
 struct ContentView: View {
     @State private var zoomLevel: Double = 0
     @State private var metersPerPoint: Double = 0
     @State private var measurement = DistanceMeasurement()
+    @State private var showSearch = false
+    @State private var cameraTarget: CLLocationCoordinate2D? = nil
+    @State private var cameraVersion = 0
 
     var body: some View {
         MapView(zoomLevel: $zoomLevel,
                 metersPerPoint: $metersPerPoint,
                 measurement: measurement,
                 isMeasuring: measurement.isMeasuring,
-                routeVersion: measurement.version)
+                routeVersion: measurement.version,
+                cameraTarget: cameraTarget,
+                cameraVersion: cameraVersion)
             .ignoresSafeArea()
             .overlay(alignment: .bottomLeading) {
                 ScaleBarView(metersPerPoint: metersPerPoint)
@@ -21,20 +27,41 @@ struct ContentView: View {
                     .padding([.bottom, .trailing], 16)
             }
             .overlay(alignment: .topLeading) {
-                Text("Z \(Int(zoomLevel))")
-                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
-                    .padding([.top, .leading], 16)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Z \(Int(zoomLevel))")
+                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+                    Button {
+                        showSearch = true
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 17, weight: .semibold))
+                            .frame(width: 40, height: 40)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    .accessibilityLabel("Search places")
+                }
+                .padding([.top, .leading], 16)
             }
             .overlay(alignment: .topTrailing) {
                 MeasureControlsView(measurement: measurement)
                     .padding([.top, .trailing], 16)
             }
             .overlay(alignment: .top) {
-                MeasureReadoutView(measurement: measurement)
-                    .padding(.top, 16)
+                VStack(spacing: 8) {
+                    if showSearch {
+                        SearchView(isPresented: $showSearch) { coordinate in
+                            cameraTarget = coordinate
+                            cameraVersion += 1
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                    }
+                    MeasureReadoutView(measurement: measurement)
+                        .padding(.top, showSearch ? 0 : 16)
+                }
             }
     }
 }
