@@ -45,6 +45,20 @@ final class MeasurementEndpointView: MKAnnotationView {
     }
 }
 
+final class SearchResultAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    let title: String?
+    let subtitle: String?
+    let placeID: Int64
+
+    init(result: PlaceResult) {
+        coordinate = result.coordinate
+        title = result.name
+        subtitle = result.subtitle.isEmpty ? nil : result.subtitle
+        placeID = result.id
+    }
+}
+
 struct MapView: UIViewRepresentable {
     @Binding var zoomLevel: Double
     @Binding var metersPerPoint: Double
@@ -54,8 +68,12 @@ struct MapView: UIViewRepresentable {
     /// makes Observation schedule an `updateUIView` when the measurement changes.
     let isMeasuring: Bool
     let routeVersion: Int
+    /// Most recent search result the user tapped, or nil.
+    let selectedPlace: PlaceResult?
 
-    func makeCoordinator() -> Coordinator { Coordinator(zoomLevel: $zoomLevel, metersPerPoint: $metersPerPoint) }
+    func makeCoordinator() -> Coordinator {
+        Coordinator(zoomLevel: $zoomLevel, metersPerPoint: $metersPerPoint)
+    }
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
@@ -86,6 +104,8 @@ struct MapView: UIViewRepresentable {
 
         map.register(MeasurementEndpointView.self,
                      forAnnotationViewWithReuseIdentifier: MeasurementEndpointView.reuseIdentifier)
+        map.register(MKMarkerAnnotationView.self,
+                     forAnnotationViewWithReuseIdentifier: Coordinator.searchMarkerIdentifier)
 
         context.coordinator.start(with: map)
         context.coordinator.installCaptureView(on: map, measurement: measurement)
@@ -100,6 +120,7 @@ struct MapView: UIViewRepresentable {
     func updateUIView(_ uiView: MKMapView, context: Context) {
         context.coordinator.setMeasuring(isMeasuring, on: uiView)
         context.coordinator.syncRoute(on: uiView, measurement: measurement, version: routeVersion)
+        context.coordinator.syncSelection(selectedPlace, on: uiView)
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate, CLLocationManagerDelegate {
@@ -108,10 +129,13 @@ struct MapView: UIViewRepresentable {
         private var captureView: MeasureCaptureView?
         private var routeOverlays: [MKOverlay] = []
         private var renderedVersion = -1
+        private var shownPlaceID: Int64?
+        static let searchMarkerIdentifier = "SearchResultMarker"
         @Binding var zoomLevel: Double
         @Binding var metersPerPoint: Double
 
-        init(zoomLevel: Binding<Double>, metersPerPoint: Binding<Double>) {
+        init(zoomLevel: Binding<Double>,
+             metersPerPoint: Binding<Double>) {
             _zoomLevel = zoomLevel
             _metersPerPoint = metersPerPoint
         }
@@ -180,6 +204,28 @@ struct MapView: UIViewRepresentable {
             ])
         }
 
+        // MARK: - Search selection
+
+        func syncSelection(_ place: PlaceResult?, on map: MKMapView) {
+            guard shownPlaceID != place?.id else { return }
+            shownPlaceID = place?.id
+
+            map.removeAnnotations(map.annotations.compactMap { $0 as? SearchResultAnnotation })
+            guard let place else { return }
+
+            let annotation = SearchResultAnnotation(result: place)
+            map.addAnnotation(annotation)
+
+            // Zoom in only when the map is currently wider than this; staying
+            // put avoids yanking the user out of a close-up they chose.
+            let span = min(map.region.span.latitudeDelta, 0.12)
+            map.setRegion(MKCoordinateRegion(center: place.coordinate,
+                                             span: MKCoordinateSpan(latitudeDelta: span,
+                                                                    longitudeDelta: span)),
+                          animated: true)
+            map.selectAnnotation(annotation, animated: true)
+        }
+
         // MARK: - MKMapViewDelegate
 
         func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
@@ -216,6 +262,16 @@ struct MapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            if annotation is SearchResultAnnotation {
+                let view = mapView.dequeueReusableAnnotationView(
+                    withIdentifier: Coordinator.searchMarkerIdentifier,
+                    for: annotation) as? MKMarkerAnnotationView
+                view?.markerTintColor = .systemOrange
+                view?.glyphImage = UIImage(systemName: "mappin")
+                view?.displayPriority = .required
+                view?.canShowCallout = true
+                return view
+            }
             guard annotation is MeasurementEndpoint else { return nil }
             return mapView.dequeueReusableAnnotationView(
                 withIdentifier: MeasurementEndpointView.reuseIdentifier,

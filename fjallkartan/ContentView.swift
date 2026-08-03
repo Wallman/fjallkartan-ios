@@ -1,16 +1,20 @@
+import CoreLocation
 import SwiftUI
 
 struct ContentView: View {
     @State private var zoomLevel: Double = 0
     @State private var metersPerPoint: Double = 0
     @State private var measurement = DistanceMeasurement()
+    @State private var search = PlaceSearchModel()
+    @State private var isSearchPresented = false
 
     var body: some View {
         MapView(zoomLevel: $zoomLevel,
                 metersPerPoint: $metersPerPoint,
                 measurement: measurement,
                 isMeasuring: measurement.isMeasuring,
-                routeVersion: measurement.version)
+                routeVersion: measurement.version,
+                selectedPlace: search.selection)
             .ignoresSafeArea()
             .overlay(alignment: .bottomLeading) {
                 ScaleBarView(metersPerPoint: metersPerPoint)
@@ -29,12 +33,28 @@ struct ContentView: View {
                     .padding([.top, .leading], 16)
             }
             .overlay(alignment: .topTrailing) {
-                MeasureControlsView(measurement: measurement)
-                    .padding([.top, .trailing], 16)
+                VStack(spacing: 8) {
+                    Button {
+                        isSearchPresented = true
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Color.primary)
+                            .frame(width: 40, height: 40)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    .accessibilityLabel("Sök plats")
+
+                    MeasureControlsView(measurement: measurement)
+                }
+                .padding([.top, .trailing], 16)
             }
             .overlay(alignment: .top) {
                 MeasureReadoutView(measurement: measurement)
                     .padding(.top, 16)
+            }
+            .sheet(isPresented: $isSearchPresented) {
+                PlaceSearchSheet(model: search)
             }
     }
 }
