@@ -104,11 +104,14 @@ struct MapView: UIViewRepresentable {
 
         map.register(MeasurementEndpointView.self,
                      forAnnotationViewWithReuseIdentifier: MeasurementEndpointView.reuseIdentifier)
+        map.register(UserLocationAnnotationView.self,
+                     forAnnotationViewWithReuseIdentifier: UserLocationAnnotationView.reuseIdentifier)
         map.register(MKMarkerAnnotationView.self,
                      forAnnotationViewWithReuseIdentifier: Coordinator.searchMarkerIdentifier)
 
         context.coordinator.start(with: map)
         context.coordinator.installCaptureView(on: map, measurement: measurement)
+        context.coordinator.installCompass(on: map)
 
         map.subviews
             .filter { String(describing: type(of: $0)).contains("Attribution") }
@@ -130,6 +133,8 @@ struct MapView: UIViewRepresentable {
         private var routeOverlays: [MKOverlay] = []
         private var renderedVersion = -1
         private var shownPlaceID: Int64?
+        private weak var userLocationView: UserLocationAnnotationView?
+        private var latestHeading: CLLocationDirection?
         static let searchMarkerIdentifier = "SearchResultMarker"
         @Binding var zoomLevel: Double
         @Binding var metersPerPoint: Double
@@ -144,9 +149,42 @@ struct MapView: UIViewRepresentable {
             self.mapView = mapView
             locationManager.delegate = self
             locationManager.desiredAccuracy = kCLLocationAccuracyBest
+            locationManager.headingFilter = 2
             if locationManager.authorizationStatus == .notDetermined {
                 locationManager.requestWhenInUseAuthorization()
             }
+
+            UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(syncHeadingOrientation),
+                name: UIDevice.orientationDidChangeNotification,
+                object: nil
+            )
+            syncHeadingOrientation()
+        }
+
+        @objc private func syncHeadingOrientation() {
+            guard let orientation = CLDeviceOrientation(rawValue: Int32(UIDevice.current.orientation.rawValue)),
+                  (1...4).contains(orientation.rawValue) else { return }
+            locationManager.headingOrientation = orientation
+        }
+
+        // MARK: - Compass
+
+        // Needed because otherwise compass ends up under other buttons
+        func installCompass(on map: MKMapView) {
+            map.showsCompass = false
+
+            let compass = MKCompassButton(mapView: map)
+            compass.compassVisibility = .adaptive
+            compass.translatesAutoresizingMaskIntoConstraints = false
+            map.addSubview(compass)
+
+            NSLayoutConstraint.activate([
+                compass.topAnchor.constraint(equalTo: map.safeAreaLayoutGuide.topAnchor, constant: 52),
+                compass.leadingAnchor.constraint(equalTo: map.safeAreaLayoutGuide.leadingAnchor, constant: 16),
+            ])
         }
 
         // MARK: - Measuring
@@ -226,13 +264,30 @@ struct MapView: UIViewRepresentable {
             map.selectAnnotation(annotation, animated: true)
         }
 
-        // MARK: - MKMapViewDelegate
+        // MARK: - CLLocationManagerDelegate
 
         func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
             let authorized = manager.authorizationStatus == .authorizedWhenInUse
                 || manager.authorizationStatus == .authorizedAlways
             mapView?.showsUserLocation = authorized
+            if authorized {
+                manager.startUpdatingHeading()
+            } else {
+                manager.stopUpdatingHeading()
+                latestHeading = nil
+                userLocationView?.heading = nil
+            }
         }
+
+        func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+            guard newHeading.headingAccuracy >= 0 else { return }
+            // trueHeading is -1 until a location fix lets Core Location correct for declination.
+            let heading = newHeading.trueHeading >= 0 ? newHeading.trueHeading : newHeading.magneticHeading
+            latestHeading = heading
+            userLocationView?.heading = heading
+        }
+
+        // MARK: - MKMapViewDelegate
 
         func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {
             updateRegion(for: mapView)
@@ -243,6 +298,8 @@ struct MapView: UIViewRepresentable {
         }
 
         private func updateRegion(for mapView: MKMapView) {
+            userLocationView?.mapHeading = mapView.camera.heading
+
             let region = mapView.region
             let updatedZoomLevel = log2(360.0 / region.span.longitudeDelta)
             let metersPerDegree = cos(region.center.latitude * .pi / 180) * 111_319.5
@@ -262,6 +319,15 @@ struct MapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            if annotation is MKUserLocation {
+                let view = mapView.dequeueReusableAnnotationView(
+                    withIdentifier: UserLocationAnnotationView.reuseIdentifier,
+                    for: annotation) as? UserLocationAnnotationView
+                view?.mapHeading = mapView.camera.heading
+                view?.heading = latestHeading
+                userLocationView = view
+                return view
+            }
             if annotation is SearchResultAnnotation {
                 let view = mapView.dequeueReusableAnnotationView(
                     withIdentifier: Coordinator.searchMarkerIdentifier,
