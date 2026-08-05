@@ -5,6 +5,30 @@ import SwiftUI
 final class RouteCasingPolyline: MKPolyline {}
 final class RouteLinePolyline: MKPolyline {}
 
+/// Dashed rectangle shown while the user is picking an offline region,
+final class RegionPreviewBorderView: UIView {
+    override class var layerClass: AnyClass { CAShapeLayer.self }
+    private var shapeLayer: CAShapeLayer { layer as! CAShapeLayer }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        isHidden = true
+        shapeLayer.fillColor = UIColor.systemBlue.withAlphaComponent(0.1).cgColor
+        shapeLayer.strokeColor = UIColor.systemBlue.cgColor
+        shapeLayer.lineWidth = 2
+        shapeLayer.lineDashPattern = [6, 4]
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        shapeLayer.path = UIBezierPath(rect: bounds).cgPath
+    }
+}
+
 final class MeasurementEndpoint: NSObject, MKAnnotation {
     enum Kind { case start, end }
 
@@ -62,6 +86,7 @@ final class SearchResultAnnotation: NSObject, MKAnnotation {
 struct MapView: UIViewRepresentable {
     @Binding var zoomLevel: Double
     @Binding var metersPerPoint: Double
+    @Binding var visibleMapRect: MKMapRect
 
     let measurement: DistanceMeasurement
     /// Mirrors of `measurement` state. Reading these in `ContentView.body` is what
@@ -71,14 +96,17 @@ struct MapView: UIViewRepresentable {
     /// Most recent search result the user tapped, or nil.
     let selectedPlace: PlaceResult?
 
+    let isRegionPreviewVisible: Bool
+
     func makeCoordinator() -> Coordinator {
-        Coordinator(zoomLevel: $zoomLevel, metersPerPoint: $metersPerPoint)
+        Coordinator(zoomLevel: $zoomLevel, metersPerPoint: $metersPerPoint, visibleMapRect: $visibleMapRect)
     }
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
         map.delegate = context.coordinator
         map.showsUserLocation = false
+        map.isPitchEnabled = false
 
         let center = CLLocationCoordinate2D(latitude: 64.0, longitude: 12.5)
         map.setRegion(
@@ -112,6 +140,7 @@ struct MapView: UIViewRepresentable {
         context.coordinator.start(with: map)
         context.coordinator.installCaptureView(on: map, measurement: measurement)
         context.coordinator.installCompass(on: map)
+        context.coordinator.installRegionPreviewBorder(on: map)
 
         map.subviews
             .filter { String(describing: type(of: $0)).contains("Attribution") }
@@ -124,6 +153,7 @@ struct MapView: UIViewRepresentable {
         context.coordinator.setMeasuring(isMeasuring, on: uiView)
         context.coordinator.syncRoute(on: uiView, measurement: measurement, version: routeVersion)
         context.coordinator.syncSelection(selectedPlace, on: uiView)
+        context.coordinator.syncRegionPreview(isVisible: isRegionPreviewVisible)
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate, CLLocationManagerDelegate {
@@ -135,14 +165,18 @@ struct MapView: UIViewRepresentable {
         private var shownPlaceID: Int64?
         private weak var userLocationView: UserLocationAnnotationView?
         private var latestHeading: CLLocationDirection?
+        private weak var regionPreviewBorder: RegionPreviewBorderView?
         static let searchMarkerIdentifier = "SearchResultMarker"
         @Binding var zoomLevel: Double
         @Binding var metersPerPoint: Double
+        @Binding var visibleMapRect: MKMapRect
 
         init(zoomLevel: Binding<Double>,
-             metersPerPoint: Binding<Double>) {
+             metersPerPoint: Binding<Double>,
+             visibleMapRect: Binding<MKMapRect>) {
             _zoomLevel = zoomLevel
             _metersPerPoint = metersPerPoint
+            _visibleMapRect = visibleMapRect
         }
 
         func start(with mapView: MKMapView) {
@@ -242,6 +276,25 @@ struct MapView: UIViewRepresentable {
             ])
         }
 
+        // MARK: - Offline region preview
+
+        func installRegionPreviewBorder(on map: MKMapView) {
+            let border = RegionPreviewBorderView()
+            border.translatesAutoresizingMaskIntoConstraints = false
+            map.addSubview(border)
+            NSLayoutConstraint.activate([
+                border.centerXAnchor.constraint(equalTo: map.centerXAnchor),
+                border.centerYAnchor.constraint(equalTo: map.centerYAnchor),
+                border.widthAnchor.constraint(equalTo: map.widthAnchor, multiplier: 0.8),
+                border.heightAnchor.constraint(equalTo: map.heightAnchor, multiplier: 0.8),
+            ])
+            regionPreviewBorder = border
+        }
+
+        func syncRegionPreview(isVisible: Bool) {
+            regionPreviewBorder?.isHidden = !isVisible
+        }
+
         // MARK: - Search selection
 
         func syncSelection(_ place: PlaceResult?, on map: MKMapView) {
@@ -304,6 +357,7 @@ struct MapView: UIViewRepresentable {
             let updatedZoomLevel = log2(360.0 / region.span.longitudeDelta)
             let metersPerDegree = cos(region.center.latitude * .pi / 180) * 111_319.5
             let updatedMetersPerPoint = region.span.longitudeDelta * metersPerDegree / mapView.bounds.width
+            let updatedMapRect = mapView.visibleMapRect
 
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
@@ -314,6 +368,10 @@ struct MapView: UIViewRepresentable {
 
                 if metersPerPoint != updatedMetersPerPoint {
                     metersPerPoint = updatedMetersPerPoint
+                }
+
+                if !MKMapRectEqualToRect(visibleMapRect, updatedMapRect) {
+                    visibleMapRect = updatedMapRect
                 }
             }
         }

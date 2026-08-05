@@ -1,20 +1,27 @@
 import CoreLocation
+import MapKit
 import SwiftUI
 
 struct ContentView: View {
     @State private var zoomLevel: Double = 0
     @State private var metersPerPoint: Double = 0
+    @State private var visibleMapRect = MKMapRect.world
     @State private var measurement = DistanceMeasurement()
     @State private var search = PlaceSearchModel()
     @State private var isSearchPresented = false
+    @State private var isPickingRegion = false
+    @State private var isOfflineRegionsListPresented = false
+    @State private var offlineModel = CustomTileOverlay.defaultStore.map(OfflineRegionsModel.init)
 
     var body: some View {
         MapView(zoomLevel: $zoomLevel,
                 metersPerPoint: $metersPerPoint,
+                visibleMapRect: $visibleMapRect,
                 measurement: measurement,
                 isMeasuring: measurement.isMeasuring,
                 routeVersion: measurement.version,
-                selectedPlace: search.selection)
+                selectedPlace: search.selection,
+                isRegionPreviewVisible: isPickingRegion)
             .ignoresSafeArea()
             .overlay(alignment: .bottomLeading) {
                 ScaleBarView(metersPerPoint: metersPerPoint)
@@ -46,12 +53,57 @@ struct ContentView: View {
                     .accessibilityLabel("Sök plats")
 
                     MeasureControlsView(measurement: measurement)
+
+                    if let offlineModel {
+                        Button {
+                            isPickingRegion.toggle()
+                        } label: {
+                            Image(systemName: "arrow.down.circle")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(isPickingRegion ? Color.orange : Color.primary)
+                                .symbolVariant(isPickingRegion ? .fill : .none)
+                                .frame(width: 40, height: 40)
+                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                        }
+                        .accessibilityLabel(isPickingRegion ? "Cancel offline region" : "Download offline region")
+                        .sheet(isPresented: $isOfflineRegionsListPresented) {
+                            OfflineRegionsSheet(model: offlineModel)
+                        }
+
+                        if isPickingRegion {
+                            Button {
+                                isOfflineRegionsListPresented = true
+                            } label: {
+                                Image(systemName: "tray.full")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundStyle(Color.primary)
+                                    .frame(width: 40, height: 40)
+                                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                            }
+                            .accessibilityLabel("Manage offline regions")
+                            .transition(.scale.combined(with: .opacity))
+                        }
+                    }
                 }
+                .animation(.easeInOut(duration: 0.2), value: isPickingRegion)
                 .padding([.top, .trailing], 16)
             }
             .overlay(alignment: .top) {
                 MeasureReadoutView(measurement: measurement)
                     .padding(.top, 16)
+            }
+            .overlay(alignment: .bottom) {
+                if isPickingRegion, let offlineModel {
+                    RegionDownloadBar(
+                        model: offlineModel,
+                        rect: offlineRegionPreviewRect(for: visibleMapRect),
+                        onDownload: {
+                            isPickingRegion = false
+                            isOfflineRegionsListPresented = true
+                        }
+                    )
+                    .padding(.bottom, 16)
+                }
             }
             .sheet(isPresented: $isSearchPresented) {
                 PlaceSearchSheet(model: search)

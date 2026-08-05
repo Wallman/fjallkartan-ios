@@ -3,6 +3,14 @@ import UIKit
 
 enum TileServer {
     case kartverket, lantmateriet
+
+    /// Encoding used as the `server` column in `OfflineTileStore`.
+    var storeCode: Int {
+        switch self {
+        case .kartverket: return 0
+        case .lantmateriet: return 1
+        }
+    }
 }
 
 final class CustomTileOverlay: MKTileOverlay {
@@ -17,10 +25,17 @@ final class CustomTileOverlay: MKTileOverlay {
         return URLSession(configuration: config)
     }()
 
-    private let server: TileServer
+    /// Shared across both server overlays so downloaded regions are visible
+    /// to each. `try?` because a store failure (e.g. disk full) should degrade
+    /// to online-only behavior, not crash the map.
+    static let defaultStore = try? OfflineTileStore()
 
-    init(server: TileServer) {
+    private let server: TileServer
+    private let store: OfflineTileStore?
+
+    init(server: TileServer, store: OfflineTileStore? = CustomTileOverlay.defaultStore) {
         self.server = server
+        self.store = store
         super.init(urlTemplate: nil)
         canReplaceMapContent = true
     }
@@ -37,8 +52,17 @@ final class CustomTileOverlay: MKTileOverlay {
         }
     }
 
+    /// Lookup order is offline store → `URLCache` → network.
     private func fetch(path: MKTileOverlayPath,
                        completion: @escaping (Data?) -> Void) {
+        let z = Int(path.z), x = Int(path.x), y = Int(path.y)
+        let code = server.storeCode
+
+        if let store, let data = store.tileData(server: code, z: z, x: x, y: y) {
+            completion(data)
+            return
+        }
+
         let url = tileURL(path)
         let request = URLRequest(url: url)
 
@@ -47,13 +71,21 @@ final class CustomTileOverlay: MKTileOverlay {
             return
         }
 
-        Self.sharedSession.dataTask(with: request) { data, response, error in
+        Self.sharedSession.dataTask(with: request) { [store] data, response, error in
             guard let data, error == nil,
                   let r = response as? HTTPURLResponse,
                   (200...299).contains(r.statusCode),
                   r.mimeType?.hasPrefix("image/") ?? false else {
-                // Don't cache error responses; return nil so MapKit retries later.
-                completion(nil)
+                // No network tile available. Above the downloaded z7-z14 cap,
+                // fall back to a softened upscale of the nearest stored
+                // ancestor rather than leaving the tile blank offline.
+                if let store, z > TilePyramid.maxZoom,
+                   let ancestor = store.nearestAncestorTile(server: code, z: z, x: x, y: y) {
+                    completion(Self.upscaledTile(ancestor: ancestor, targetZ: z, targetX: x, targetY: y))
+                } else {
+                    // Don't cache error responses; return nil so MapKit retries later.
+                    completion(nil)
+                }
                 return
             }
             if let cacheResponse = HTTPURLResponse(url: url, statusCode: 200,
@@ -92,11 +124,48 @@ final class CustomTileOverlay: MKTileOverlay {
         return UIImage(cgImage: out).pngData() ?? data
     }
 
+    /// Crops the `1/4^n` sub-rectangle of `ancestor` that corresponds to the
+    /// requested tile and scales it up to 256×256, so zooming past the
+    /// downloaded z14 cap offline shows a softening map instead of a blank square. 
+    private static func upscaledTile(ancestor: (z: Int, x: Int, y: Int, data: Data),
+                                     targetZ: Int, targetX: Int, targetY: Int) -> Data? {
+        let levels = targetZ - ancestor.z
+        guard levels > 0, let cg = UIImage(data: ancestor.data)?.cgImage else { return ancestor.data }
+
+        let n = 1 << levels
+        let w = cg.width, h = cg.height
+        guard w >= n, h >= n else { return ancestor.data }
+        let cropW = w / n
+        let cropH = h / n
+        let subX = targetX - ancestor.x * n
+        let subY = targetY - ancestor.y * n
+        let cropRect = CGRect(x: subX * cropW, y: subY * cropH, width: cropW, height: cropH)
+        guard let cropped = cg.cropping(to: cropRect) else { return nil }
+
+        let outSize = 256
+        guard let ctx = CGContext(data: nil, width: outSize, height: outSize,
+                                  bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+            return nil
+        }
+        ctx.interpolationQuality = .medium
+        ctx.draw(cropped, in: CGRect(x: 0, y: 0, width: outSize, height: outSize))
+        guard let out = ctx.makeImage() else { return nil }
+        return UIImage(cgImage: out).pngData()
+    }
+
     private func tileURL(_ path: MKTileOverlayPath) -> URL {
+        Self.tileURL(server: server, z: Int(path.z), x: Int(path.x), y: Int(path.y))
+    }
+
+    /// Shared with `OfflineRegionDownloader`, which fetches raw tiles
+    /// directly (i.e. without going through an `MKTileOverlay` instance).
+    static func tileURL(server: TileServer, z: Int, x: Int, y: Int) -> URL {
         switch server {
         case .kartverket:
             return URL(string:
-                "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/\(path.z)/\(path.y)/\(path.x).png"
+                "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/\(z)/\(y)/\(x).png"
             )!
         case .lantmateriet:
             var c = URLComponents(string: "https://minkarta.lantmateriet.se/map/topowebbcache")!
@@ -108,9 +177,9 @@ final class CustomTileOverlay: MKTileOverlay {
                 URLQueryItem(name: "Request",       value: "GetTile"),
                 URLQueryItem(name: "Version",       value: "1.0.0"),
                 URLQueryItem(name: "Format",        value: "image/png"),
-                URLQueryItem(name: "TileMatrix",    value: "\(path.z)"),
-                URLQueryItem(name: "TileRow",       value: "\(path.y)"),
-                URLQueryItem(name: "TileCol",       value: "\(path.x)"),
+                URLQueryItem(name: "TileMatrix",    value: "\(z)"),
+                URLQueryItem(name: "TileRow",       value: "\(y)"),
+                URLQueryItem(name: "TileCol",       value: "\(x)"),
             ]
             return c.url!
         }
