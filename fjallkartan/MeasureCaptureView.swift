@@ -11,11 +11,11 @@ enum MeasurementStyle {
 
 /// Transparent view layered over the map that captures freehand strokes.
 ///
-/// It is only interactive while measuring; when it is, it swallows every touch,
-/// which is what keeps MapKit's pan/zoom/rotate recognisers from competing with
-/// drawing. Live feedback is drawn in screen space so the map never has to
-/// re-render mid-drag.
-final class MeasureCaptureView: UIView {
+/// Single-finger drags are captured for distance drawing. Two-finger gestures
+/// (pinch-to-zoom and two-finger pan) are handled by dedicated recognisers that
+/// drive the map camera directly, so MapKit's own recognisers — which live on
+/// internal subviews and cannot observe touches here — are no longer needed.
+final class MeasureCaptureView: UIView, UIGestureRecognizerDelegate {
     /// Endpoint the current stroke connects back to, if a route already exists.
     var anchorProvider: (() -> CLLocationCoordinate2D?)?
     /// Running length of the in-progress stroke, including its connector.
@@ -43,7 +43,7 @@ final class MeasureCaptureView: UIView {
         super.init(frame: .zero)
         backgroundColor = .clear
         isUserInteractionEnabled = false
-        isMultipleTouchEnabled = false
+        isMultipleTouchEnabled = true
 
         for (layer, color, width) in [
             (casingLayer, MeasurementStyle.casingColor, MeasurementStyle.casingWidth),
@@ -56,14 +56,70 @@ final class MeasureCaptureView: UIView {
             layer.lineJoin = .round
             self.layer.addSublayer(layer)
         }
+
+        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
+        pinch.delegate = self
+        addGestureRecognizer(pinch)
+
+        let twoFingerPan = UIPanGestureRecognizer(target: self, action: #selector(handleTwoFingerPan(_:)))
+        twoFingerPan.minimumNumberOfTouches = 2
+        twoFingerPan.maximumNumberOfTouches = 2
+        twoFingerPan.delegate = self
+        addGestureRecognizer(twoFingerPan)
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    // MARK: - UIGestureRecognizerDelegate
+
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
+    ) -> Bool { true }
+
+    // MARK: - Map gesture handlers
+
+    @objc private func handlePinch(_ recognizer: UIPinchGestureRecognizer) {
+        guard let mapView else { return }
+        switch recognizer.state {
+        case .began:
+            cancelStroke()
+        case .changed:
+            let scale = recognizer.scale
+            guard scale > 0 else { return }
+            let camera = mapView.camera.copy() as! MKMapCamera
+            camera.centerCoordinateDistance /= scale
+            mapView.setCamera(camera, animated: false)
+            recognizer.scale = 1.0
+        default:
+            break
+        }
+    }
+
+    @objc private func handleTwoFingerPan(_ recognizer: UIPanGestureRecognizer) {
+        guard let mapView else { return }
+        switch recognizer.state {
+        case .began:
+            cancelStroke()
+        case .changed:
+            let translation = recognizer.translation(in: mapView)
+            let centerPt = mapView.convert(mapView.centerCoordinate, toPointTo: mapView)
+            let newCenterPt = CGPoint(x: centerPt.x - translation.x, y: centerPt.y - translation.y)
+            mapView.setCenter(mapView.convert(newCenterPt, toCoordinateFrom: mapView), animated: false)
+            recognizer.setTranslation(.zero, in: mapView)
+        default:
+            break
+        }
+    }
+
     // MARK: - Touch handling
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if (event?.allTouches?.count ?? touches.count) > 1 {
+            cancelStroke()
+            return
+        }
         guard activeTouch == nil, let touch = touches.first else { return }
         activeTouch = touch
 
@@ -79,12 +135,13 @@ final class MeasureCaptureView: UIView {
             runningMeters = DistanceMeasurement.meters(from: anchor, to: coordinate)
             anchorScreenPoint = screenPoint(for: anchor)
         }
-
-        onStrokeProgress?(runningMeters)
-        redrawPreview()
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if (event?.allTouches?.count ?? touches.count) > 1 {
+            cancelStroke()
+            return
+        }
         guard let active = activeTouch, touches.contains(active),
               let previousPoint = screenPoints.last else { return }
 
@@ -114,6 +171,11 @@ final class MeasureCaptureView: UIView {
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let active = activeTouch, touches.contains(active) else { return }
+        cancelStroke()
+    }
+
+    private func cancelStroke() {
+        guard activeTouch != nil else { return }
         resetStroke()
         onStrokeFinished?([])
     }
