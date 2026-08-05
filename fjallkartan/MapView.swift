@@ -107,6 +107,7 @@ struct MapView: UIViewRepresentable {
         map.delegate = context.coordinator
         map.showsUserLocation = false
         map.isPitchEnabled = false
+        map.overrideUserInterfaceStyle = .light
 
         let center = CLLocationCoordinate2D(latitude: 64.0, longitude: 12.5)
         map.setRegion(
