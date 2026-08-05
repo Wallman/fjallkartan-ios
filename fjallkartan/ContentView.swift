@@ -100,7 +100,7 @@ struct ContentView: View {
                             } label: {
                                 Image(systemName: "tray.full")
                                     .font(.system(size: 17, weight: .semibold))
-                                    .foregroundStyle(Color.primary)
+                                    .foregroundStyle(Color.blue)
                                     .frame(width: 40, height: 40)
                                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
                             }
