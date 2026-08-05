@@ -10,6 +10,8 @@ final class OfflineRegionsModel {
     private(set) var regions: [OfflineTileStore.RegionSummary] = []
     private(set) var activeDownloaders: [String: OfflineRegionDownloader] = [:]
 
+    var onRegionDownloadCompleted: () -> Void = { ReviewPrompter.shared.recordSuccessfulRegionDownload() }
+
     init(store: OfflineTileStore) {
         self.store = store
         refresh()
@@ -65,8 +67,10 @@ final class OfflineRegionsModel {
                 guard let self, self.activeDownloaders[regionID] === downloader else { return }
                 self.refresh()
                 if downloader.status == .completed || downloader.status == .cancelled {
+                    let didComplete = downloader.status == .completed
                     self.activeDownloaders[regionID] = nil
                     self.refresh()
+                    if didComplete { self.onRegionDownloadCompleted() }
                     return
                 }
             }

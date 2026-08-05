@@ -1,8 +1,10 @@
 import CoreLocation
 import MapKit
+import StoreKit
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.requestReview) private var requestReview
     @State private var zoomLevel: Double = 0
     @State private var metersPerPoint: Double = 0
     @State private var visibleMapRect = MKMapRect.world
@@ -13,6 +15,19 @@ struct ContentView: View {
     @State private var isOfflineRegionsListPresented = false
     @State private var isLegendPresented = false
     @State private var offlineModel = CustomTileOverlay.defaultStore.map(OfflineRegionsModel.init)
+
+    @State private var measuringStartVersion = 0
+    private let reviewPrompter = ReviewPrompter.shared
+
+    /// Nothing is covering or competing with the map, so a system review
+    /// prompt would not interrupt anything the user is in the middle of.
+    private var isQuietForReviewPrompt: Bool {
+        !measurement.isMeasuring
+            && !isSearchPresented
+            && !isOfflineRegionsListPresented
+            && !isLegendPresented
+            && !isPickingRegion
+    }
 
     var body: some View {
         MapView(zoomLevel: $zoomLevel,
@@ -119,7 +134,30 @@ struct ContentView: View {
             .sheet(isPresented: $isLegendPresented) {
                 LegendSheet()
             }
+            .onChange(of: measurement.isMeasuring) { _, isMeasuring in
+                if isMeasuring {
+                    measuringStartVersion = measurement.version
+                } else if measurement.version > measuringStartVersion,
+                          measurement.committedMeters >= ReviewPrompter.minimumMeasurementMeters {
+                    reviewPrompter.recordCompletedMeasurement()
+                }
+            }
+            // Re-evaluated both when a prompt falls due and when the map goes
+            // quiet again, so a prompt earned while the regions sheet was open
+            // is still shown once it is dismissed.
+            .task(id: ReviewPromptTrigger(token: reviewPrompter.pendingToken,
+                                          isQuiet: isQuietForReviewPrompt)) {
+                guard reviewPrompter.pendingToken > 0, isQuietForReviewPrompt else { return }
+                try? await Task.sleep(for: .seconds(3))
+                guard !Task.isCancelled, isQuietForReviewPrompt else { return }
+                if reviewPrompter.consumePendingPrompt() { requestReview() }
+            }
     }
+}
+
+private struct ReviewPromptTrigger: Equatable {
+    let token: Int
+    let isQuiet: Bool
 }
 
 struct MeasureControlsView: View {
