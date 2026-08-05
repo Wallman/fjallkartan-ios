@@ -5,7 +5,6 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(\.requestReview) private var requestReview
-    @State private var zoomLevel: Double = 0
     @State private var metersPerPoint: Double = 0
     @State private var visibleMapRect = MKMapRect.world
     @State private var measurement = DistanceMeasurement()
@@ -30,8 +29,7 @@ struct ContentView: View {
     }
 
     var body: some View {
-        MapView(zoomLevel: $zoomLevel,
-                metersPerPoint: $metersPerPoint,
+        MapView(metersPerPoint: $metersPerPoint,
                 visibleMapRect: $visibleMapRect,
                 measurement: measurement,
                 isMeasuring: measurement.isMeasuring,
@@ -46,14 +44,6 @@ struct ContentView: View {
             .overlay(alignment: .bottomTrailing) {
                 CopyrightNoticeView()
                     .padding([.bottom, .trailing], 16)
-            }
-            .overlay(alignment: .topLeading) {
-                Text("Z \(Int(zoomLevel))")
-                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
-                    .padding([.top, .leading], 16)
             }
             .overlay(alignment: .topTrailing) {
                 VStack(spacing: 8) {

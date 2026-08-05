@@ -84,7 +84,6 @@ final class SearchResultAnnotation: NSObject, MKAnnotation {
 }
 
 struct MapView: UIViewRepresentable {
-    @Binding var zoomLevel: Double
     @Binding var metersPerPoint: Double
     @Binding var visibleMapRect: MKMapRect
 
@@ -99,7 +98,7 @@ struct MapView: UIViewRepresentable {
     let isRegionPreviewVisible: Bool
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(zoomLevel: $zoomLevel, metersPerPoint: $metersPerPoint, visibleMapRect: $visibleMapRect)
+        Coordinator(metersPerPoint: $metersPerPoint, visibleMapRect: $visibleMapRect)
     }
 
     func makeUIView(context: Context) -> MKMapView {
@@ -168,14 +167,11 @@ struct MapView: UIViewRepresentable {
         private var latestHeading: CLLocationDirection?
         private weak var regionPreviewBorder: RegionPreviewBorderView?
         static let searchMarkerIdentifier = "SearchResultMarker"
-        @Binding var zoomLevel: Double
         @Binding var metersPerPoint: Double
         @Binding var visibleMapRect: MKMapRect
 
-        init(zoomLevel: Binding<Double>,
-             metersPerPoint: Binding<Double>,
+        init(metersPerPoint: Binding<Double>,
              visibleMapRect: Binding<MKMapRect>) {
-            _zoomLevel = zoomLevel
             _metersPerPoint = metersPerPoint
             _visibleMapRect = visibleMapRect
         }
@@ -355,17 +351,12 @@ struct MapView: UIViewRepresentable {
             userLocationView?.mapHeading = mapView.camera.heading
 
             let region = mapView.region
-            let updatedZoomLevel = log2(360.0 / region.span.longitudeDelta)
             let metersPerDegree = cos(region.center.latitude * .pi / 180) * 111_319.5
             let updatedMetersPerPoint = region.span.longitudeDelta * metersPerDegree / mapView.bounds.width
             let updatedMapRect = mapView.visibleMapRect
 
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
-
-                if zoomLevel != updatedZoomLevel {
-                    zoomLevel = updatedZoomLevel
-                }
 
                 if metersPerPoint != updatedMetersPerPoint {
                     metersPerPoint = updatedMetersPerPoint
