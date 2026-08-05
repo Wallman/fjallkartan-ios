@@ -71,29 +71,59 @@ final class CustomTileOverlay: MKTileOverlay {
             return
         }
 
-        Self.sharedSession.dataTask(with: request) { [store] data, response, error in
-            guard let data, error == nil,
-                  let r = response as? HTTPURLResponse,
-                  (200...299).contains(r.statusCode),
-                  r.mimeType?.hasPrefix("image/") ?? false else {
-                // No network tile available. Above the downloaded z7-z14 cap,
-                // fall back to a softened upscale of the nearest stored
-                // ancestor rather than leaving the tile blank offline.
+        fetchWithRetry(url: url, request: request, attempt: 1, delay: 1.0) { [store] data in
+            guard let data else {
+                // No network tile available after retries. Above the
+                // downloaded z7-z14 cap, fall back to a softened upscale of
+                // the nearest stored ancestor rather than leaving the tile blank.
                 if let store, z > TilePyramid.maxZoom,
                    let ancestor = store.nearestAncestorTile(server: code, z: z, x: x, y: y) {
                     completion(Self.upscaledTile(ancestor: ancestor, targetZ: z, targetX: x, targetY: y))
                 } else {
-                    // Don't cache error responses; return nil so MapKit retries later.
                     completion(nil)
                 }
                 return
             }
-            if let cacheResponse = HTTPURLResponse(url: url, statusCode: 200,
-                                                   httpVersion: nil,
-                                                   headerFields: ["Cache-Control": "max-age=31536000"]) {
-                Self.sharedCache.storeCachedResponse(CachedURLResponse(response: cacheResponse, data: data), for: request)
-            }
             completion(data)
+        }
+    }
+
+    /// Fetches a tile with retry + exponential backoff, mirroring
+    /// `OfflineRegionDownloader.fetchTile`: `429`/`503` honor `Retry-After`,
+    /// other network errors back off and retry, up to 3 attempts total.
+    /// A genuine 404/no-data response is not retried.
+    private func fetchWithRetry(url: URL, request: URLRequest, attempt: Int, delay: Double,
+                                completion: @escaping (Data?) -> Void) {
+        Self.sharedSession.dataTask(with: request) { data, response, error in
+            if let data, error == nil,
+               let r = response as? HTTPURLResponse,
+               (200...299).contains(r.statusCode),
+               r.mimeType?.hasPrefix("image/") ?? false {
+                if let cacheResponse = HTTPURLResponse(url: url, statusCode: 200,
+                                                       httpVersion: nil,
+                                                       headerFields: ["Cache-Control": "max-age=31536000"]) {
+                    Self.sharedCache.storeCachedResponse(CachedURLResponse(response: cacheResponse, data: data), for: request)
+                }
+                completion(data)
+                return
+            }
+
+            guard attempt < 3 else {
+                completion(nil)
+                return
+            }
+
+            if let r = response as? HTTPURLResponse, !(r.statusCode == 429 || r.statusCode == 503 || r.statusCode >= 500) {
+                // A genuine client error (e.g. 404 no-data tile); not worth retrying.
+                completion(nil)
+                return
+            }
+
+            let retryAfter = (response as? HTTPURLResponse)?
+                .value(forHTTPHeaderField: "Retry-After").flatMap(Double.init) ?? delay
+            DispatchQueue.global().asyncAfter(deadline: .now() + retryAfter) {
+                self.fetchWithRetry(url: url, request: request, attempt: attempt + 1, delay: delay * 2, completion: completion)
+            }
         }.resume()
     }
 
