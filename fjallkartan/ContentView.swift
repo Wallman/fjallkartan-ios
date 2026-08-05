@@ -11,6 +11,7 @@ struct ContentView: View {
     @State private var isSearchPresented = false
     @State private var isPickingRegion = false
     @State private var isOfflineRegionsListPresented = false
+    @State private var isLegendPresented = false
     @State private var offlineModel = CustomTileOverlay.defaultStore.map(OfflineRegionsModel.init)
 
     var body: some View {
@@ -53,6 +54,17 @@ struct ContentView: View {
                     .accessibilityLabel("Sök plats")
 
                     MeasureControlsView(measurement: measurement)
+
+                    Button {
+                        isLegendPresented = true
+                    } label: {
+                        Image(systemName: "list.bullet.rectangle")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Color.primary)
+                            .frame(width: 40, height: 40)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    .accessibilityLabel("Teckenförklaring")
 
                     if let offlineModel {
                         Button {
@@ -107,6 +119,9 @@ struct ContentView: View {
             }
             .sheet(isPresented: $isSearchPresented) {
                 PlaceSearchSheet(model: search)
+            }
+            .sheet(isPresented: $isLegendPresented) {
+                LegendSheet()
             }
     }
 }
