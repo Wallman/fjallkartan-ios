@@ -59,11 +59,11 @@ struct PlaceSearchSheet: View {
     var body: some View {
         NavigationStack {
             resultsList
-                .navigationTitle("Sök plats")
+                .navigationTitle("Search places")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Klar") { dismiss() }
+                        Button("Done") { dismiss() }
                     }
                 }
         }
@@ -92,14 +92,13 @@ struct PlaceSearchSheet: View {
     private var attribution: some View {
         VStack(spacing: 0) {
             Divider()
-            Text("©Lantmäteriet Ortnamn · ©Kartverket")
+            Text(verbatim: "©Lantmäteriet Ortnamn · ©Kartverket")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 6)
-                .accessibilityLabel("Ortnamn från Lantmäteriet och Kartverket")
         }
         .background(.bar)
     }
@@ -108,7 +107,7 @@ struct PlaceSearchSheet: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-            TextField("Namn på fjäll, sjö, ort …", text: $model.query)
+            TextField("Name of mountain, lake, place …", text: $model.query)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
@@ -122,7 +121,6 @@ struct PlaceSearchSheet: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Rensa sökning")
             }
         }
         .padding(.horizontal, 16)
@@ -160,7 +158,7 @@ private struct PlaceRow: View {
                 }
 
                 if let alias = result.matchedAlias {
-                    Text("även \(alias)")
+                    Text("also \(alias)")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)

@@ -9,8 +9,8 @@ enum LegendCountry: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .norway: "Norge"
-        case .sweden: "Sverige"
+        case .norway: String(localized: "Norway")
+        case .sweden: String(localized: "Sweden")
         }
     }
 
@@ -35,11 +35,11 @@ struct LegendSheet: View {
                     ContentUnavailableView("Legend not found", systemImage: "doc.questionmark")
                 }
             }
-            .navigationTitle("Teckenförklaring")
+            .navigationTitle("Legend")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Picker("Land", selection: $country) {
+                    Picker("Country", selection: $country) {
                         ForEach(LegendCountry.allCases) { country in
                             Text(country.title).tag(country)
                         }
@@ -47,7 +47,7 @@ struct LegendSheet: View {
                     .pickerStyle(.segmented)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Klar") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
             }
         }

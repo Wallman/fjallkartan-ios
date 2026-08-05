@@ -201,7 +201,7 @@ private struct RegionRow: View {
 
     private var failureMessage: String? {
         if case .failed(let message) = downloader?.status { return message }
-        return region.status == .failed ? "Download failed." : nil
+        return region.status == .failed ? String(localized: "Download failed.") : nil
     }
 
     private var doneFraction: Double {

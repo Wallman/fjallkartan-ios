@@ -51,7 +51,6 @@ struct ContentView: View {
                             .frame(width: 40, height: 40)
                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
                     }
-                    .accessibilityLabel("Sök plats")
 
                     MeasureControlsView(measurement: measurement)
 
@@ -64,7 +63,6 @@ struct ContentView: View {
                             .frame(width: 40, height: 40)
                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
                     }
-                    .accessibilityLabel("Teckenförklaring")
 
                     if let offlineModel {
                         Button {
@@ -77,7 +75,6 @@ struct ContentView: View {
                                 .frame(width: 40, height: 40)
                                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
                         }
-                        .accessibilityLabel(isPickingRegion ? "Cancel offline region" : "Download offline region")
                         .sheet(isPresented: $isOfflineRegionsListPresented) {
                             OfflineRegionsSheet(model: offlineModel)
                         }
@@ -92,7 +89,6 @@ struct ContentView: View {
                                     .frame(width: 40, height: 40)
                                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
                             }
-                            .accessibilityLabel("Manage offline regions")
                             .transition(.scale.combined(with: .opacity))
                         }
                     }
@@ -141,7 +137,6 @@ struct MeasureControlsView: View {
                     .frame(width: 40, height: 40)
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
             }
-            .accessibilityLabel(measurement.isMeasuring ? "Stop measuring" : "Measure distance")
 
             if measurement.isMeasuring {
                 Button {
@@ -153,7 +148,6 @@ struct MeasureControlsView: View {
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
                 }
                 .disabled(!measurement.canUndo)
-                .accessibilityLabel("Undo last stroke")
 
                 Button {
                     measurement.clear()
@@ -164,7 +158,6 @@ struct MeasureControlsView: View {
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
                 }
                 .disabled(measurement.isEmpty)
-                .accessibilityLabel("Clear measurement")
             }
         }
         .animation(.easeInOut(duration: 0.2), value: measurement.isMeasuring)
@@ -189,7 +182,6 @@ struct MeasureReadoutView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
-            .accessibilityLabel("Measured distance \(measurement.formattedDistance)")
         }
     }
 }
@@ -200,7 +192,7 @@ struct CopyrightNoticeView: View {
             Text("©Kartverket")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
-            Text("Topografisk webbkarta ©Lantmäteriet")
+            Text(verbatim: "Topografisk webbkarta ©Lantmäteriet")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }

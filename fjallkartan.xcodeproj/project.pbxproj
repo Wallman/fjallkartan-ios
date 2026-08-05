@@ -142,6 +142,13 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				de,
+				nb,
+				sv,
+				fi,
+				fr,
+				nl,
+				es,
 				Base,
 			);
 			mainGroup = 34A3ECD03012055300F6C867;
