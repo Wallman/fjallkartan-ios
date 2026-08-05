@@ -5,7 +5,7 @@ Flat, layered fjäll landscape: a cream sky, worn-down blue-grey massifs and a
 stack of teal water/mire bands, with a red kryssmarkering (the crossed slats
 that mark Swedish winter trails) standing in the foreground.
 
-Usage:  python3 Tools/make_app_icon.py
+Usage:  python3 tools/make_app_icon.py
 Writes: fjallkartan/Assets.xcassets/AppIcon.appiconset/*.png
 """
 

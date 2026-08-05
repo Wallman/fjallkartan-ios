@@ -34,7 +34,7 @@ enum Country: Int32 {
 }
 
 /// Mirrors the `kinds` list written into the database by
-/// `Tools/build_places_db.py`. The order is part of the file format.
+/// `tools/build_places_db.py`. The order is part of the file format.
 enum PlaceKind: Int32, CaseIterable {
     case settlement, terrain, water, watercourse, wetland
     case glacier, nature, cultural, infrastructure, other

@@ -27,7 +27,7 @@ precision of the sources.
 
 Usage
 -----
-    python3 Tools/build_places_db.py --se ortnamn_se.gpkg --no ssr.gml \
+    python3 tools/build_places_db.py --se ortnamn_se.gpkg --no ssr.gml \
         --out fjallkartan/Resources/places.sqlite
 """
 
