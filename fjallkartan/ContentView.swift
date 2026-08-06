@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var isPickingRegion = false
     @State private var isOfflineRegionsListPresented = false
     @State private var isLegendPresented = false
+    @State private var isAboutPresented = false
     @State private var offlineModel = CustomTileOverlay.defaultStore.map(OfflineRegionsModel.init)
 
     @State private var measuringStartVersion = 0
@@ -25,6 +26,7 @@ struct ContentView: View {
             && !isSearchPresented
             && !isOfflineRegionsListPresented
             && !isLegendPresented
+            && !isAboutPresented
             && !isPickingRegion
     }
 
@@ -42,8 +44,12 @@ struct ContentView: View {
                     .padding([.bottom, .leading], 16)
             }
             .overlay(alignment: .bottomTrailing) {
-                CopyrightNoticeView()
-                    .padding([.bottom, .trailing], 16)
+                AboutButton { isAboutPresented = true }
+                    .padding([.bottom, .trailing], 20)
+                    .transition(.opacity)
+                    .sheet(isPresented: $isAboutPresented) {
+                        AboutSheet()
+                    }
             }
             .overlay(alignment: .topTrailing) {
                 VStack(spacing: 8) {
@@ -215,20 +221,6 @@ struct MeasureReadoutView: View {
     }
 }
 
-struct CopyrightNoticeView: View {
-    var body: some View {
-        VStack(alignment: .trailing, spacing: 2) {
-            Text(verbatim: "©Kartverket")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-            Text(verbatim: "Topografisk webbkarta ©Lantmäteriet")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-        }
-    }
-}
-
-
 struct ScaleBarView: View {
     let metersPerPoint: Double
 
@@ -250,15 +242,18 @@ struct ScaleBarView: View {
         VStack(alignment: .center, spacing: 3) {
             Text(label)
                 .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.black)
             ZStack(alignment: .center) {
                 Rectangle()
                     .frame(width: barPts, height: 2)
+                    .foregroundStyle(.black)
                 HStack(spacing: 0) {
                     Rectangle().frame(width: 2, height: 8)
                     Spacer()
                     Rectangle().frame(width: 2, height: 8)
                 }
                 .frame(width: barPts)
+                .foregroundStyle(.black)
             }
         }
         .padding(.horizontal, 8)

@@ -85,22 +85,7 @@ struct PlaceSearchSheet: View {
                 .buttonStyle(.plain)
             }
             .listStyle(.plain)
-            attribution
         }
-    }
-
-    private var attribution: some View {
-        VStack(spacing: 0) {
-            Divider()
-            Text(verbatim: "©Lantmäteriet Ortnamn · ©Kartverket")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
-        }
-        .background(.bar)
     }
 
     private var searchField: some View {
