@@ -115,6 +115,7 @@ struct MapView: UIViewRepresentable {
                                longitudinalMeters: 800_000),
             animated: false
         )
+        map.showsCompass = true
 
         map.cameraZoomRange = MKMapView.CameraZoomRange(
             minCenterCoordinateDistance: 800,
@@ -139,7 +140,6 @@ struct MapView: UIViewRepresentable {
 
         context.coordinator.start(with: map)
         context.coordinator.installCaptureView(on: map, measurement: measurement)
-        context.coordinator.installCompass(on: map)
         context.coordinator.installRegionPreviewBorder(on: map)
 
         map.subviews
@@ -199,23 +199,6 @@ struct MapView: UIViewRepresentable {
             guard let orientation = CLDeviceOrientation(rawValue: Int32(UIDevice.current.orientation.rawValue)),
                   (1...4).contains(orientation.rawValue) else { return }
             locationManager.headingOrientation = orientation
-        }
-
-        // MARK: - Compass
-
-        // Needed because otherwise compass ends up under other buttons
-        func installCompass(on map: MKMapView) {
-            map.showsCompass = false
-
-            let compass = MKCompassButton(mapView: map)
-            compass.compassVisibility = .adaptive
-            compass.translatesAutoresizingMaskIntoConstraints = false
-            map.addSubview(compass)
-
-            NSLayoutConstraint.activate([
-                compass.topAnchor.constraint(equalTo: map.safeAreaLayoutGuide.topAnchor, constant: 52),
-                compass.leadingAnchor.constraint(equalTo: map.safeAreaLayoutGuide.leadingAnchor, constant: 16),
-            ])
         }
 
         // MARK: - Measuring

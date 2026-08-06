@@ -99,7 +99,8 @@ struct ContentView: View {
                     }
                 }
                 .animation(.easeInOut(duration: 0.2), value: isPickingRegion)
-                .padding([.top, .trailing], 16)
+                .padding(.top, 64)
+                .padding(.trailing, 16)
             }
             .overlay(alignment: .top) {
                 MeasureReadoutView(measurement: measurement)
