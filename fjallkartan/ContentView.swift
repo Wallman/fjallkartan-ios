@@ -217,7 +217,7 @@ struct MeasureReadoutView: View {
 struct CopyrightNoticeView: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 2) {
-            Text("©Kartverket")
+            Text(verbatim: "©Kartverket")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
             Text(verbatim: "Topografisk webbkarta ©Lantmäteriet")

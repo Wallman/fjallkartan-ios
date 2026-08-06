@@ -157,7 +157,7 @@ struct RegionDownloadBar: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Text("≈ \(sizeLabel)")
+            Text(verbatim: "≈ \(sizeLabel)")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 

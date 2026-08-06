@@ -16,10 +16,13 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/PlaceSearchView.swift` | `PlaceSearchModel` (debounced async search) and `PlaceSearchSheet` UI presenting results. |
 | `fjallkartan/TilePyramid.swift` | Pure functions enumerating the fixed z7–z14 offline tile pyramid and estimating its download size. |
 | `fjallkartan/ReviewPrompter.swift` | Throttling logic deciding when to ask for an App Store review. |
+| `fjallkartan/ScreenshotScenes.swift` | Debug-only launch-argument scenes (`-screenshotScene`) pinning the app to a fixed state for App Store screenshots. |
 | `fjallkartan/OfflineTileStore.swift` | SQLite blob store for downloaded tiles (`tiles`, `region_tiles`, `regions` tables), with refcounted region deletion and ancestor lookup for upscaling. |
 | `fjallkartan/OfflineRegionDownloader.swift` | `@Observable` downloader: bounded-concurrency fetch of a region's tiles into `OfflineTileStore`, with pause/resume/cancel and retry/backoff. |
 | `fjallkartan/OfflineRegionsView.swift` | `OfflineRegionsModel` (region list + active downloaders) and `OfflineRegionsSheet` UI for starting/managing offline regions. |
+| `fjallkartan/InfoPlist.xcstrings` | Localized `Info.plist` values: `CFBundleDisplayName` (home-screen name, translated for nb/da/fi) and `NSLocationWhenInUseUsageDescription`. |
 | `tools/build_places_db.py` | Builds `places.sqlite` (place, alias, municipality tables + `place_fts` FTS5 index) bundled with the app. |
+| `tools/compose_screenshots.py` | Composes screenshots into captioned App Store screenshots in `marketing/appstore/<lang>/`. |
 | `tools/make_app_icon.py` | Regenerates the app icon
 
 ## Architecture notes
@@ -52,6 +55,11 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
   - A measurement counts when `isMeasuring` goes false and the route grew during that session (`ContentView` snapshots `measurement.version` at session start), so toggling the ruler on and off doesn't inflate the count.
   - Throttled to one prompt per app version with a 120-day floor between prompts. `ReviewPrompter` only sets `pendingToken`; `ContentView` fires `@Environment(\.requestReview)` after a 3 s pause once no sheet, region picker or measurement is active.
   - `OfflineRegionsModel.onRegionDownloadCompleted` is injectable so tests don't touch the shared prompter's `UserDefaults`.
+
+- **App Store screenshots**
+  - `compose_screenshots.py` keeps geometry and colours in `SCENES` and the marketing copy in `COPY[language][scene]`, so adding a language means adding one `COPY` entry plus one `locale_for()` case. Background gradients are built from `make_app_icon.py`'s `LIGHT` palette, imported at runtime so the screenshots and the icon can't drift apart.
+  - Two guards fail the build rather than shipping a bad frame: `check_contrast` enforces WCAG ratios of the caption against its background, and `fitted_font` shrinks any line wider than `TEXT_SAFE_WIDTH` (German and Finnish need it) before a caption can collide with the device frame.
+  - SF Pro has no CJK glyphs, so `font()` swaps in Hiragino Sans GB for `zh-*` — and unlike the SF Pro variable font, that face must not be given `set_variation_by_name`.
 
 - **Place search**
   - `PlaceSearch` opens `places.sqlite` read-only and runs a single prepared statement (`searchSQL`) that matches, scores, deduplicates and hydrates results in one pass via `place_fts` (FTS5), `alias`, `place` and `municipality`.

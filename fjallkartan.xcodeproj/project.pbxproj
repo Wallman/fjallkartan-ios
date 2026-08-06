@@ -149,6 +149,9 @@
 				fr,
 				nl,
 				es,
+				da,
+				it,
+				"zh-Hans",
 				Base,
 			);
 			mainGroup = 34A3ECD03012055300F6C867;
@@ -338,7 +341,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Fjällkartan";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Din position visas på kartan så att du ser var du befinner dig i terrängen.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your position is shown on the map.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -385,7 +388,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Fjällkartan";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Din position visas på kartan så att du ser var du befinner dig i terrängen.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your position is shown on the map.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

@@ -144,7 +144,7 @@ private struct PlaceRow: View {
                     .lineLimit(1)
 
                 HStack(spacing: 4) {
-                    Text(result.country == .norway ? "NO" : "SE")
+                    Text(verbatim: result.country == .norway ? "NO" : "SE")
                         .font(.system(size: 10, weight: .semibold))
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
