@@ -17,6 +17,19 @@ struct OfflineTileStoreTests {
         #expect(store.tileData(server: 0, z: 10, x: 5, y: 6) == data)
     }
 
+    @Test func storeDirectoryIsExcludedFromBackup() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("OfflineTileStoreBackup-\(UUID().uuidString)", isDirectory: true)
+        let url = directory.appendingPathComponent("offline-tiles.sqlite")
+        let store = try OfflineTileStore(url: url)
+        try store.putTiles([.init(server: 0, z: 10, x: 1, y: 1, data: Data([0xAB]))], regionID: "r1")
+
+        let values = try directory.resourceValues(forKeys: [.isExcludedFromBackupKey])
+        #expect(values.isExcludedFromBackup == true)
+
+        #expect(FileManager.default.fileExists(atPath: url.path + "-wal"))
+    }
+
     @Test func missReturnsNil() throws {
         let (store, _) = try makeStore()
         #expect(store.tileData(server: 0, z: 10, x: 1, y: 1) == nil)

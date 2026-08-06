@@ -34,11 +34,19 @@ final class OfflineTileStore {
 
     static var defaultURL: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return dir.appendingPathComponent("offline-tiles.sqlite")
+        return dir.appendingPathComponent("OfflineTiles", isDirectory: true)
+            .appendingPathComponent("offline-tiles.sqlite")
+    }
+
+    private static func excludeFromBackup(_ directory: URL) {
+        var url = directory
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? url.setResourceValues(values)
     }
 
     static var availableCapacityBytes: Int? {
-        let directory = defaultURL.deletingLastPathComponent()
+        let directory = URL(fileURLWithPath: NSHomeDirectory())
         let values = try? directory.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
         if let capacity = values?.volumeAvailableCapacityForImportantUsage {
             return Int(capacity)
@@ -48,19 +56,16 @@ final class OfflineTileStore {
     }
 
     init(url: URL = OfflineTileStore.defaultURL) throws {
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                 withIntermediateDirectories: true)
+        let directory = url.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        Self.excludeFromBackup(directory)
+
         let flags = SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX
         guard sqlite3_open_v2(url.path, &handle, flags, nil) == SQLITE_OK else {
             let message = String(cString: sqlite3_errmsg(handle))
             sqlite3_close(handle)
             throw StoreError.openFailed(message)
         }
-
-        var excluded = URL(fileURLWithPath: url.path)
-        var values = URLResourceValues()
-        values.isExcludedFromBackup = true
-        try? excluded.setResourceValues(values)
 
         try exec("PRAGMA journal_mode=WAL")
         try exec("PRAGMA foreign_keys=ON")
