@@ -3,9 +3,14 @@
 
 Takes the PNGs written by tools/capture_screenshots.sh and places each one in a
 rounded device frame on a coloured background, with a headline and subtitle
-above it. Output is 1320x2868, the 6.9" iPhone size App Store Connect expects.
+above it. Two device profiles are supported: "iphone" (1320x2868, the 6.9"
+iPhone size) and "ipad" (2064x2752, the 13" iPad size), both App Store
+Connect screenshot sizes. Both device profiles' raw captures are
+language-neutral (raw/ and raw-ipad/ respectively) and reused for every
+language's composed screenshot.
 
-    tools/compose_screenshots.py [--raw DIR] [--out DIR] [--lang LANG] [scene ...]
+    tools/compose_screenshots.py [--raw-root DIR] [--out DIR] [--lang LANG]
+        [--device iphone|ipad] [scene ...]
 """
 
 from __future__ import annotations
@@ -53,7 +58,6 @@ def contrast_ratio(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
     light, dark = sorted((_relative_luminance(a), _relative_luminance(b)), reverse=True)
     return (light + 0.05) / (dark + 0.05)
 
-CANVAS = (1320, 2868)
 SF_PRO = "/System/Library/Fonts/SFNS.ttf"
 # SF Pro has no CJK coverage, so Chinese sets in Hiragino Sans GB instead.
 HIRAGINO_GB = "/System/Library/Fonts/Hiragino Sans GB.ttc"
@@ -62,17 +66,38 @@ HIRAGINO_FACE = {"Bold": 2, "Semibold": 2, "Medium": 0, "Regular": 0}
 DEFAULT_LANGUAGE = "en"
 LANGUAGES = ["en", "sv", "nb", "da", "fi", "de", "fr", "it", "es", "nl", "zh-Hans"]
 
-# Widest a caption line may run before it gets scaled down.
-TEXT_SAFE_WIDTH = 1150
-
-# Device geometry, as fractions of the canvas.
-DEVICE_WIDTH = 0.76
-DEVICE_TOP = 0.255
-DEVICE_CORNER = 0.125  # 55pt corner radius over a 440pt-wide screen
 BEZEL = 9
 
 # Where the caption block starts; balanced against the device frame below it.
 CAPTION_TOP = 176
+
+# Per-device canvas size and device-frame geometry (fractions of the canvas).
+# The iPad captures are far less elongated than the iPhone's (13" iPad Pro
+# screen ratio ~1.33 vs ~2.17 for the 6.9" iPhone), so a narrower device
+# width keeps the frame from running into the caption above it.
+DEVICES = {
+    "iphone": {
+        "canvas": (1320, 2868),
+        "raw_dir_name": "raw",
+        "per_locale_raw": False,
+        "out_subdir": None,
+        "device_width": 0.76,
+        "device_top": 0.255,
+        "device_corner": 0.125,  # 55pt corner radius over a 440pt-wide screen
+        "text_safe_width": 1150,
+    },
+    "ipad": {
+        "canvas": (2064, 2752),
+        "raw_dir_name": "raw-ipad",
+        "per_locale_raw": False,
+        "out_subdir": "ipad-13",
+        "device_width": 0.69,
+        "device_top": 0.266,
+        "device_corner": 0.045,  # 18pt corner radius over a 1024pt-wide screen
+        "text_safe_width": 1850,
+    },
+}
+DEFAULT_DEVICE = "iphone"
 
 SCENES = [
     {"raw": "map", "out": "01-map",
@@ -212,13 +237,13 @@ def font(size: int, weight: str, language: str = DEFAULT_LANGUAGE) -> ImageFont.
 
 
 def fitted_font(draw: ImageDraw.ImageDraw, text: str, size: int, weight: str,
-                language: str) -> ImageFont.FreeTypeFont:
+                language: str, text_safe_width: int) -> ImageFont.FreeTypeFont:
     """The largest size at or below `size` that keeps every line inside the
     safe width. Languages set longer than English (German, Finnish) would
     otherwise run off the canvas."""
     for candidate in range(size, int(size * 0.66), -2):
         face = font(candidate, weight, language)
-        if all(draw.textlength(line, font=face) <= TEXT_SAFE_WIDTH
+        if all(draw.textlength(line, font=face) <= text_safe_width
                for line in text.split("\n")):
             return face
     return font(int(size * 0.66), weight, language)
@@ -242,19 +267,19 @@ def rounded_mask(size: tuple[int, int], radius: int) -> Image.Image:
 
 
 def draw_centered(draw: ImageDraw.ImageDraw, text: str, y: int, face, fill: str,
-                  line_gap: int) -> int:
+                  line_gap: int, canvas_width: int) -> int:
     """Draws centred lines from `y` downwards and returns the next free y."""
     for line in text.split("\n"):
         _, top, _, bottom = draw.textbbox((0, 0), line, font=face)
         width = draw.textlength(line, font=face)
-        draw.text(((CANVAS[0] - width) / 2, y - top), line, font=face, fill=fill)
+        draw.text(((canvas_width - width) / 2, y - top), line, font=face, fill=fill)
         y += (bottom - top) + line_gap
     return y
 
 
-def check_contrast(scene: dict) -> None:
+def check_contrast(scene: dict, canvas_height: int) -> None:
     """Caption text has to stay readable against its own background."""
-    behind = mix(*scene["background"], CAPTION_TOP / CANVAS[1])
+    behind = mix(*scene["background"], CAPTION_TOP / canvas_height)
     for role, minimum in (("ink", 4.5), ("muted", 3.5)):
         ratio = contrast_ratio(scene[role], behind)
         if ratio < minimum:
@@ -263,27 +288,28 @@ def check_contrast(scene: dict) -> None:
             )
 
 
-def compose(scene: dict, raw_dir: Path, out_dir: Path,
+def compose(scene: dict, raw_dir: Path, out_dir: Path, device: dict,
             language: str = DEFAULT_LANGUAGE) -> Path:
-    check_contrast(scene)
+    canvas_size = device["canvas"]
+    check_contrast(scene, canvas_size[1])
     headline, subtitle = COPY[language][scene["raw"]]
     shot = Image.open(raw_dir / f"{scene['raw']}.png").convert("RGB")
 
-    canvas = vertical_gradient(CANVAS, *scene["background"]).convert("RGBA")
+    canvas = vertical_gradient(canvas_size, *scene["background"]).convert("RGBA")
     draw = ImageDraw.Draw(canvas)
 
     y = draw_centered(draw, headline, CAPTION_TOP,
-                      fitted_font(draw, headline, 96, "Bold", language),
-                      scene["ink"], line_gap=26)
+                      fitted_font(draw, headline, 96, "Bold", language, device["text_safe_width"]),
+                      scene["ink"], line_gap=26, canvas_width=canvas_size[0])
     y += 30
     y = draw_centered(draw, subtitle, y,
-                      fitted_font(draw, subtitle, 41, "Medium", language),
-                      scene["muted"], line_gap=16)
+                      fitted_font(draw, subtitle, 41, "Medium", language, device["text_safe_width"]),
+                      scene["muted"], line_gap=16, canvas_width=canvas_size[0])
 
     # Device frame
-    screen_w = round(CANVAS[0] * DEVICE_WIDTH)
+    screen_w = round(canvas_size[0] * device["device_width"])
     screen_h = round(screen_w * shot.height / shot.width)
-    radius = round(screen_w * DEVICE_CORNER)
+    radius = round(screen_w * device["device_corner"])
     shot = shot.resize((screen_w, screen_h), Image.LANCZOS).convert("RGBA")
     shot.putalpha(rounded_mask(shot.size, radius))
 
@@ -294,14 +320,14 @@ def compose(scene: dict, raw_dir: Path, out_dir: Path,
     )
     frame.alpha_composite(shot, (BEZEL, BEZEL))
 
-    left = (CANVAS[0] - frame_w) // 2
-    top = round(CANVAS[1] * DEVICE_TOP)
+    left = (canvas_size[0] - frame_w) // 2
+    top = round(canvas_size[1] * device["device_top"])
     if y > top:
         raise SystemExit(
             f"{language}/{scene['out']}: caption runs into the device frame ({y}px)"
         )
 
-    shadow = Image.new("RGBA", CANVAS, (0, 0, 0, 0))
+    shadow = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
     ImageDraw.Draw(shadow).rounded_rectangle(
         [(left, top + 26), (left + frame_w, top + frame_h + 26)],
         radius=radius + BEZEL,
@@ -319,22 +345,33 @@ def compose(scene: dict, raw_dir: Path, out_dir: Path,
 def main() -> None:
     root = Path(__file__).resolve().parent.parent
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--raw", type=Path, default=root / "marketing" / "raw",
-                        help="captures directory; per-language subdirectories are used")
+    parser.add_argument("--raw-root", type=Path, default=root / "marketing",
+                        help="directory containing raw/ and raw-ipad/ capture folders")
     parser.add_argument("--out", type=Path, default=root / "marketing" / "appstore",
                         help="output directory; per-language subdirectories are created")
     parser.add_argument("--lang", action="append", choices=LANGUAGES, metavar="LANG",
                         help=f"language to compose, repeatable (default: all of "
                              f"{', '.join(LANGUAGES)})")
+    parser.add_argument("--device", action="append", choices=list(DEVICES),
+                        metavar="DEVICE",
+                        help=f"device profile to compose, repeatable (default: all of "
+                             f"{', '.join(DEVICES)})")
     parser.add_argument("scenes", nargs="*", help="raw scene names to compose (default: all)")
     args = parser.parse_args()
 
     wanted = set(args.scenes)
-    for language in args.lang or LANGUAGES:
-        for scene in SCENES:
-            if wanted and scene["raw"] not in wanted:
-                continue
-            print(compose(scene, args.raw / language, args.out / language, language))
+    for device_name in args.device or list(DEVICES):
+        device = DEVICES[device_name]
+        raw_base = args.raw_root / device["raw_dir_name"]
+        for language in args.lang or LANGUAGES:
+            raw_dir = raw_base / language if device["per_locale_raw"] else raw_base
+            out_dir = args.out / language
+            if device["out_subdir"]:
+                out_dir = out_dir / device["out_subdir"]
+            for scene in SCENES:
+                if wanted and scene["raw"] not in wanted:
+                    continue
+                print(compose(scene, raw_dir, out_dir, device, language))
 
 
 if __name__ == "__main__":
