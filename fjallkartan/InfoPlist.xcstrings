@@ -10,6 +10,12 @@
             "value" : "Fjeldkortet"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjällkartan"
+          }
+        },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
@@ -20,6 +26,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fjellkartet"
+          }
+        }
+      }
+    },
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "fjallkartan"
           }
         }
       }
@@ -37,6 +55,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dein Standort wird auf der Karte angezeigt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your location is shown on the map."
           }
         },
         "es" : {
