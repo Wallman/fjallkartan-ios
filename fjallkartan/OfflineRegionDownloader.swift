@@ -39,7 +39,6 @@ final class OfflineRegionDownloader {
         } else {
             let config = URLSessionConfiguration.default
             config.httpMaximumConnectionsPerHost = 4
-            config.httpAdditionalHeaders = ["User-Agent": "fjallkartan-ios-offline/1.0"]
             self.session = URLSession(configuration: config)
         }
     }
