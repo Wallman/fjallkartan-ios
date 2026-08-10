@@ -1,1478 +1,1484 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "About": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Om"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "About" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Om"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Über die App"
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Über die App"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Acerca de"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acerca de"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tietoja"
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tietoja"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "À propos"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À propos"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Informazioni"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Informazioni"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Om"
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Om"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Over de app"
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Over de app"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Om"
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Om"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "关于"
-          }
-        }
-      }
-    },
-    "Cancel": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Annuller"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abbrechen"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancelar"
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Peruuta"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Annuler"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Annulla"
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Avbryt"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Annuleren"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Avbryt"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "取消"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关于"
           }
         }
       }
     },
-    "Country": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Land"
+    "also %@" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "også %@"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Land"
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "auch %@"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "País"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "también %@"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Maa"
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "myös %@"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pays"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aussi %@"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Paese"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "anche %@"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Land"
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "også %@"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Land"
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ook %@"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Land"
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "även %@"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "国家"
-          }
-        }
-      }
-    },
-    "Delete": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Slet"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Löschen"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Eliminar"
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Poista"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Supprimer"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Elimina"
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Slett"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Verwijderen"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ta bort"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "删除"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "亦称 %@"
           }
         }
       }
     },
-    "Delete this offline region?": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Slet denne offlineregion?"
+    "Cancel" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuller"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Diese Offline-Region löschen?"
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abbrechen"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "¿Eliminar esta región sin conexión?"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Poistetaanko tämä offline-alue?"
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Peruuta"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Supprimer cette région hors ligne ?"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Eliminare questa regione offline?"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annulla"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Slette denne offlineregionen?"
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avbryt"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deze offlineregio verwijderen?"
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuleren"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ta bort den här offlineregionen?"
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avbryt"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "删除此离线区域？"
-          }
-        }
-      }
-    },
-    "Done": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Færdig"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fertig"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Listo"
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Valmis"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Terminé"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fine"
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ferdig"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Klaar"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Klar"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "完成"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消"
           }
         }
       }
     },
-    "Download failed.": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Overførslen mislykkedes."
+    "Copyright" : {
+
+    },
+    "Country" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Land"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Download fehlgeschlagen."
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Land"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Error en la descarga."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "País"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lataus epäonnistui."
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maa"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Échec du téléchargement."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pays"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Download non riuscito."
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paese"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nedlasting mislyktes."
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Land"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Downloaden mislukt."
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Land"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nedladdningen misslyckades."
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Land"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "下载失败。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "国家"
           }
         }
       }
     },
-    "Download this area": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hent dette område"
+    "Delete" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slet"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Diesen Bereich herunterladen"
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Löschen"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Descargar esta área"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lataa tämä alue"
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poista"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Télécharger cette zone"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Scarica quest’area"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elimina"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Last ned dette området"
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slett"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dit gebied downloaden"
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwijderen"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ladda ner det här området"
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ta bort"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "下载此区域"
-          }
-        }
-      }
-    },
-    "Drag to trace a route": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Træk for at tegne en rute"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ziehen, um eine Route zu zeichnen"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Arrastra para trazar una ruta"
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vedä piirtääksesi reitin"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Faites glisser pour tracer un itinéraire"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Trascina per tracciare un percorso"
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dra for å tegne en rute"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sleep om een route te tekenen"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dra för att rita en rutt"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "拖动以绘制路线"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除"
           }
         }
       }
     },
-    "Legend": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Signaturforklaring"
+    "Delete this offline region?" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slet denne offlineregion?"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Legende"
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Offline-Region löschen?"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Leyenda"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Eliminar esta región sin conexión?"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Selite"
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poistetaanko tämä offline-alue?"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Légende"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer cette région hors ligne ?"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Legenda"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminare questa regione offline?"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tegnforklaring"
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slette denne offlineregionen?"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Legenda"
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deze offlineregio verwijderen?"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Teckenförklaring"
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ta bort den här offlineregionen?"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "图例"
-          }
-        }
-      }
-    },
-    "Legend not found": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Signaturforklaring ikke fundet"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Legende nicht gefunden"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Leyenda no encontrada"
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Selitettä ei löytynyt"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Légende introuvable"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Legenda non trovata"
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fant ikke tegnforklaring"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Legenda niet gevonden"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Teckenförklaring hittades inte"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "未找到图例"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除此离线区域？"
           }
         }
       }
     },
-    "Name of mountain, lake, place …": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Navn på fjeld, sø eller sted …"
+    "Done" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Færdig"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Name von Berg, See, Ort …"
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fertig"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nombre de montaña, lago, lugar …"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listo"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vuoren, järven tai paikan nimi …"
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valmis"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nom de montagne, lac, lieu …"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminé"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nome di monte, lago o località …"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fine"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Navn på fjell, innsjø, sted …"
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ferdig"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Naam van berg, meer, plaats …"
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klaar"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Namn på fjäll, sjö, ort …"
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klar"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "山峰、湖泊或地点名称…"
-          }
-        }
-      }
-    },
-    "No offline regions": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ingen offlineregioner"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine Offline-Regionen"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sin regiones sin conexión"
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ei offline-alueita"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucune région hors ligne"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nessuna regione offline"
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ingen offlineregioner"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Geen offlineregio's"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inga offlineregioner"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "暂无离线区域"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
           }
         }
       }
     },
-    "Norway": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Norge"
+    "Download failed." : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overførslen mislykkedes."
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Norwegen"
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download fehlgeschlagen."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Noruega"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error en la descarga."
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Norja"
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lataus epäonnistui."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Norvège"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec du téléchargement."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Norvegia"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download non riuscito."
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Norge"
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nedlasting mislyktes."
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Noorwegen"
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloaden mislukt."
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Norge"
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nedladdningen misslyckades."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "挪威"
-          }
-        }
-      }
-    },
-    "Not enough free space on this device to download this area.": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Der er ikke nok ledig plads på denne enhed til at hente dette område."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nicht genügend freier Speicherplatz auf diesem Gerät, um diesen Bereich herunterzuladen."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No hay suficiente espacio libre en este dispositivo para descargar esta área."
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tässä laitteessa ei ole tarpeeksi vapaata tilaa tämän alueen lataamiseen."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Espace libre insuffisant sur cet appareil pour télécharger cette zone."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spazio libero insufficiente su questo dispositivo per scaricare quest’area."
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ikke nok ledig plass på denne enheten til å laste ned dette området."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Niet genoeg vrije ruimte op dit apparaat om dit gebied te downloaden."
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inte tillräckligt med ledigt utrymme på den här enheten för att ladda ner det här området."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "此设备可用空间不足，无法下载该区域。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载失败。"
           }
         }
       }
     },
-    "Offline regions": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Offlineregioner"
+    "Download this area" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hent dette område"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Offline-Regionen"
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diesen Bereich herunterladen"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Regiones sin conexión"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descargar esta área"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Offline-alueet"
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lataa tämä alue"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Régions hors ligne"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Télécharger cette zone"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Regioni offline"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scarica quest’area"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Offlineregioner"
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last ned dette området"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Offlineregio's"
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dit gebied downloaden"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Offlineregioner"
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ladda ner det här området"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "离线区域"
-          }
-        }
-      }
-    },
-    "Search places": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Søg steder"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Orte suchen"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Buscar lugares"
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Etsi paikkoja"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rechercher des lieux"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cerca luoghi"
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Søk steder"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plaatsen zoeken"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sök platser"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "搜索地点"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载此区域"
           }
         }
       }
     },
-    "Sweden": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sverige"
+    "Drag to trace a route" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Træk for at tegne en rute"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Schweden"
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ziehen, um eine Route zu zeichnen"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Suecia"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastra para trazar una ruta"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ruotsi"
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vedä piirtääksesi reitin"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Suède"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faites glisser pour tracer un itinéraire"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Svezia"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trascina per tracciare un percorso"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sverige"
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dra for å tegne en rute"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zweden"
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sleep om een route te tekenen"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sverige"
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dra för att rita en rutt"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "瑞典"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖动以绘制路线"
           }
         }
       }
     },
-    "Tap the download button on the map to save an area for offline use.": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tryk på overførselsknappen på kortet for at gemme et område til offlinebrug."
+    "Legend" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signaturforklaring"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tippe auf die Download-Schaltfläche auf der Karte, um einen Bereich offline zu speichern."
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legende"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Toca el botón de descarga en el mapa para guardar un área para uso sin conexión."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leyenda"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Napauta latauspainiketta kartalla tallentaaksesi alueen offline-käyttöä varten."
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selite"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Appuyez sur le bouton de téléchargement sur la carte pour enregistrer une zone hors ligne."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Légende"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tocca il pulsante di download sulla mappa per salvare un’area da usare offline."
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legenda"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Trykk på nedlastingsknappen på kartet for å lagre et område for offlinebruk."
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tegnforklaring"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tik op de downloadknop op de kaart om een gebied offline op te slaan."
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legenda"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tryck på nedladdningsknappen på kartan för att spara ett område för offlineanvändning."
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teckenförklaring"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "点按地图上的下载按钮，即可保存区域供离线使用。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图例"
           }
         }
       }
     },
-    "This area is too large to download. Zoom in and try a smaller region.": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dette område er for stort til at hente. Zoom ind, og prøv en mindre region."
+    "Legend not found" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signaturforklaring ikke fundet"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dieser Bereich ist zu groß zum Herunterladen. Zoome hinein und versuche eine kleinere Region."
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legende nicht gefunden"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Esta área es demasiado grande para descargar. Acerca el zoom e inténtalo con una región más pequeña."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leyenda no encontrada"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tämä alue on liian suuri ladattavaksi. Lähennä ja yritä pienempää aluetta."
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selitettä ei löytynyt"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette zone est trop grande pour être téléchargée. Zoomez et essayez une région plus petite."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Légende introuvable"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Quest’area è troppo grande per il download. Ingrandisci e prova con una regione più piccola."
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legenda non trovata"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dette området er for stort til å laste ned. Zoom inn og prøv en mindre region."
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fant ikke tegnforklaring"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dit gebied is te groot om te downloaden. Zoom in en probeer een kleiner gebied."
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legenda niet gevonden"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Det här området är för stort för att ladda ner. Zooma in och försök med en mindre region."
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teckenförklaring hittades inte"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "该区域过大，无法下载。请放大后选择较小的区域。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未找到图例"
           }
         }
       }
     },
-    "This removes the downloaded area for \"%@\" from this device.": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dette fjerner det hentede område for »%@« fra denne enhed."
+    "Name of mountain, lake, place …" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navn på fjeld, sø eller sted …"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dies entfernt den heruntergeladenen Bereich für „%@“ von diesem Gerät."
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name von Berg, See, Ort …"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Esto elimina el área descargada para \"%@\" de este dispositivo."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre de montaña, lago, lugar …"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tämä poistaa alueen ”%@” ladatut tiedot tästä laitteesta."
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vuoren, järven tai paikan nimi …"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cela supprime la zone téléchargée pour « %@ » de cet appareil."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nom de montagne, lac, lieu …"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rimuove da questo dispositivo l’area scaricata per «%@»."
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nome di monte, lago o località …"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dette fjerner det nedlastede området for «%@» fra denne enheten."
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navn på fjell, innsjø, sted …"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hiermee wordt het gedownloade gebied voor \"%@\" van dit apparaat verwijderd."
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Naam van berg, meer, plaats …"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Detta tar bort det nedladdade området för ”%@” från den här enheten."
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Namn på fjäll, sjö, ort …"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "这将从此设备中移除已下载的区域“%@”。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "山峰、湖泊或地点名称…"
           }
         }
       }
     },
-    "Version": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Version"
+    "No offline regions" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen offlineregioner"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Version"
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Offline-Regionen"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Versión"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin regiones sin conexión"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Versio"
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ei offline-alueita"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Version"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune région hors ligne"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Versione"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessuna regione offline"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Versjon"
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen offlineregioner"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Versie"
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geen offlineregio's"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Version"
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inga offlineregioner"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "版本"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无离线区域"
           }
         }
       }
     },
-    "also %@": {
-      "localizations": {
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "også %@"
+    "Norway" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Norge"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "auch %@"
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Norwegen"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "también %@"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noruega"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "myös %@"
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Norja"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "aussi %@"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Norvège"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "anche %@"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Norvegia"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "også %@"
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Norge"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ook %@"
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noorwegen"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "även %@"
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Norge"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "亦称 %@"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "挪威"
+          }
+        }
+      }
+    },
+    "Not enough free space on this device to download this area." : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der er ikke nok ledig plads på denne enhed til at hente dette område."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht genügend freier Speicherplatz auf diesem Gerät, um diesen Bereich herunterzuladen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay suficiente espacio libre en este dispositivo para descargar esta área."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tässä laitteessa ei ole tarpeeksi vapaata tilaa tämän alueen lataamiseen."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Espace libre insuffisant sur cet appareil pour télécharger cette zone."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spazio libero insufficiente su questo dispositivo per scaricare quest’area."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke nok ledig plass på denne enheten til å laste ned dette området."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niet genoeg vrije ruimte op dit apparaat om dit gebied te downloaden."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inte tillräckligt med ledigt utrymme på den här enheten för att ladda ner det här området."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此设备可用空间不足，无法下载该区域。"
+          }
+        }
+      }
+    },
+    "Offline regions" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offlineregioner"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline-Regionen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regiones sin conexión"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline-alueet"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Régions hors ligne"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regioni offline"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offlineregioner"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offlineregio's"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offlineregioner"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "离线区域"
+          }
+        }
+      }
+    },
+    "Privacy Policy" : {
+
+    },
+    "Search places" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søg steder"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Orte suchen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar lugares"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Etsi paikkoja"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechercher des lieux"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerca luoghi"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søk steder"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plaatsen zoeken"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sök platser"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索地点"
+          }
+        }
+      }
+    },
+    "Sweden" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sverige"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schweden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suecia"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ruotsi"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suède"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Svezia"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sverige"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zweden"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sverige"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "瑞典"
+          }
+        }
+      }
+    },
+    "Tap the download button on the map to save an area for offline use." : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tryk på overførselsknappen på kortet for at gemme et område til offlinebrug."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tippe auf die Download-Schaltfläche auf der Karte, um einen Bereich offline zu speichern."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toca el botón de descarga en el mapa para guardar un área para uso sin conexión."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Napauta latauspainiketta kartalla tallentaaksesi alueen offline-käyttöä varten."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appuyez sur le bouton de téléchargement sur la carte pour enregistrer une zone hors ligne."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tocca il pulsante di download sulla mappa per salvare un’area da usare offline."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trykk på nedlastingsknappen på kartet for å lagre et område for offlinebruk."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tik op de downloadknop op de kaart om een gebied offline op te slaan."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tryck på nedladdningsknappen på kartan för att spara ett område för offlineanvändning."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点按地图上的下载按钮，即可保存区域供离线使用。"
+          }
+        }
+      }
+    },
+    "This area is too large to download. Zoom in and try a smaller region." : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette område er for stort til at hente. Zoom ind, og prøv en mindre region."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Bereich ist zu groß zum Herunterladen. Zoome hinein und versuche eine kleinere Region."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta área es demasiado grande para descargar. Acerca el zoom e inténtalo con una región más pequeña."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tämä alue on liian suuri ladattavaksi. Lähennä ja yritä pienempää aluetta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette zone est trop grande pour être téléchargée. Zoomez et essayez une région plus petite."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quest’area è troppo grande per il download. Ingrandisci e prova con una regione più piccola."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette området er for stort til å laste ned. Zoom inn og prøv en mindre region."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dit gebied is te groot om te downloaden. Zoom in en probeer een kleiner gebied."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det här området är för stort för att ladda ner. Zooma in och försök med en mindre region."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "该区域过大，无法下载。请放大后选择较小的区域。"
+          }
+        }
+      }
+    },
+    "This removes the downloaded area for \"%@\" from this device." : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette fjerner det hentede område for »%@« fra denne enhed."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dies entfernt den heruntergeladenen Bereich für „%@“ von diesem Gerät."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto elimina el área descargada para \"%@\" de este dispositivo."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tämä poistaa alueen ”%@” ladatut tiedot tästä laitteesta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cela supprime la zone téléchargée pour « %@ » de cet appareil."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rimuove da questo dispositivo l’area scaricata per «%@»."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette fjerner det nedlastede området for «%@» fra denne enheten."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiermee wordt het gedownloade gebied voor \"%@\" van dit apparaat verwijderd."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detta tar bort det nedladdade området för ”%@” från den här enheten."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这将从此设备中移除已下载的区域“%@”。"
+          }
+        }
+      }
+    },
+    "Version" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versión"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versione"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versjon"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versie"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "版本"
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }
