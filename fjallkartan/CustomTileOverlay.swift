@@ -1,4 +1,5 @@
 import MapKit
+import OSLog
 import UIKit
 
 enum TileServer {
@@ -56,6 +57,7 @@ final class CustomTileOverlay: MKTileOverlay {
     private func fetch(path: MKTileOverlayPath,
                        completion: @escaping (Data?) -> Void) {
         let z = Int(path.z), x = Int(path.x), y = Int(path.y)
+        //Logger().info("z \(z)")
         let code = server.storeCode
 
         if let store, let data = store.tileData(server: code, z: z, x: x, y: y) {

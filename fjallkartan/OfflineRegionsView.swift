@@ -188,7 +188,8 @@ struct RegionDownloadBar: View {
             .disabled(exceedsGuard || insufficientStorage)
         }
         .padding(12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .background(Color(.systemBackground).opacity(0.9), in: RoundedRectangle(cornerRadius: 14))
+        .frame(maxWidth: 300)
         .padding(.horizontal, 16)
     }
 }
@@ -290,4 +291,8 @@ private struct RegionRow: View {
             }
         }
     }
+}
+
+#Preview {
+    ContentView()
 }
