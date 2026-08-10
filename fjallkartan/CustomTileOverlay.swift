@@ -113,6 +113,12 @@ final class CustomTileOverlay: MKTileOverlay {
                 return
             }
 
+            if let error = error as? URLError, Self.isConnectivityError(error) {
+                // There is no connection to wait for
+                completion(nil)
+                return
+            }
+
             if let r = response as? HTTPURLResponse, !(r.statusCode == 429 || r.statusCode == 503 || r.statusCode >= 500) {
                 // A genuine client error (e.g. 404 no-data tile); not worth retrying.
                 completion(nil)
@@ -125,6 +131,17 @@ final class CustomTileOverlay: MKTileOverlay {
                 self.fetchWithRetry(url: url, request: request, attempt: attempt + 1, delay: delay * 2, completion: completion)
             }
         }.resume()
+    }
+
+    private static func isConnectivityError(_ error: URLError) -> Bool {
+        switch error.code {
+        case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost,
+             .cannotFindHost, .dnsLookupFailed, .dataNotAllowed, .internationalRoamingOff,
+             .callIsActive:
+            return true
+        default:
+            return false
+        }
     }
 
     // Kartverket's no-data fill is transparent at low zoom but an opaque cream
