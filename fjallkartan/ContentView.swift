@@ -59,8 +59,7 @@ struct ContentView: View {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(Color.primary)
-                            .frame(width: 40, height: 40)
-                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                            .buttonStyle()
                     }
 
                     MeasureControlsView(measurement: measurement)
@@ -71,8 +70,7 @@ struct ContentView: View {
                         Image(systemName: "list.bullet.rectangle")
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(Color.primary)
-                            .frame(width: 40, height: 40)
-                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                            .buttonStyle()
                     }
 
                     if let offlineModel {
@@ -83,8 +81,7 @@ struct ContentView: View {
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundStyle(isPickingRegion ? Color.orange : Color.primary)
                                 .symbolVariant(isPickingRegion ? .fill : .none)
-                                .frame(width: 40, height: 40)
-                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                                .buttonStyle()
                         }
                         .sheet(isPresented: $isOfflineRegionsListPresented) {
                             OfflineRegionsSheet(model: offlineModel)
@@ -97,15 +94,14 @@ struct ContentView: View {
                                 Image(systemName: "tray.full")
                                     .font(.system(size: 17, weight: .semibold))
                                     .foregroundStyle(Color.blue)
-                                    .frame(width: 40, height: 40)
-                                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                                    .buttonStyle()
                             }
                             .transition(.scale.combined(with: .opacity))
                         }
                     }
                 }
                 .animation(.easeInOut(duration: 0.2), value: isPickingRegion)
-                .padding(.top, 64)
+                .padding(.top, 125)
                 .padding(.trailing, 16)
             }
             .overlay(alignment: .top) {
@@ -157,6 +153,29 @@ private struct ReviewPromptTrigger: Equatable {
     let isQuiet: Bool
 }
 
+struct ButtonStyleModifier: ViewModifier {
+    static let diameter: CGFloat = 44
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        let sized = content.frame(width: Self.diameter, height: Self.diameter)
+
+        if #available(iOS 26.0, *) {
+            sized
+                .glassEffect(.regular, in: Circle())
+                .environment(\.colorScheme, .light)
+        } else {
+            sized
+                .background(.thickMaterial, in: Circle())
+                .environment(\.colorScheme, .light)
+        }
+    }
+}
+
+extension View {
+    func buttonStyle() -> some View { modifier(ButtonStyleModifier()) }
+}
+
 struct MeasureControlsView: View {
     @Bindable var measurement: DistanceMeasurement
 
@@ -169,8 +188,7 @@ struct MeasureControlsView: View {
                     .font(.system(size: 17, weight: .semibold))
                     .symbolVariant(measurement.isMeasuring ? .fill : .none)
                     .foregroundStyle(measurement.isMeasuring ? Color.orange : Color.primary)
-                    .frame(width: 40, height: 40)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                    .buttonStyle()
             }
 
             if measurement.isMeasuring {
@@ -178,9 +196,8 @@ struct MeasureControlsView: View {
                     measurement.undoLastStroke()
                 } label: {
                     Image(systemName: "arrow.uturn.backward")
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 40, height: 40)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                    .font(.system(size: 15, weight: .semibold))
+                    .buttonStyle()
                 }
                 .disabled(!measurement.canUndo)
 
@@ -188,9 +205,8 @@ struct MeasureControlsView: View {
                     measurement.clear()
                 } label: {
                     Image(systemName: "trash")
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 40, height: 40)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                    .font(.system(size: 15, weight: .semibold))
+                    .buttonStyle()
                 }
                 .disabled(measurement.isEmpty)
             }

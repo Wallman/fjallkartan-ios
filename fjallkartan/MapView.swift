@@ -104,7 +104,8 @@ struct MapView: UIViewRepresentable {
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
         map.delegate = context.coordinator
-        map.showsUserLocation = false
+        map.showsUserLocation = true
+        map.showsUserTrackingButton = true
         map.isPitchEnabled = false
         map.overrideUserInterfaceStyle = .light
 
@@ -133,8 +134,6 @@ struct MapView: UIViewRepresentable {
 
         map.register(MeasurementEndpointView.self,
                      forAnnotationViewWithReuseIdentifier: MeasurementEndpointView.reuseIdentifier)
-        map.register(UserLocationAnnotationView.self,
-                     forAnnotationViewWithReuseIdentifier: UserLocationAnnotationView.reuseIdentifier)
         map.register(MKMarkerAnnotationView.self,
                      forAnnotationViewWithReuseIdentifier: Coordinator.searchMarkerIdentifier)
 
@@ -163,8 +162,6 @@ struct MapView: UIViewRepresentable {
         private var routeOverlays: [MKOverlay] = []
         private var renderedVersion = -1
         private var shownPlaceID: Int64?
-        private weak var userLocationView: UserLocationAnnotationView?
-        private var latestHeading: CLLocationDirection?
         private weak var regionPreviewBorder: RegionPreviewBorderView?
         static let searchMarkerIdentifier = "SearchResultMarker"
         @Binding var metersPerPoint: Double
@@ -180,25 +177,9 @@ struct MapView: UIViewRepresentable {
             self.mapView = mapView
             locationManager.delegate = self
             locationManager.desiredAccuracy = kCLLocationAccuracyBest
-            locationManager.headingFilter = 2
             if locationManager.authorizationStatus == .notDetermined {
                 locationManager.requestWhenInUseAuthorization()
             }
-
-            UIDevice.current.beginGeneratingDeviceOrientationNotifications()
-            NotificationCenter.default.addObserver(
-                self,
-                selector: #selector(syncHeadingOrientation),
-                name: UIDevice.orientationDidChangeNotification,
-                object: nil
-            )
-            syncHeadingOrientation()
-        }
-
-        @objc private func syncHeadingOrientation() {
-            guard let orientation = CLDeviceOrientation(rawValue: Int32(UIDevice.current.orientation.rawValue)),
-                  (1...4).contains(orientation.rawValue) else { return }
-            locationManager.headingOrientation = orientation
         }
 
         // MARK: - Measuring
@@ -303,21 +284,6 @@ struct MapView: UIViewRepresentable {
             let authorized = manager.authorizationStatus == .authorizedWhenInUse
                 || manager.authorizationStatus == .authorizedAlways
             mapView?.showsUserLocation = authorized
-            if authorized {
-                manager.startUpdatingHeading()
-            } else {
-                manager.stopUpdatingHeading()
-                latestHeading = nil
-                userLocationView?.heading = nil
-            }
-        }
-
-        func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
-            guard newHeading.headingAccuracy >= 0 else { return }
-            // trueHeading is -1 until a location fix lets Core Location correct for declination.
-            let heading = newHeading.trueHeading >= 0 ? newHeading.trueHeading : newHeading.magneticHeading
-            latestHeading = heading
-            userLocationView?.heading = heading
         }
 
         // MARK: - MKMapViewDelegate
@@ -331,8 +297,6 @@ struct MapView: UIViewRepresentable {
         }
 
         private func updateRegion(for mapView: MKMapView) {
-            userLocationView?.mapHeading = mapView.camera.heading
-
             let region = mapView.region
             let metersPerDegree = cos(region.center.latitude * .pi / 180) * 111_319.5
             let updatedMetersPerPoint = region.span.longitudeDelta * metersPerDegree / mapView.bounds.width
@@ -352,15 +316,6 @@ struct MapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-            if annotation is MKUserLocation {
-                let view = mapView.dequeueReusableAnnotationView(
-                    withIdentifier: UserLocationAnnotationView.reuseIdentifier,
-                    for: annotation) as? UserLocationAnnotationView
-                view?.mapHeading = mapView.camera.heading
-                view?.heading = latestHeading
-                userLocationView = view
-                return view
-            }
             if annotation is SearchResultAnnotation {
                 let view = mapView.dequeueReusableAnnotationView(
                     withIdentifier: Coordinator.searchMarkerIdentifier,
