@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support — Fjällkartan</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    max-width: 40rem; margin: 0 auto; padding: 3rem 1.25rem 5rem;
+    color: #1d2b2c; background: #fdf6e3;
+  }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin-bottom: .25rem; }
+  h2 { font-size: 1.15rem; margin-top: 2.5rem; }
+  .updated { color: #5c6b6c; margin-top: 0; }
+  a { color: #345e65; }
+  ul { padding-left: 1.2rem; }
+  li { margin: .4rem 0; }
+  footer { margin-top: 3.5rem; font-size: .9rem; color: #5c6b6c; }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e6efec; background: #16292c; }
+    a { color: #8fc3c0; }
+    .updated, footer { color: #9fb3b2; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Support</h1>
+<p class="updated">Fjällkartan · Topographic maps for Norway and Sweden</p>
+
+<p>Questions, bug reports and feature requests are welcome. Email
+<a href="mailto:fjallkartan@wallman.dev">fjallkartan@wallman.dev</a> and you will
+get a reply. Including your device model and iOS version helps.</p>
+
+<h2>Frequently asked questions</h2>
+
+<h3>Where does the map data come from?</h3>
+<p>Norway is served by <a href="https://www.kartverket.no">Kartverket</a> and
+Sweden by <a href="https://www.lantmateriet.se">Lantmäteriet</a>, the national
+mapping agencies. The two are composited so the border area is continuous.</p>
+
+<h3>How do I use the map offline?</h3>
+<p>Open the offline regions sheet, pan and zoom until the area you want fills
+the screen, then download it. The download covers zoom levels 7–14, which is
+enough to read terrain and follow a route. Very large areas are refused, so
+download a few smaller regions instead of one huge one.</p>
+
+<h3>My download stopped part way through.</h3>
+<p>Resuming picks up where it left off — tiles already stored are skipped. If it
+reports a failure, check that the device has free storage.</p>
+
+<h3>How do I delete downloaded maps?</h3>
+<p>Delete the region from the offline regions sheet. Tiles shared with another
+region you still have are kept; everything else is removed.</p>
+
+<h3>How do I measure a distance?</h3>
+<p>Turn on the ruler and trace your route with a finger. The map stops panning
+while the ruler is on. Lift your finger to pan or zoom, then draw again — the
+segments are joined automatically. Distances are measured along the ground, not
+on the flat map, so they are correct even in the far north.</p>
+
+<h3>Is my location shared?</h3>
+<p>No. It is used only to draw your position on the map on your device. See the
+<a href="privacy.html">privacy policy</a>.</p>
+
+<h3>The map is blank in some areas.</h3>
+<p>Outside Norway and Sweden there is no coverage. Inside them, a blank tile
+usually means no network connection and no downloaded region for that area.</p>
+
+<h2>Privacy</h2>
+<p>The app collects nothing. Full details in the
+<a href="privacy.html">privacy policy</a>.</p>
+
+<footer>Map data © Kartverket and © Lantmäteriet.</footer>
+
+</body>
+</html>

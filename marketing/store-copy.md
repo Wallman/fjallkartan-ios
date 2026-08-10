@@ -7,15 +7,26 @@ the current length of each line.
 Screenshot captions for the same locales live in `COPY` in
 `tools/compose_screenshots.py`.
 
+## Support URL
+
+App Store Connect requires one, and it must be a reachable page (not a bare
+`mailto:`). The page lives in this repo at `docs/support.html`:
+
+    https://wallman.github.io/fjallkartan-ios/support.html
+
+It carries the contact address `fjallkartan@wallman.dev` plus an FAQ covering
+offline downloads, measuring, blank tiles and privacy — enough that App Review
+sees a real support page rather than a stub.
+
 ## Privacy policy URL
 
 App Store Connect requires one. The page lives in this repo at
-`docs/privacy.html`, served by GitHub Pages:
+`docs/privacy.html`:
 
     https://wallman.github.io/fjallkartan-ios/privacy.html
 
-To publish it: repository **Settings → Pages → Source: Deploy from a branch →
-`main` / `/docs`**. The repository must be public for Pages on a free plan.
+To publish both: repository **Settings → Pages → Source: Deploy from a branch →
+`main` / `/docs`**.
 
 The policy states that the app collects nothing, which is checked against the
 code: no third-party SDKs, no analytics, no accounts, no purchases, and location
