@@ -16,13 +16,14 @@ enum TileServer {
 
 final class CustomTileOverlay: MKTileOverlay {
     private static let sharedCache = URLCache(
-        memoryCapacity: 64 * 1024 * 1024, // 64 MB
+        memoryCapacity: 0,
         diskCapacity: 500 * 1024 * 1024 // 500 MB
     )
     private static let sharedSession: URLSession = {
         let config = URLSessionConfiguration.default
         config.urlCache = sharedCache
         config.requestCachePolicy = .reloadIgnoringLocalCacheData // cache retrieval done manually, to put custom TTL
+        config.httpMaximumConnectionsPerHost = 12
         return URLSession(configuration: config)
     }()
 
@@ -57,7 +58,6 @@ final class CustomTileOverlay: MKTileOverlay {
     private func fetch(path: MKTileOverlayPath,
                        completion: @escaping (Data?) -> Void) {
         let z = Int(path.z), x = Int(path.x), y = Int(path.y)
-        //Logger().info("z \(z)")
         let code = server.storeCode
 
         if let store, let data = store.tileData(server: code, z: z, x: x, y: y) {
