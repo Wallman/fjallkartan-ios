@@ -6,7 +6,10 @@ struct AboutButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "info.circle")
+            .font(.system(size: 22))
             .foregroundStyle(Color.secondary)
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
         }
         .environment(\.colorScheme, .light)
     }

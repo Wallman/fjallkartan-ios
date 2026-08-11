@@ -45,7 +45,7 @@ struct ContentView: View {
             }
             .overlay(alignment: .bottomTrailing) {
                 AboutButton { isAboutPresented = true }
-                    .padding([.bottom, .trailing], 20)
+                    .padding([.bottom, .trailing], 18)
                     .transition(.opacity)
                     .sheet(isPresented: $isAboutPresented) {
                         AboutSheet()
