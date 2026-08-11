@@ -211,26 +211,6 @@ final class CustomTileOverlay: MKTileOverlay {
     /// Shared with `OfflineRegionDownloader`, which fetches raw tiles
     /// directly (i.e. without going through an `MKTileOverlay` instance).
     static func tileURL(server: TileServer, z: Int, x: Int, y: Int) -> URL {
-        switch server {
-        case .kartverket:
-            return URL(string:
-                "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/\(z)/\(y)/\(x).png"
-            )!
-        case .lantmateriet:
-            var c = URLComponents(string: "https://minkarta.lantmateriet.se/map/topowebbcache")!
-            c.queryItems = [
-                URLQueryItem(name: "layer",         value: "topowebb"),
-                URLQueryItem(name: "style",         value: "default"),
-                URLQueryItem(name: "tilematrixset", value: "3857"),
-                URLQueryItem(name: "Service",       value: "WMTS"),
-                URLQueryItem(name: "Request",       value: "GetTile"),
-                URLQueryItem(name: "Version",       value: "1.0.0"),
-                URLQueryItem(name: "Format",        value: "image/png"),
-                URLQueryItem(name: "TileMatrix",    value: "\(z)"),
-                URLQueryItem(name: "TileRow",       value: "\(y)"),
-                URLQueryItem(name: "TileCol",       value: "\(x)"),
-            ]
-            return c.url!
-        }
+        RemoteSettings.shared.tileURL(server: server, z: z, x: x, y: y)
     }
 }

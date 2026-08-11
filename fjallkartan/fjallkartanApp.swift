@@ -11,7 +11,9 @@ struct fjallkartanApp: App {
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
             switch phase {
-            case .active: reviewPrompter.noteBecameActive()
+            case .active:
+                reviewPrompter.noteBecameActive()
+                RemoteSettings.shared.refresh()
             case .background: reviewPrompter.noteEnteredBackground()
             default: break
             }

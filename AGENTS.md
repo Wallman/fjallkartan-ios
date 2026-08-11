@@ -15,8 +15,8 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/PlaceSearch.swift` | SQLite-backed FTS5 lookup of place names (`PlaceSearch`, `PlaceResult`, `PlaceKind`) against the bundled `places.sqlite`. |
 | `fjallkartan/PlaceSearchView.swift` | `PlaceSearchModel` (debounced async search) and `PlaceSearchSheet` UI presenting results. |
 | `fjallkartan/TilePyramid.swift` | Pure functions enumerating the fixed z7–z14 offline tile pyramid and estimating its download size. |
+| `fjallkartan/RemoteSettings.swift` | Remotely configurable tile URL templates (`TileSettings`), fetched from `settings.json` with built-in fallbacks. |
 | `fjallkartan/ReviewPrompter.swift` | Throttling logic deciding when to ask for an App Store review. |
-| `fjallkartan/ScreenshotScenes.swift` | Debug-only launch-argument scenes (`-screenshotScene`) pinning the app to a fixed state for App Store screenshots. |
 | `fjallkartan/OfflineTileStore.swift` | SQLite blob store for downloaded tiles (`tiles`, `region_tiles`, `regions` tables), with refcounted region deletion and ancestor lookup for upscaling. |
 | `fjallkartan/OfflineRegionDownloader.swift` | `@Observable` downloader: bounded-concurrency fetch of a region's tiles into `OfflineTileStore`, with pause/resume/cancel and retry/backoff. |
 | `fjallkartan/OfflineRegionsView.swift` | `OfflineRegionsModel` (region list + active downloaders) and `OfflineRegionsSheet` UI for starting/managing offline regions. |
@@ -37,6 +37,12 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
   - Cache lookup and storage is done **manually** with a TTL of 1 year.
   - Cache key = the real tile URL.
   - Lookup order is **offline store → `URLCache` → network**; the offline store wins even when online, since a disk read beats a round trip. Above the downloaded z14 cap, an offline miss with no network falls back to `OfflineTileStore.nearestAncestorTile`, cropping and upscaling the nearest stored ancestor instead of leaving the tile blank.
+  - `tileURL(server:z:x:y:)` just delegates to `RemoteSettings`, so both the overlay and `OfflineRegionDownloader` follow a remotely changed endpoint.
+
+- **Remote settings**
+  - `RemoteSettings.shared.refresh()` runs on scene activation and fetches `https://tiles.wallman.dev/settings.json` at most once per 6 h, so a provider that changes its URL can be followed without an app update.
+  - `RemoteSettings.builtIn` holds the original hardcoded templates and is always a working configuration. An accepted payload is persisted as raw JSON in `UserDefaults`, so later launches start from the last known-good value.
+  - A changed URL only affects online fetches: `URLCache` is keyed on the real URL (so it self-invalidates), but `OfflineTileStore` is keyed by `(server, z, x, y)` and is consulted first, so already-downloaded regions keep serving the old provider's tiles until the region is re-downloaded.
 
 - **Offline map regions**
   - Downloads are capped to a fixed **z7–z14** pyramid (`TilePyramid`) — enough for route/terrain reading, still smaller than the online z18 ceiling, with a hard refusal above ~1.5 GB (purely a guard against selecting the whole of Scandinavia) or when `OfflineTileStore.availableCapacityBytes` shows the device doesn't have enough free space for the estimate.
