@@ -14,7 +14,10 @@ struct ContentView: View {
     @State private var isOfflineRegionsListPresented = false
     @State private var isLegendPresented = false
     @State private var isAboutPresented = false
+    @State private var isSavedRoutesPresented = false
     @State private var offlineModel = CustomTileOverlay.defaultStore.map(OfflineRegionsModel.init)
+    @State private var savedRoutesModel = (try? SavedRouteStore()).map(SavedRoutesModel.init)
+    @State private var routeFitToken = 0 // Needed to avoid re-centering when drawing
 
     @State private var measuringStartVersion = 0
     private let reviewPrompter = ReviewPrompter.shared
@@ -28,6 +31,7 @@ struct ContentView: View {
             && !isLegendPresented
             && !isAboutPresented
             && !isPickingRegion
+            && !isSavedRoutesPresented
     }
 
     var body: some View {
@@ -36,6 +40,7 @@ struct ContentView: View {
                 measurement: measurement,
                 isMeasuring: measurement.isMeasuring,
                 routeVersion: measurement.version,
+                routeFitToken: routeFitToken,
                 selectedPlace: search.selection,
                 isRegionPreviewVisible: isPickingRegion)
             .ignoresSafeArea()
@@ -62,7 +67,26 @@ struct ContentView: View {
                             .buttonStyle()
                     }
 
-                    MeasureControlsView(measurement: measurement)
+                    MeasureControlsView(measurement: measurement,
+                                        savedRoutesModel: savedRoutesModel)
+
+                    if let savedRoutesModel {
+                        Button {
+                            isSavedRoutesPresented = true
+                        } label: {
+                            Image(systemName: "bookmark")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(Color.primary)
+                                .buttonStyle()
+                        }
+                        .sheet(isPresented: $isSavedRoutesPresented) {
+                            SavedRoutesSheet(model: savedRoutesModel,
+                                            hasUnsavedRoute: !measurement.isEmpty) { route in
+                                measurement.load(route)
+                                routeFitToken += 1
+                            }
+                        }
+                    }
 
                     Button {
                         isLegendPresented = true
@@ -178,6 +202,8 @@ extension View {
 
 struct MeasureControlsView: View {
     @Bindable var measurement: DistanceMeasurement
+    let savedRoutesModel: SavedRoutesModel?
+    @State private var didSave = false
 
     var body: some View {
         VStack(spacing: 8) {
@@ -209,9 +235,34 @@ struct MeasureControlsView: View {
                     .buttonStyle()
                 }
                 .disabled(measurement.isEmpty)
+
+                if let savedRoutesModel {
+                    Button {
+                        savedRoutesModel.save(measurement.snapshot())
+                        didSave = true
+                    } label: {
+                        Group {
+                            if didSave {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(Color.green)
+                            } else {
+                                Image(systemName: "bookmark")
+                            }
+                        }
+                        .font(.system(size: 15, weight: .semibold))
+                        .buttonStyle()
+                    }
+                    .disabled(measurement.isEmpty)
+                    .task(id: didSave) {
+                        guard didSave else { return }
+                        try? await Task.sleep(for: .seconds(2.5))
+                        didSave = false
+                    }
+                }
             }
         }
         .animation(.easeInOut(duration: 0.2), value: measurement.isMeasuring)
+        .animation(.easeInOut(duration: 0.15), value: didSave)
     }
 }
 

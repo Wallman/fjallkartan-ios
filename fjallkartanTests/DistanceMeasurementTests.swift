@@ -169,6 +169,30 @@ struct DistanceMeasurementTests {
         m.previewMeters = meters
         #expect(m.formattedDistance.hasSuffix(expectedUnit))
     }
+
+    @Test func loadReplacesCurrentRouteAndPreservesUndo() {
+        let m = DistanceMeasurement()
+        m.appendStroke(Self.north(abisko, steps: 1))
+        m.appendStroke(Self.north(CLLocationCoordinate2D(latitude: abisko.latitude + 0.02,
+                                                          longitude: abisko.longitude), steps: 1))
+        let saved = m.snapshot()
+        let versionBeforeLoad = m.version
+
+        let fresh = DistanceMeasurement()
+        fresh.load(saved)
+
+        #expect(fresh.coordinates.count == saved.coordinates.count)
+        #expect(abs(fresh.totalMeters - saved.meters) < 0.001)
+        #expect(fresh.canUndo)
+        fresh.undoLastStroke()
+        #expect(fresh.coordinates.count == 2)
+
+        // Loading into a measurement that already had a route replaces it
+        // and still bumps version so MapView redraws.
+        m.load(saved)
+        #expect(m.version > versionBeforeLoad)
+        #expect(m.previewMeters == nil)
+    }
 }
 
 struct LineSimplifierTests {

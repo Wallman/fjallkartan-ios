@@ -28,7 +28,7 @@ final class DistanceMeasurement {
     private(set) var version = 0
 
     /// Number of coordinates contributed by each committed stroke, used for undo.
-    private var strokeSizes: [Int] = []
+    private(set) var strokeSizes: [Int] = []
 
     var totalMeters: Double { committedMeters + (previewMeters ?? 0) }
     var isEmpty: Bool { coordinates.isEmpty }
@@ -59,6 +59,22 @@ final class DistanceMeasurement {
         coordinates.removeAll()
         strokeSizes.removeAll()
         committedMeters = 0
+        previewMeters = nil
+        version += 1
+    }
+
+    // MARK: - Saved routes
+
+    func snapshot() -> SavedRoute {
+        SavedRoute(meters: committedMeters,
+                   coordinates: coordinates.map(SavedRoute.Coord.init),
+                   strokeSizes: strokeSizes)
+    }
+
+    func load(_ route: SavedRoute) {
+        coordinates = route.coordinates.map(\.coordinate)
+        strokeSizes = route.strokeSizes
+        committedMeters = route.meters
         previewMeters = nil
         version += 1
     }
@@ -96,13 +112,16 @@ final class DistanceMeasurement {
     }()
 
     var formattedDistance: String {
-        let meters = totalMeters
+        Self.formattedDistance(meters: totalMeters)
+    }
+
+    static func formattedDistance(meters: Double) -> String {
         if meters < 1000 {
-            return Self.metersFormatter.string(from: Measurement(value: meters.rounded(),
-                                                                 unit: UnitLength.meters))
+            return metersFormatter.string(from: Measurement(value: meters.rounded(),
+                                                             unit: UnitLength.meters))
         }
-        return Self.kilometersFormatter.string(from: Measurement(value: meters / 1000,
-                                                                 unit: UnitLength.kilometers))
+        return kilometersFormatter.string(from: Measurement(value: meters / 1000,
+                                                             unit: UnitLength.kilometers))
     }
 }
 

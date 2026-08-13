@@ -92,6 +92,7 @@ struct MapView: UIViewRepresentable {
     /// makes Observation schedule an `updateUIView` when the measurement changes.
     let isMeasuring: Bool
     let routeVersion: Int
+    var routeFitToken: Int = 0 // Needed to re-center when loading a route already shown
     /// Most recent search result the user tapped, or nil.
     let selectedPlace: PlaceResult?
 
@@ -151,6 +152,7 @@ struct MapView: UIViewRepresentable {
     func updateUIView(_ uiView: MKMapView, context: Context) {
         context.coordinator.setMeasuring(isMeasuring, on: uiView)
         context.coordinator.syncRoute(on: uiView, measurement: measurement, version: routeVersion)
+        context.coordinator.fitRouteIfNeeded(on: uiView, measurement: measurement, fitToken: routeFitToken)
         context.coordinator.syncSelection(selectedPlace, on: uiView)
         context.coordinator.syncRegionPreview(isVisible: isRegionPreviewVisible)
     }
@@ -161,6 +163,7 @@ struct MapView: UIViewRepresentable {
         private var captureView: MeasureCaptureView?
         private var routeOverlays: [MKOverlay] = []
         private var renderedVersion = -1
+        private var renderedFitToken = 0
         private var shownPlaceID: Int64?
         private weak var regionPreviewBorder: RegionPreviewBorderView?
         static let searchMarkerIdentifier = "SearchResultMarker"
@@ -235,6 +238,23 @@ struct MapView: UIViewRepresentable {
                 MeasurementEndpoint(coordinate: coordinates[0], kind: .start),
                 MeasurementEndpoint(coordinate: coordinates[coordinates.count - 1], kind: .end),
             ])
+        }
+
+        func fitRouteIfNeeded(on map: MKMapView, measurement: DistanceMeasurement, fitToken: Int) {
+            guard fitToken != renderedFitToken else { return }
+            renderedFitToken = fitToken
+
+            let coordinates = measurement.coordinates
+            guard !coordinates.isEmpty else { return }
+
+            var rect = MKMapRect.null
+            for coordinate in coordinates {
+                rect = rect.union(MKMapRect(origin: MKMapPoint(coordinate), size: MKMapSize(width: 0, height: 0)))
+            }
+            // setVisibleMapRect already respects cameraBoundary/cameraZoomRange,
+            // clamping a single-point or oversized route rather than fighting them.
+            map.setVisibleMapRect(rect, edgePadding: UIEdgeInsets(top: 60, left: 40, bottom: 60, right: 40),
+                                  animated: true)
         }
 
         // MARK: - Offline region preview
