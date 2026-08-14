@@ -48,67 +48,67 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Din position vises på kortet."
+            "value" : "Din position vises på kortet, så du kan se, hvor du er i terrænet. Din position bliver på din enhed og indsamles eller deles aldrig."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dein Standort wird auf der Karte angezeigt."
+            "value" : "Dein Standort wird auf der Karte angezeigt, damit du siehst, wo du dich im Gelände befindest. Dein Standort bleibt auf deinem Gerät und wird niemals erfasst oder weitergegeben."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your location is shown on the map."
+            "value" : "Your location is shown on the map so you can see where you are in the terrain. Your location stays on your device and is never collected or shared."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tu ubicación se muestra en el mapa."
+            "value" : "Tu ubicación se muestra en el mapa para que veas dónde estás en el terreno. Tu ubicación permanece en tu dispositivo y nunca se recopila ni se comparte."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sijaintisi näytetään kartalla."
+            "value" : "Sijaintisi näytetään kartalla, jotta näet missä olet maastossa. Sijaintisi pysyy laitteessasi, eikä sitä kerätä tai jaeta."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Votre position est affichée sur la carte."
+            "value" : "Votre position est affichée sur la carte afin que vous sachiez où vous vous trouvez sur le terrain. Votre position reste sur votre appareil et n’est jamais collectée ni partagée."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La tua posizione viene mostrata sulla mappa."
+            "value" : "La tua posizione viene mostrata sulla mappa per farti vedere dove ti trovi sul terreno. La tua posizione resta sul tuo dispositivo e non viene mai raccolta né condivisa."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Posisjonen din vises på kartet."
+            "value" : "Posisjonen din vises på kartet så du ser hvor du er i terrenget. Posisjonen din blir værende på enheten din og samles aldri inn eller deles."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Je locatie wordt op de kaart getoond."
+            "value" : "Je locatie wordt op de kaart getoond, zodat je ziet waar je je in het terrein bevindt. Je locatie blijft op je apparaat en wordt nooit verzameld of gedeeld."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Din position visas på kartan."
+            "value" : "Din position visas på kartan så att du ser var du befinner dig i terrängen. Din position stannar på din enhet och samlas aldrig in eller delas."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你的位置会显示在地图上。"
+            "value" : "你的位置会显示在地图上，让你知道自己在地形中的具体方位。你的位置仅保留在设备上，绝不会被收集或分享。"
           }
         }
       }

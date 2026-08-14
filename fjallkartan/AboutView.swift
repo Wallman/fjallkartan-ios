@@ -18,7 +18,7 @@ struct AboutButton: View {
 struct AboutSheet: View {
     @Environment(\.dismiss) private var dismiss
 
-    private static let privacyPolicyURL = URL(string: "https://wallman.github.io/docs/privacy.html")!
+    private static let privacyPolicyURL = URL(string: "https://wallman.github.io/fjallkartan-ios/privacy.html")!
     private static let kartverketURL = URL(string: "https://www.kartverket.no/")!
     private static let lantmaterietURL = URL(string: "https://www.lantmateriet.se/")!
 
