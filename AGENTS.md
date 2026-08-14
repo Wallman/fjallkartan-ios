@@ -15,8 +15,14 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/PlaceSearch.swift` | SQLite-backed FTS5 lookup of place names (`PlaceSearch`, `PlaceResult`, `PlaceKind`) against the bundled `places.sqlite`. |
 | `fjallkartan/PlaceSearchView.swift` | `PlaceSearchModel` (debounced async search) and `PlaceSearchSheet` UI presenting results. |
 | `fjallkartan/SavedRoute.swift` | Codable model for one saved measurement (id, createdAt, coordinates, strokeSizes, schemaVersion, displayName). |
-| `fjallkartan/SavedRouteStore.swift` | One-JSON-file-per-route store; local-first with optional iCloud Documents sync (migration, `NSFileCoordinator` writes, `NSMetadataQuery` change observation). |
-| `fjallkartan/SavedRoutesView.swift` | `SavedRoutesModel` and `SavedRoutesSheet` UI for listing/loading/deleting saved routes. |
+| `fjallkartan/SavedRouteStore.swift` | Thin wrapper over `DocumentDirectoryStore<SavedRoute>` for one-JSON-file-per-route persistence. |
+| `fjallkartan/SavedRoutesView.swift` | `SavedRoutesModel` and `SavedRoutesList` UI (embedded in `SavedSheet`) for listing/loading/deleting saved routes. |
+| `fjallkartan/Coord.swift` | Shared `Coord` (lat/lon pair) used by both `SavedRoute` and `SavedPin`, since `CLLocationCoordinate2D` isn't `Codable`. |
+| `fjallkartan/DocumentDirectoryStore.swift` | Generic one-JSON-file-per-item store; local-first with optional iCloud Documents sync (migration, `NSFileCoordinator` writes, `NSMetadataQuery` change observation). Backs both `SavedRouteStore` and `SavedPinStore`. |
+| `fjallkartan/SavedPin.swift` | Codable model for a saved pin (id, createdAt, coordinate, optional name/subtitle, schemaVersion, displayName). |
+| `fjallkartan/SavedPinStore.swift` | Thin wrapper over `DocumentDirectoryStore<SavedPin>`, adding `rename(_:to:)`. |
+| `fjallkartan/SavedPinsView.swift` | `SavedPinsModel` (load/save/rename/delete for saved pins) and `SavedSheet` (the "Saved" toolbar sheet, routes-only). |
+| `fjallkartan/PinDetailSheet.swift` | Low bottom sheet (Rename + destructive Delete) opened when a pin annotation is tapped on the map. |
 | `fjallkartan/TilePyramid.swift` | Pure functions enumerating the fixed z7–z14 offline tile pyramid and estimating its download size. |
 | `fjallkartan/RemoteSettings.swift` | Remotely configurable tile URL templates (`TileSettings`), fetched from `settings.json` with built-in fallbacks. |
 | `fjallkartan/ReviewPrompter.swift` | Throttling logic deciding when to ask for an App Store review. |
@@ -78,10 +84,15 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 
 - **Saved routes**
   - A saved route is one JSON file per route (`SavedRoute`, id/createdAt/coordinates/strokeSizes/schemaVersion) under `Application Support/Routes`.
-  - `SavedRouteStore` starts pointed at the local directory so the app works fully offline from first launch, then `syncWithiCloudIfAvailable()` (called once from `SavedRoutesModel.init` in a background `Task`) resolves the ubiquity container off the main thread and, the first time it succeeds, migrates existing local files over (copy-then-delete-on-success, so a failure mid-migration can't lose a route) before repointing `directory` at it. `startObservingRemoteChanges` uses an `NSMetadataQuery` to refresh the list.
+  - `SavedRouteStore` (and `SavedPinStore`, below) is a thin wrapper over the generic `DocumentDirectoryStore<Item>`, which owns the shared local/iCloud logic; `SavedRouteStore` starts pointed at the local directory so the app works fully offline from first launch, then `syncWithiCloudIfAvailable()` (called once from `SavedRoutesModel.init` in a background `Task`) resolves the ubiquity container off the main thread and, the first time it succeeds, migrates existing local files over (copy-then-delete-on-success, so a failure mid-migration can't lose a route) before repointing `directory` at it. `startObservingRemoteChanges` uses an `NSMetadataQuery` to refresh the list.
   - `save`/`delete` are wrapped in `NSFileCoordinator` so they never race the iCloud daemon; `load`'s directory listing is plain `FileManager` since a miss just self-corrects on the next `NSMetadataQuery` update.
   - iCloud Documents requires a signed-in iCloud account, without it, `syncWithiCloudIfAvailable()` is a no-op and the store just keeps using the local directory.
   - Loading a saved route is always replace, never merge, with the sheet warning first if the current route is unsaved.
+
+- **Saved pins**
+  - A saved pin (`SavedPin`: id/createdAt/coordinate/name/subtitle/schemaVersion) is created either by long-pressing the map (name defaults to nil, so `displayName` falls back to a formatted date) or by tapping the bookmark `rightCalloutAccessoryView` on a search-result marker (named after the `PlaceResult`). Both go through `SavedPinStore`, the `DocumentDirectoryStore<SavedPin>` wrapper, under `Application Support/Pins` — its own iCloud migration `UserDefaults` key keeps pin migration independent of route migration.
+  - `MapView.Coordinator` owns a `UILongPressGestureRecognizer` added directly to the `MKMapView` (not the measurement capture view), disabled whenever `isMeasuring` or `isRegionPreviewVisible` is true so it never competes with drawing or the offline-region picker.
+  - Pins are managed entirely on the map, not in the "Saved" sheet (that sheet is routes-only): `SavedPinAnnotation` has no title/subtitle/callout at all — tapping one directly fires `mapView(_:didSelect:)`, which opens `PinDetailSheet` (a small `.presentationDetents([.height(260)])` sheet with Rename + destructive Delete) and immediately deselects, so no callout ever flashes on screen. `SavedPinsModel` (load/save/rename/delete) still backs this, it's just driven from the map instead of a list.
 
 ## Build & test
 - Xcode project: `fjallkartan.xcodeproj`, scheme `fjallkartan`.

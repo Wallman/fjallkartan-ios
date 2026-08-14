@@ -1,33 +1,39 @@
 import Foundation
 
-final class SavedRouteStore {
-    private let base: DocumentDirectoryStore<SavedRoute>
+final class SavedPinStore {
+    private let base: DocumentDirectoryStore<SavedPin>
 
-    private static let didMigrateToiCloudKey = "SavedRouteStore.didMigrateToiCloud"
+    private static let didMigrateToiCloudKey = "SavedPinStore.didMigrateToiCloud"
 
     static var defaultLocalDirectory: URL {
-        DocumentDirectoryStore<SavedRoute>.defaultLocalDirectory(subdirectoryName: "Routes")
+        DocumentDirectoryStore<SavedPin>.defaultLocalDirectory(subdirectoryName: "Pins")
     }
 
     var directory: URL { base.directory }
     var isUsingiCloud: Bool { base.isUsingiCloud }
 
-    init(directory: URL = SavedRouteStore.defaultLocalDirectory) throws {
+    init(directory: URL = SavedPinStore.defaultLocalDirectory) throws {
         base = try DocumentDirectoryStore(directory: directory,
-                                          subdirectoryName: "Routes",
+                                          subdirectoryName: "Pins",
                                           migrationKey: Self.didMigrateToiCloudKey)
     }
 
-    func load() -> [SavedRoute] {
+    func load() -> [SavedPin] {
         base.load().sorted { $0.createdAt > $1.createdAt }
     }
 
-    func save(_ route: SavedRoute) throws {
-        try base.save(route)
+    func save(_ pin: SavedPin) throws {
+        try base.save(pin)
     }
 
-    func delete(_ route: SavedRoute) {
-        base.delete(route)
+    func delete(_ pin: SavedPin) {
+        base.delete(pin)
+    }
+
+    func rename(_ pin: SavedPin, to name: String) throws {
+        var updated = pin
+        updated.name = name.isEmpty ? nil : name
+        try base.save(updated)
     }
 
     func syncWithiCloudIfAvailable() async {

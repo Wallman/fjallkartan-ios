@@ -70,16 +70,26 @@ final class MeasurementEndpointView: MKAnnotationView {
 }
 
 final class SearchResultAnnotation: NSObject, MKAnnotation {
-    let coordinate: CLLocationCoordinate2D
-    let title: String?
-    let subtitle: String?
-    let placeID: Int64
+    let result: PlaceResult
+
+    var coordinate: CLLocationCoordinate2D { result.coordinate }
+    var title: String? { result.name }
+    var placeID: Int64 { result.id }
 
     init(result: PlaceResult) {
-        coordinate = result.coordinate
-        title = result.name
-        subtitle = result.subtitle.isEmpty ? nil : result.subtitle
-        placeID = result.id
+        self.result = result
+    }
+}
+
+final class SavedPinAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    let title: String?
+    let pin: SavedPin
+
+    init(pin: SavedPin) {
+        coordinate = pin.coordinate.coordinate
+        title = pin.displayName
+        self.pin = pin
     }
 }
 
@@ -97,6 +107,12 @@ struct MapView: UIViewRepresentable {
     let selectedPlace: PlaceResult?
 
     let isRegionPreviewVisible: Bool
+
+    let pins: [SavedPin]
+    var onDropPin: ((CLLocationCoordinate2D) -> Void)?
+    var onSavePlace: ((PlaceResult) -> Void)?
+    var onDismissPlace: (() -> Void)?
+    var onOpenPinDetail: ((SavedPin) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(metersPerPoint: $metersPerPoint, visibleMapRect: $visibleMapRect)
@@ -137,10 +153,13 @@ struct MapView: UIViewRepresentable {
                      forAnnotationViewWithReuseIdentifier: MeasurementEndpointView.reuseIdentifier)
         map.register(MKMarkerAnnotationView.self,
                      forAnnotationViewWithReuseIdentifier: Coordinator.searchMarkerIdentifier)
+        map.register(MKMarkerAnnotationView.self,
+                     forAnnotationViewWithReuseIdentifier: Coordinator.savedPinIdentifier)
 
         context.coordinator.start(with: map)
         context.coordinator.installCaptureView(on: map, measurement: measurement)
         context.coordinator.installRegionPreviewBorder(on: map)
+        context.coordinator.installLongPressRecognizer(on: map)
 
         map.subviews
             .filter { String(describing: type(of: $0)).contains("Attribution") }
@@ -150,12 +169,19 @@ struct MapView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: MKMapView, context: Context) {
+        context.coordinator.onDropPin = onDropPin
+        context.coordinator.onSavePlace = onSavePlace
+        context.coordinator.onDismissPlace = onDismissPlace
+        context.coordinator.onOpenPinDetail = onOpenPinDetail
         context.coordinator.setMeasuring(isMeasuring, on: uiView)
         context.coordinator.syncRoute(on: uiView, measurement: measurement, version: routeVersion)
         context.coordinator.fitRouteIfNeeded(on: uiView, measurement: measurement, fitToken: routeFitToken)
         context.coordinator.syncSelection(selectedPlace, on: uiView)
         context.coordinator.syncRegionPreview(isVisible: isRegionPreviewVisible)
+        context.coordinator.syncPins(on: uiView, pins: pins)
+        context.coordinator.setLongPressEnabled(!isMeasuring && !isRegionPreviewVisible)
     }
+
 
     final class Coordinator: NSObject, MKMapViewDelegate, CLLocationManagerDelegate {
         let locationManager = CLLocationManager()
@@ -168,8 +194,16 @@ struct MapView: UIViewRepresentable {
         private var wantsTrackingOnceAuthorized = false
         private weak var regionPreviewBorder: RegionPreviewBorderView?
         static let searchMarkerIdentifier = "SearchResultMarker"
+        static let savedPinIdentifier = "SavedPinMarker"
         @Binding var metersPerPoint: Double
         @Binding var visibleMapRect: MKMapRect
+
+        private var renderedPins: [SavedPin] = []
+        private weak var longPressRecognizer: UILongPressGestureRecognizer?
+        var onDropPin: ((CLLocationCoordinate2D) -> Void)?
+        var onSavePlace: ((PlaceResult) -> Void)?
+        var onDismissPlace: (() -> Void)?
+        var onOpenPinDetail: ((SavedPin) -> Void)?
 
         init(metersPerPoint: Binding<Double>,
              visibleMapRect: Binding<MKMapRect>) {
@@ -302,6 +336,37 @@ struct MapView: UIViewRepresentable {
             map.selectAnnotation(annotation, animated: true)
         }
 
+        // MARK: - Saved pins
+
+        @MainActor
+        func syncPins(on map: MKMapView, pins: [SavedPin]) {
+            guard pins != renderedPins else { return }
+            renderedPins = pins
+
+            let existing = map.annotations.compactMap { $0 as? SavedPinAnnotation }
+            map.removeAnnotations(existing)
+            map.addAnnotations(pins.map(SavedPinAnnotation.init))
+        }
+
+        func installLongPressRecognizer(on map: MKMapView) {
+            let recognizer = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+            recognizer.minimumPressDuration = 0.5
+            map.addGestureRecognizer(recognizer)
+            longPressRecognizer = recognizer
+        }
+
+        func setLongPressEnabled(_ isEnabled: Bool) {
+            longPressRecognizer?.isEnabled = isEnabled
+        }
+
+        @objc private func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
+            guard recognizer.state == .began, let mapView else { return }
+            let point = recognizer.location(in: mapView)
+            let coordinate = mapView.convert(point, toCoordinateFrom: mapView)
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            onDropPin?(coordinate)
+        }
+
         // MARK: - CLLocationManagerDelegate
 
         func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
@@ -359,6 +424,16 @@ struct MapView: UIViewRepresentable {
                 view?.glyphImage = UIImage(systemName: "mappin")
                 view?.displayPriority = .required
                 view?.canShowCallout = true
+                view?.leftCalloutAccessoryView = calloutButton(systemName: "bookmark")
+                view?.rightCalloutAccessoryView = calloutButton(systemName: "xmark.circle")
+                return view
+            }
+            if annotation is SavedPinAnnotation {
+                let view = mapView.dequeueReusableAnnotationView(
+                    withIdentifier: Coordinator.savedPinIdentifier,
+                    for: annotation) as? MKMarkerAnnotationView
+                view?.markerTintColor = .systemIndigo
+                view?.glyphImage = UIImage(systemName: "bookmark.fill")
                 return view
             }
             guard annotation is MeasurementEndpoint else { return nil }
@@ -366,6 +441,32 @@ struct MapView: UIViewRepresentable {
                 withIdentifier: MeasurementEndpointView.reuseIdentifier,
                 for: annotation
             )
+        }
+
+        private func calloutButton(systemName: String) -> UIButton {
+            let button = UIButton(type: .system)
+            button.setImage(UIImage(systemName: systemName), for: .normal)
+            button.frame = CGRect(x: 0, y: 0, width: 28, height: 28)
+            return button
+        }
+
+        func mapView(_ mapView: MKMapView, annotationView view: MKAnnotationView,
+                     calloutAccessoryControlTapped control: UIControl) {
+            guard let searchAnnotation = view.annotation as? SearchResultAnnotation else { return }
+            if control === view.leftCalloutAccessoryView {
+                onSavePlace?(searchAnnotation.result)
+                mapView.removeAnnotation(searchAnnotation)
+                onDismissPlace?()
+            } else {
+                mapView.removeAnnotation(searchAnnotation)
+                onDismissPlace?()
+            }
+        }
+
+        func mapView(_ mapView: MKMapView, didSelect annotationView: MKAnnotationView) {
+            guard let pinAnnotation = annotationView.annotation as? SavedPinAnnotation else { return }
+            onOpenPinDetail?(pinAnnotation.pin)
+            mapView.deselectAnnotation(pinAnnotation, animated: false)
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {

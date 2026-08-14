@@ -18,7 +18,9 @@ struct ContentView: View {
     @State private var isSavedRoutesPresented = false
     @State private var offlineModel = CustomTileOverlay.defaultStore.map(OfflineRegionsModel.init)
     @State private var savedRoutesModel = (try? SavedRouteStore()).map(SavedRoutesModel.init)
+    @State private var savedPinsModel = (try? SavedPinStore()).map(SavedPinsModel.init)
     @State private var routeFitToken = 0 // Needed to avoid re-centering when drawing
+    @State private var pinDetail: SavedPin?
 
     @State private var measuringStartVersion = 0
     private let reviewPrompter = ReviewPrompter.shared
@@ -33,6 +35,7 @@ struct ContentView: View {
             && !isAboutPresented
             && !isPickingRegion
             && !isSavedRoutesPresented
+            && pinDetail == nil
     }
 
     private var isCompactHeight: Bool { verticalSizeClass == .compact }
@@ -45,7 +48,20 @@ struct ContentView: View {
                 routeVersion: measurement.version,
                 routeFitToken: routeFitToken,
                 selectedPlace: search.selection,
-                isRegionPreviewVisible: isPickingRegion)
+                isRegionPreviewVisible: isPickingRegion,
+                pins: savedPinsModel?.pins ?? [],
+                onDropPin: { coordinate in
+                    savedPinsModel?.save(SavedPin(coordinate: Coord(coordinate)))
+                },
+                onSavePlace: { place in
+                    savedPinsModel?.save(SavedPin(coordinate: Coord(place.coordinate), name: place.name))
+                },
+                onDismissPlace: {
+                    search.selection = nil
+                },
+                onOpenPinDetail: { pin in
+                    pinDetail = pin
+                })
             .ignoresSafeArea()
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -166,6 +182,11 @@ struct ContentView: View {
             }
             .sheet(isPresented: $isLegendPresented) {
                 LegendSheet()
+            }
+            .sheet(item: $pinDetail) { pin in
+                PinDetailSheet(pin: pin,
+                              onSave: { updated in savedPinsModel?.save(updated) },
+                              onDelete: { savedPinsModel?.delete(pin) })
             }
             .onChange(of: measurement.isMeasuring) { _, isMeasuring in
                 if isMeasuring {
