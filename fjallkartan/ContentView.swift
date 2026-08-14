@@ -5,6 +5,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(\.requestReview) private var requestReview
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var metersPerPoint: Double = 0
     @State private var visibleMapRect = MKMapRect.world
     @State private var measurement = DistanceMeasurement()
@@ -34,6 +35,8 @@ struct ContentView: View {
             && !isSavedRoutesPresented
     }
 
+    private var isCompactHeight: Bool { verticalSizeClass == .compact }
+
     var body: some View {
         MapView(metersPerPoint: $metersPerPoint,
                 visibleMapRect: $visibleMapRect,
@@ -45,8 +48,13 @@ struct ContentView: View {
                 isRegionPreviewVisible: isPickingRegion)
             .ignoresSafeArea()
             .overlay(alignment: .bottomLeading) {
-                ScaleBarView(metersPerPoint: metersPerPoint)
-                    .padding([.bottom, .leading], 16)
+                VStack(alignment: .leading, spacing: 8) {
+                    if isCompactHeight {
+                        MeasureReadoutView(measurement: measurement)
+                    }
+                    ScaleBarView(metersPerPoint: metersPerPoint)
+                }
+                .padding([.bottom, .leading], 16)
             }
             .overlay(alignment: .bottomTrailing) {
                 AboutButton { isAboutPresented = true }
@@ -57,7 +65,11 @@ struct ContentView: View {
                     }
             }
             .overlay(alignment: .topTrailing) {
-                VStack(spacing: 8) {
+                let layout = isCompactHeight
+                    ? AnyLayout(HStackLayout(spacing: 8))
+                    : AnyLayout(VStackLayout(spacing: 8))
+
+                layout {
                     Button {
                         isSearchPresented = true
                     } label: {
@@ -68,7 +80,8 @@ struct ContentView: View {
                     }
 
                     MeasureControlsView(measurement: measurement,
-                                        savedRoutesModel: savedRoutesModel)
+                                        savedRoutesModel: savedRoutesModel,
+                                        isHorizontal: isCompactHeight)
 
                     if let savedRoutesModel {
                         Button {
@@ -125,12 +138,14 @@ struct ContentView: View {
                     }
                 }
                 .animation(.easeInOut(duration: 0.2), value: isPickingRegion)
-                .padding(.top, 125)
-                .padding(.trailing, 16)
+                .padding(.top, isCompactHeight ? 16 : 125)
+                .padding(.trailing, isCompactHeight ? 68 : 16)
             }
             .overlay(alignment: .top) {
-                MeasureReadoutView(measurement: measurement)
-                    .padding(.top, 16)
+                if !isCompactHeight {
+                    MeasureReadoutView(measurement: measurement)
+                        .padding(.top, 16)
+                }
             }
             .overlay(alignment: .bottom) {
                 if isPickingRegion, let offlineModel {
@@ -142,6 +157,7 @@ struct ContentView: View {
                             isOfflineRegionsListPresented = true
                         }
                     )
+                    .padding(.horizontal, 16)
                     .padding(.bottom, 16)
                 }
             }
@@ -203,10 +219,15 @@ extension View {
 struct MeasureControlsView: View {
     @Bindable var measurement: DistanceMeasurement
     let savedRoutesModel: SavedRoutesModel?
+    var isHorizontal = false
     @State private var didSave = false
 
     var body: some View {
-        VStack(spacing: 8) {
+        let layout = isHorizontal
+            ? AnyLayout(HStackLayout(spacing: 8))
+            : AnyLayout(VStackLayout(spacing: 8))
+
+        layout {
             Button {
                 measurement.isMeasuring.toggle()
             } label: {
