@@ -67,7 +67,7 @@ final class DistanceMeasurement {
 
     func snapshot() -> SavedRoute {
         SavedRoute(meters: committedMeters,
-                   coordinates: coordinates.map(SavedRoute.Coord.init),
+                   coordinates: coordinates.map { SavedRoute.Coord($0) },
                    strokeSizes: strokeSizes)
     }
 
