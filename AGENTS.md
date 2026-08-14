@@ -14,6 +14,9 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/MeasureCaptureView.swift` | Transparent `UIView` over the map that captures freehand strokes and draws live preview. |
 | `fjallkartan/PlaceSearch.swift` | SQLite-backed FTS5 lookup of place names (`PlaceSearch`, `PlaceResult`, `PlaceKind`) against the bundled `places.sqlite`. |
 | `fjallkartan/PlaceSearchView.swift` | `PlaceSearchModel` (debounced async search) and `PlaceSearchSheet` UI presenting results. |
+| `fjallkartan/SavedRoute.swift` | Codable model for one saved measurement (id, createdAt, coordinates, strokeSizes, schemaVersion, displayName). |
+| `fjallkartan/SavedRouteStore.swift` | One-JSON-file-per-route store; local-first with optional iCloud Documents sync (migration, `NSFileCoordinator` writes, `NSMetadataQuery` change observation). |
+| `fjallkartan/SavedRoutesView.swift` | `SavedRoutesModel` and `SavedRoutesSheet` UI for listing/loading/deleting saved routes. |
 | `fjallkartan/TilePyramid.swift` | Pure functions enumerating the fixed z7–z14 offline tile pyramid and estimating its download size. |
 | `fjallkartan/RemoteSettings.swift` | Remotely configurable tile URL templates (`TileSettings`), fetched from `settings.json` with built-in fallbacks. |
 | `fjallkartan/ReviewPrompter.swift` | Throttling logic deciding when to ask for an App Store review. |
@@ -72,6 +75,13 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
   - `ftsExpression(for:)` tokenizes free text into terms; scoring favors exact-length matches, lower `p.rank`, primary names over aliases, and demotes less map-relevant `PlaceKind`s.
   - Coordinates are stored as scaled integers (`coordinateScale = 100_000`) to keep the `place` table compact.
   - `PlaceSearchModel` debounces input (150 ms) on a background queue. `PlaceSearchSheet` renders results and feeds a selected `PlaceResult` back to `ContentView`.
+
+- **Saved routes**
+  - A saved route is one JSON file per route (`SavedRoute`, id/createdAt/coordinates/strokeSizes/schemaVersion) under `Application Support/Routes`.
+  - `SavedRouteStore` starts pointed at the local directory so the app works fully offline from first launch, then `syncWithiCloudIfAvailable()` (called once from `SavedRoutesModel.init` in a background `Task`) resolves the ubiquity container off the main thread and, the first time it succeeds, migrates existing local files over (copy-then-delete-on-success, so a failure mid-migration can't lose a route) before repointing `directory` at it. `startObservingRemoteChanges` uses an `NSMetadataQuery` to refresh the list.
+  - `save`/`delete` are wrapped in `NSFileCoordinator` so they never race the iCloud daemon; `load`'s directory listing is plain `FileManager` since a miss just self-corrects on the next `NSMetadataQuery` update.
+  - iCloud Documents requires a signed-in iCloud account, without it, `syncWithiCloudIfAvailable()` is a no-op and the store just keeps using the local directory.
+  - Loading a saved route is always replace, never merge, with the sheet warning first if the current route is unsaved.
 
 ## Build & test
 - Xcode project: `fjallkartan.xcodeproj`, scheme `fjallkartan`.

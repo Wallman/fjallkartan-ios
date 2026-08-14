@@ -9,6 +9,15 @@ final class SavedRoutesModel {
     init(store: SavedRouteStore) {
         self.store = store
         refresh()
+        Task { [weak self] in
+            guard let self else { return }
+            // Resolves lazily so first launch isn't blocked on network/disk I/O
+            await store.syncWithiCloudIfAvailable()
+            self.refresh()
+            store.startObservingRemoteChanges { [weak self] in
+                self?.refresh()
+            }
+        }
     }
 
     func refresh() {
