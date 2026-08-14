@@ -105,7 +105,7 @@ struct MapView: UIViewRepresentable {
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
         map.delegate = context.coordinator
-        map.showsUserLocation = true
+        map.showsUserLocation = false
         map.showsUserTrackingButton = true
         map.isPitchEnabled = false
         map.overrideUserInterfaceStyle = .light
@@ -165,6 +165,7 @@ struct MapView: UIViewRepresentable {
         private var renderedVersion = -1
         private var renderedFitToken = 0
         private var shownPlaceID: Int64?
+        private var wantsTrackingOnceAuthorized = false
         private weak var regionPreviewBorder: RegionPreviewBorderView?
         static let searchMarkerIdentifier = "SearchResultMarker"
         @Binding var metersPerPoint: Double
@@ -180,9 +181,12 @@ struct MapView: UIViewRepresentable {
             self.mapView = mapView
             locationManager.delegate = self
             locationManager.desiredAccuracy = kCLLocationAccuracyBest
-            if locationManager.authorizationStatus == .notDetermined {
-                locationManager.requestWhenInUseAuthorization()
-            }
+            mapView.showsUserLocation = isAuthorized
+        }
+
+        private var isAuthorized: Bool {
+            let status = locationManager.authorizationStatus
+            return status == .authorizedWhenInUse || status == .authorizedAlways
         }
 
         // MARK: - Measuring
@@ -301,12 +305,23 @@ struct MapView: UIViewRepresentable {
         // MARK: - CLLocationManagerDelegate
 
         func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-            let authorized = manager.authorizationStatus == .authorizedWhenInUse
-                || manager.authorizationStatus == .authorizedAlways
-            mapView?.showsUserLocation = authorized
+            guard let mapView else { return }
+            mapView.showsUserLocation = isAuthorized
+
+            guard wantsTrackingOnceAuthorized else { return }
+            wantsTrackingOnceAuthorized = false
+            if isAuthorized {
+                mapView.setUserTrackingMode(.follow, animated: true)
+            }
         }
 
         // MARK: - MKMapViewDelegate
+
+        func mapView(_ mapView: MKMapView, didChange mode: MKUserTrackingMode, animated: Bool) {
+            guard mode != .none, locationManager.authorizationStatus == .notDetermined else { return }
+            wantsTrackingOnceAuthorized = true
+            locationManager.requestWhenInUseAuthorization()
+        }
 
         func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {
             updateRegion(for: mapView)
