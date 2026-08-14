@@ -11,6 +11,7 @@ final class SavedRouteStore {
     private let coordinator = NSFileCoordinator()
     private var metadataQuery: NSMetadataQuery?
     private var metadataObservers: [NSObjectProtocol] = []
+    private(set) var isUsingiCloud = false
 
     private static let didMigrateToiCloudKey = "SavedRouteStore.didMigrateToiCloud"
 
@@ -92,10 +93,13 @@ final class SavedRouteStore {
         }
 
         directory = ubiquityDirectory
+        isUsingiCloud = true
     }
 
     private static func resolveUbiquityRoutesDirectory() async -> URL? {
-        await Task.detached(priority: .utility) {
+        guard FileManager.default.ubiquityIdentityToken != nil else { return nil } // when no iCloud account is signed in
+
+        return await Task.detached(priority: .utility) {
             guard let container = FileManager.default.url(forUbiquityContainerIdentifier: nil) else { return nil }
             return container.appendingPathComponent("Documents/Routes", isDirectory: true)
         }.value
@@ -125,6 +129,8 @@ final class SavedRouteStore {
 
     /// Starts watching for routes added/removed elsewhere
     func startObservingRemoteChanges(onChange: @escaping () -> Void) {
+        guard isUsingiCloud else { return }
+
         stopObservingRemoteChanges()
 
         let query = NSMetadataQuery()
