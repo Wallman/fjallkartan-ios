@@ -15,6 +15,8 @@ enum TileServer {
 }
 
 final class CustomTileOverlay: MKTileOverlay {
+    private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "fjallkartan", category: "CustomTileOverlay")
+
     private static let sharedCache = URLCache(
         memoryCapacity: 0,
         diskCapacity: 500 * 1024 * 1024 // 500 MB
@@ -110,8 +112,14 @@ final class CustomTileOverlay: MKTileOverlay {
                 completion(data)
                 return
             }
+            if let r = response as? HTTPURLResponse, !(200...299).contains(r.statusCode) {
+                Self.log.error("HTTP \(r.statusCode) for \(url.absoluteString, privacy: .public), attempt \(attempt)")
+            } else if let error {
+                Self.log.error("request failed for \(url.absoluteString, privacy: .public), attempt \(attempt): \(error.localizedDescription, privacy: .public)")
+            }
 
             guard attempt < 3 else {
+                Self.log.error("giving up after \(attempt) attempts for \(url.absoluteString, privacy: .public)")
                 completion(nil)
                 return
             }
