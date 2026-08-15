@@ -59,6 +59,7 @@ final class CustomTileOverlay: MKTileOverlay {
                        completion: @escaping (Data?) -> Void) {
         let z = Int(path.z), x = Int(path.x), y = Int(path.y)
         let code = server.storeCode
+//        print("z \(z)")
 
         if let store, let data = store.tileData(server: code, z: z, x: x, y: y) {
             completion(data)
