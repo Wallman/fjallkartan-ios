@@ -105,7 +105,9 @@ nonisolated final class TileFetcher: @unchecked Sendable {
             }
 
             if let http, !(200...299).contains(http.statusCode) {
-                Self.log.error("HTTP \(http.statusCode) for \(url.absoluteString, privacy: .public), attempt \(attempt)")
+                if !(http.statusCode == 404 && url.path.contains("/slope/v1")) {
+                    Self.log.error("HTTP \(http.statusCode) for \(url.absoluteString, privacy: .public), attempt \(attempt)")
+                }
             } else if let error {
                 Self.log.error("request failed for \(url.absoluteString, privacy: .public), attempt \(attempt): \(error.localizedDescription, privacy: .public)")
             }
