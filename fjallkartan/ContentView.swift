@@ -214,7 +214,7 @@ struct ContentView: View {
                                           isQuiet: isQuietForReviewPrompt)) {
                 guard reviewPrompter.pendingToken > 0, isQuietForReviewPrompt else { return }
                 try? await Task.sleep(for: .seconds(3))
-                guard !Task.isCancelled, isQuietForReviewPrompt else { return }
+                guard !Task.isCancelled, isQuietForReviewPrompt, await NetworkCheck.hasConnectivity() else { return }
                 if reviewPrompter.consumePendingPrompt() { requestReview() }
             }
     }
