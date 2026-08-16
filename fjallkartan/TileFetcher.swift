@@ -14,29 +14,33 @@ nonisolated final class TileFetcher: @unchecked Sendable {
         var cacheTTL: TimeInterval = 182 * 24 * 60 * 60 // 6 months
     }
 
+    static let sharedTileCache = URLCache(
+        memoryCapacity: 0,
+        diskCapacity: 500 * 1024 * 1024 // 500 MB
+    )
+
     static let mapTiles: TileFetcher = {
-        let cache = URLCache(
-            memoryCapacity: 0,
-            diskCapacity: 500 * 1024 * 1024 // 500 MB
-        )
         let config = URLSessionConfiguration.default
-        config.urlCache = cache
+        config.urlCache = sharedTileCache
         config.requestCachePolicy = .reloadIgnoringLocalCacheData // cache retrieval done manually, to put custom TTL
         config.httpMaximumConnectionsPerHost = 12
-        return TileFetcher(session: URLSession(configuration: config), cache: cache, category: "TileFetcher")
+        return TileFetcher(session: URLSession(configuration: config), cache: sharedTileCache, category: "TileFetcher")
     }()
 
     private let session: URLSession
     private let cache: URLCache?
+    private let storesResponses: Bool
     private let configuration: Configuration
     private let log: Logger
 
     init(session: URLSession,
          cache: URLCache? = nil,
+         storesResponses: Bool = true,
          configuration: Configuration = Configuration(),
          category: String) {
         self.session = session
         self.cache = cache
+        self.storesResponses = storesResponses
         self.configuration = configuration
         self.log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "fjallkartan", category: category)
     }
@@ -99,7 +103,7 @@ nonisolated final class TileFetcher: @unchecked Sendable {
     }
 
     private func store(_ data: Data, for request: URLRequest, url: URL) {
-        guard let cache,
+        guard storesResponses, let cache,
               let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil,
                                              headerFields: ["Cache-Control": "max-age=\(Int(configuration.cacheTTL))"])
         else { return }

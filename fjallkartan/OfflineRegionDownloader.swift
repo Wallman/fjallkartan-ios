@@ -32,7 +32,7 @@ final class OfflineRegionDownloader {
     private var runningTask: Task<Void, Never>?
 
     /// `session` is overridable so tests can inject a stubbed `URLProtocol`.
-    init(store: OfflineTileStore, session: URLSession? = nil) {
+    init(store: OfflineTileStore, session: URLSession? = nil, cache: URLCache? = TileFetcher.sharedTileCache) {
         self.store = store
         let session = session ?? {
             let config = URLSessionConfiguration.default
@@ -40,7 +40,7 @@ final class OfflineRegionDownloader {
             config.urlCache = nil
             return URLSession(configuration: config)
         }()
-        self.fetcher = TileFetcher(session: session, cache: nil, category: "OfflineRegionDownloader")
+        self.fetcher = TileFetcher(session: session, cache: cache, storesResponses: false, category: "OfflineRegionDownloader")
     }
 
     /// Starts (or resumes, if `regionID` already exists) downloading `rect`.
