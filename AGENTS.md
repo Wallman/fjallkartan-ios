@@ -26,6 +26,9 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/TilePyramid.swift` | Pure functions enumerating the fixed z7–z14 offline tile pyramid and estimating its download size. |
 | `fjallkartan/RemoteSettings.swift` | Remotely configurable tile URL templates (`TileSettings`: Lantmäteriet, Kartverket, Norwegian slope, Swedish slope), fetched from `settings.json` with built-in fallbacks. |
 | `fjallkartan/SlopeTileOverlay.swift` | `MKTileOverlay` for the steepness layer; one instance per `Country`, each with its own zoom limits. |
+| `fjallkartan/TileUpscaler.swift` | Shared helper that builds a deep-zoom tile by cropping and magnifying the ancestor containing it; used by both tile layers. |
+| `fjallkartan/LegendView.swift` | `LegendCountry` and `LegendSheet`; renders the bundled per-country legend PDFs (`legend_no` / `legend_se`) via PDFKit. |
+| `fjallkartan/AboutView.swift` | `AboutButton` and `AboutSheet`: data-source attribution (Kartverket, Lantmäteriet, NVE) plus privacy-policy and support links. |
 | `fjallkartan/ReviewPrompter.swift` | Throttling logic deciding when to ask for an App Store review. |
 | `fjallkartan/OfflineTileStore.swift` | SQLite blob store for downloaded tiles (`tiles`, `region_tiles`, `regions` tables), with refcounted region deletion and ancestor lookup for upscaling. |
 | `fjallkartan/OfflineRegionDownloader.swift` | `@Observable` downloader: bounded-concurrency fetch of a region's tiles into `OfflineTileStore`, with pause/resume/cancel and retry/backoff. |
@@ -59,7 +62,8 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
   - Two `SlopeTileOverlay` instances, one per `Country`, both drawn at `alpha = 0.6`. Norway serves NVE's finished `Bratthet_med_utlop_2024` pictures (z5–16); Sweden has no such service, so we render our own (z5–13) — hence the per-country zoom limits.
   - The Swedish tiles are built offline by `tools/build_sweden_slope_tiles.py` and match NVE's palette exactly, minus the runout blues (Sweden publishes no runout model) and minus the green <30° band.
   - Slope is computed with Horn 3×3 in EPSG:3006 **before** warping to Web Mercator — Mercator inflates distances by 1/cos(lat) (~2.2× at 63°N), which would flatten every slope. The warp is nearest-neighbour because the pixel values are class labels, not quantities. Only z13 is computed from elevation; lower zooms are max-pooled from their four children so a steep face stays visible as it shrinks below a pixel.
-  - Agreement with NVE across the border at Sylarna is 89.3 % exact / 99.2 % within one class. Measuring this needs a coverage mask, since both products render "flat" and "not covered" as the same transparent pixel; the tool uses Kartverket's topo alpha channel, which is blank outside Norway.
+  - Agreement with NVE across the border is 96.6 % exact / 99.5 % within one class over 1,395,357 pixels sampled from 60 border tiles.
+  - The tiles are hosted on Cloudflare R2 (bucket `tiles`, prefix `slope/v1`), fronted by `tiles.wallman.dev`.
 
 - **Offline map regions**
   - Downloads are capped to a fixed **z7–z14** pyramid (`TilePyramid`) — enough for route/terrain reading, still smaller than the online z18 ceiling, with a hard refusal above ~1.5 GB (purely a guard against selecting the whole of Scandinavia) or when `OfflineTileStore.availableCapacityBytes` shows the device doesn't have enough free space for the estimate.
