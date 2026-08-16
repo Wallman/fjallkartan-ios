@@ -35,9 +35,14 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/OfflineRegionDownloader.swift` | `@Observable` downloader: bounded-concurrency fetch of a region's tiles into `OfflineTileStore`, with pause/resume/cancel and retry/backoff. |
 | `fjallkartan/OfflineRegionsView.swift` | `OfflineRegionsModel` (region list + active downloaders) and `OfflineRegionsSheet` UI for starting/managing offline regions. |
 | `fjallkartan/InfoPlist.xcstrings` | Localized `Info.plist` values: `CFBundleDisplayName` (home-screen name, translated for nb/da/fi) and `NSLocationWhenInUseUsageDescription`. |
+| `fjallkartan/Localizable.xcstrings` | All in-app UI strings. |
+| `fjallkartan/PrivacyInfo.xcprivacy` | Privacy manifest: no tracking, no collected data, and the required-reason API declarations. |
+| `fjallkartan/fjallkartan.entitlements` | iCloud Documents entitlements that `DocumentDirectoryStore` needs for its ubiquity container. |
+| `marketing/store-copy.md` | Per-locale App Store name/subtitle/description copy plus the support and privacy URLs. |
+| `docs/privacy.html`, `docs/support.html` | GitHub Pages pages linked from `AboutSheet` and App Store. |
 | `tools/build_places_db.py` | Builds `places.sqlite` (place, alias, municipality tables + `place_fts` FTS5 index) bundled with the app. |
 | `tools/compose_screenshots.py` | Composes screenshots into captioned App Store screenshots in `marketing/appstore/<lang>/`. |
-| `tools/make_app_icon.py` | Regenerates the app icon
+| `tools/make_app_icon.py` | Regenerates the app icon. |
 | `tools/build_sweden_slope_tiles.py` | Derives the Swedish slope tiles from Lantmäteriet elevation data and uploads them to R2 (`fetch` → `tiles` → `verify` → `upload`). |
 
 ## Architecture notes
@@ -58,6 +63,7 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 
 - **Slope layer**
   - Two `SlopeTileOverlay` instances, one per `Country`, both drawn at `alpha = 0.6`. Norway serves NVE's finished `Bratthet_med_utlop_2024` pictures (z5–16); Sweden has no such service, so we render our own (z5–13) — hence the per-country zoom limits.
+  - Both tilesets are sparse, so 404s is the normal case. `TileFetcher` therefore caches a no-data marker for a 4xx in the same `URLCache`.
   - The Swedish tiles are built offline by `tools/build_sweden_slope_tiles.py` and match NVE's palette exactly, minus the runout blues (Sweden publishes no runout model) and minus the green <30° band.
   - Slope is computed with Horn 3×3 in EPSG:3006 **before** warping to Web Mercator — Mercator inflates distances by 1/cos(lat) (~2.2× at 63°N), which would flatten every slope. The warp is nearest-neighbour because the pixel values are class labels, not quantities. Only z13 is computed from elevation; lower zooms are max-pooled from their four children so a steep face stays visible as it shrinks below a pixel.
   - Agreement with NVE across the border is 96.6 % exact / 99.5 % within one class over 1,395,357 pixels sampled from 60 border tiles.
