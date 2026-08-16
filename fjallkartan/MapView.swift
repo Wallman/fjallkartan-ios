@@ -196,7 +196,7 @@ struct MapView: UIViewRepresentable {
         private var shownPlaceID: Int64?
         private var wantsTrackingOnceAuthorized = false
         private weak var regionPreviewBorder: RegionPreviewBorderView?
-        private weak var slopeOverlay: SlopeTileOverlay?
+        private var slopeOverlays: [SlopeTileOverlay] = []
         static let searchMarkerIdentifier = "SearchResultMarker"
         static let savedPinIdentifier = "SavedPinMarker"
         @Binding var metersPerPoint: Double
@@ -321,14 +321,16 @@ struct MapView: UIViewRepresentable {
         // MARK: - Slope layer
 
         func syncSlopeLayer(isVisible: Bool, on map: MKMapView) {
-            guard isVisible != (slopeOverlay != nil) else { return }
+            guard isVisible != !slopeOverlays.isEmpty else { return }
             if isVisible {
-                let overlay = SlopeTileOverlay.norway()
-                map.addOverlay(overlay, level: .aboveLabels)
-                slopeOverlay = overlay
-            } else if let overlay = slopeOverlay {
-                map.removeOverlay(overlay)
-                slopeOverlay = nil
+                let overlays = [SlopeTileOverlay.norway(), SlopeTileOverlay.sweden()]
+                for overlay in overlays {
+                    map.addOverlay(overlay, level: .aboveLabels)
+                }
+                slopeOverlays = overlays
+            } else {
+                map.removeOverlays(slopeOverlays)
+                slopeOverlays = []
             }
         }
 

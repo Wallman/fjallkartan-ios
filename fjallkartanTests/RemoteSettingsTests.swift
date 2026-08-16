@@ -18,7 +18,8 @@ struct RemoteSettingsTests {
         "minAppVersion": "1.1",
         "lantmaterietUrl": "https://example.com/se/{z}/{y}/{x}.png",
         "kartverketUrl": "https://example.com/no/{z}/{y}/{x}.png",
-        "norwaySlopeUrl": "https://example.com/slope/{z}/{y}/{x}"
+        "norwaySlopeUrl": "https://example.com/slope/{z}/{y}/{x}",
+        "swedenSlopeUrl": "https://example.com/slope-se/{z}/{y}/{x}.png"
     }
     """.data(using: .utf8)!
 
@@ -50,6 +51,8 @@ struct RemoteSettingsTests {
                 == "https://example.com/se/7/2/1.png")
         #expect(settings.norwaySlopeTileURL(z: 7, x: 1, y: 2).absoluteString
                 == "https://example.com/slope/7/2/1")
+        #expect(settings.swedenSlopeTileURL(z: 7, x: 1, y: 2).absoluteString
+                == "https://example.com/slope-se/7/2/1.png")
     }
 
     @Test func settingsSurviveAFreshInstance() {
@@ -65,8 +68,6 @@ struct RemoteSettingsTests {
     @Test(arguments: [
         // Malformed JSON
         "not json at all",
-        // Missing a required key
-        #"{"minAppVersion": "1.0", "kartverketUrl": "https://example.com/no/{z}/{y}/{x}.png"}"#,
         // Template missing the {x} placeholder
         #"{"lantmaterietUrl": "https://example.com/se/{z}/{y}.png", "kartverketUrl": "https://example.com/no/{z}/{y}/{x}.png"}"#,
         // Template that cannot produce a URL

@@ -6,12 +6,14 @@ struct TileSettings: Codable, Equatable {
     var lantmaterietUrl: String
     var kartverketUrl: String
     var norwaySlopeUrl: String
+    var swedenSlopeUrl: String
 
     var isUsable: Bool {
         Self.isWellFormedVersion(minAppVersion)
             && Self.isUsableTemplate(lantmaterietUrl)
             && Self.isUsableTemplate(kartverketUrl)
             && Self.isUsableTemplate(norwaySlopeUrl)
+            && Self.isUsableTemplate(swedenSlopeUrl)
     }
 
     static func isWellFormedVersion(_ version: String) -> Bool {
@@ -46,7 +48,8 @@ final class RemoteSettings {
             + "?layer=topowebb&style=default&tilematrixset=3857&Service=WMTS&Request=GetTile"
             + "&Version=1.0.0&Format=image/png&TileMatrix={z}&TileRow={y}&TileCol={x}",
         kartverketUrl: "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png",
-        norwaySlopeUrl: "https://gis3.nve.no/arcgis/rest/services/wmts/Bratthet_med_utlop_2024/MapServer/tile/{z}/{y}/{x}"
+        norwaySlopeUrl: "https://gis3.nve.no/arcgis/rest/services/wmts/Bratthet_med_utlop_2024/MapServer/tile/{z}/{y}/{x}",
+        swedenSlopeUrl: "https://tiles.wallman.dev/slope/v1/{z}/{y}/{x}.png"
     )
 
     private enum Key {
@@ -119,6 +122,14 @@ final class RemoteSettings {
             return url
         }
         return TileSettings.url(from: Self.builtIn.norwaySlopeUrl, z: z, x: x, y: y)!
+    }
+
+    func swedenSlopeTileURL(z: Int, x: Int, y: Int) -> URL {
+        let template = settings.swedenSlopeUrl
+        if let url = TileSettings.url(from: template, z: z, x: x, y: y) {
+            return url
+        }
+        return TileSettings.url(from: Self.builtIn.swedenSlopeUrl, z: z, x: x, y: y)!
     }
 
     // MARK: - Refresh
