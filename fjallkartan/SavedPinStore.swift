@@ -32,7 +32,8 @@ final class SavedPinStore {
 
     func rename(_ pin: SavedPin, to name: String) throws {
         var updated = pin
-        updated.name = name.isEmpty ? nil : name
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        updated.name = trimmed.isEmpty ? nil : trimmed
         try base.save(updated)
     }
 
