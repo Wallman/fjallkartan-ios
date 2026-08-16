@@ -116,7 +116,7 @@ nonisolated final class TileFetcher: @unchecked Sendable {
 
     private static func isConnectivityError(_ error: URLError) -> Bool {
         switch error.code {
-        case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost,
+        case .notConnectedToInternet, .cannotConnectToHost,
              .cannotFindHost, .dnsLookupFailed, .dataNotAllowed, .internationalRoamingOff,
              .callIsActive:
             return true

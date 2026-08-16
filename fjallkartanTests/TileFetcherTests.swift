@@ -8,11 +8,19 @@ final class TileFetcherStubURLProtocol: URLProtocol {
 
     private static let lock = NSLock()
     nonisolated(unsafe) private static var _handler: Handler?
+    nonisolated(unsafe) private static var _errorHandler: ((URLRequest) -> URLError?)?
     nonisolated(unsafe) private static var _requestCount = 0
 
     static var handler: Handler? {
         get { lock.lock(); defer { lock.unlock() }; return _handler }
-        set { lock.lock(); defer { lock.unlock() }; _handler = newValue; _requestCount = 0 }
+        set { lock.lock(); defer { lock.unlock() }; _handler = newValue; _errorHandler = nil; _requestCount = 0 }
+    }
+
+    /// Set after `handler`: returning a non-nil error for a request makes the
+    /// stub fail at the transport level instead of answering `handler`.
+    static var errorHandler: ((URLRequest) -> URLError?)? {
+        get { lock.lock(); defer { lock.unlock() }; return _errorHandler }
+        set { lock.lock(); defer { lock.unlock() }; _errorHandler = newValue }
     }
 
     static var requestCount: Int {
@@ -26,7 +34,13 @@ final class TileFetcherStubURLProtocol: URLProtocol {
         Self.lock.lock()
         Self._requestCount += 1
         let handler = Self._handler
+        let errorHandler = Self._errorHandler
         Self.lock.unlock()
+
+        if let error = errorHandler?(request) {
+            client?.urlProtocol(self, didFailWithError: error)
+            return
+        }
 
         guard let handler, let url = request.url else {
             client?.urlProtocol(self, didFailWithError: URLError(.unknown))
@@ -143,6 +157,37 @@ struct TileFetcherTests {
         // Failures must be distinguishable from no-data: the slope layer
         // returns them to MapKit so the tile is requested again.
         #expect(TileFetcherStubURLProtocol.requestCount == 3)
+    }
+
+    @Test func connectionResetIsRetriedThenSucceeds() async {
+        TileFetcherStubURLProtocol.handler = { _ in (200, Self.png, Self.imageHeaders) }
+        // "Connection reset by peer" reaches URLSession as networkConnectionLost.
+        TileFetcherStubURLProtocol.errorHandler = { _ in
+            TileFetcherStubURLProtocol.requestCount <= 2 ? URLError(.networkConnectionLost) : nil
+        }
+
+        let outcome = await fetch(makeFetcher(), url: url)
+
+        guard case .success(let data) = outcome else {
+            Issue.record("expected success, got \(outcome)")
+            return
+        }
+        #expect(data == Self.png)
+        #expect(TileFetcherStubURLProtocol.requestCount == 3)
+    }
+
+    @Test func offlineIsNotRetried() async {
+        TileFetcherStubURLProtocol.handler = { _ in (200, Self.png, Self.imageHeaders) }
+        TileFetcherStubURLProtocol.errorHandler = { _ in URLError(.notConnectedToInternet) }
+
+        let outcome = await fetch(makeFetcher(), url: url)
+
+        guard case .failure = outcome else {
+            Issue.record("expected failure, got \(outcome)")
+            return
+        }
+        // There is no connection to wait for, so burning retries is pointless.
+        #expect(TileFetcherStubURLProtocol.requestCount == 1)
     }
 
     @Test func cachedTileIsServedWithoutHittingTheNetwork() async {
