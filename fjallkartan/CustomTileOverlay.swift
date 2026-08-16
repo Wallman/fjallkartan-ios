@@ -83,7 +83,7 @@ final class CustomTileOverlay: MKTileOverlay {
                 // the nearest stored ancestor rather than leaving the tile blank.
                 if let store, z > TilePyramid.maxZoom,
                    let ancestor = store.nearestAncestorTile(server: code, z: z, x: x, y: y) {
-                    completion(Self.upscaledTile(ancestor: ancestor, targetZ: z, targetX: x, targetY: y))
+                    completion(TileUpscaler.upscaledTile(ancestor: ancestor, targetZ: z, targetX: x, targetY: y))
                 } else {
                     completion(nil)
                 }
@@ -180,37 +180,6 @@ final class CustomTileOverlay: MKTileOverlay {
         }
         guard let out = ctx.makeImage() else { return data }
         return UIImage(cgImage: out).pngData() ?? data
-    }
-
-    /// Crops the `1/4^n` sub-rectangle of `ancestor` that corresponds to the
-    /// requested tile and scales it up to 256×256, so zooming past the
-    /// downloaded z14 cap offline shows a softening map instead of a blank square. 
-    private static func upscaledTile(ancestor: (z: Int, x: Int, y: Int, data: Data),
-                                     targetZ: Int, targetX: Int, targetY: Int) -> Data? {
-        let levels = targetZ - ancestor.z
-        guard levels > 0, let cg = UIImage(data: ancestor.data)?.cgImage else { return ancestor.data }
-
-        let n = 1 << levels
-        let w = cg.width, h = cg.height
-        guard w >= n, h >= n else { return ancestor.data }
-        let cropW = w / n
-        let cropH = h / n
-        let subX = targetX - ancestor.x * n
-        let subY = targetY - ancestor.y * n
-        let cropRect = CGRect(x: subX * cropW, y: subY * cropH, width: cropW, height: cropH)
-        guard let cropped = cg.cropping(to: cropRect) else { return nil }
-
-        let outSize = 256
-        guard let ctx = CGContext(data: nil, width: outSize, height: outSize,
-                                  bitsPerComponent: 8, bytesPerRow: 0,
-                                  space: CGColorSpaceCreateDeviceRGB(),
-                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
-            return nil
-        }
-        ctx.interpolationQuality = .medium
-        ctx.draw(cropped, in: CGRect(x: 0, y: 0, width: outSize, height: outSize))
-        guard let out = ctx.makeImage() else { return nil }
-        return UIImage(cgImage: out).pngData()
     }
 
     private func tileURL(_ path: MKTileOverlayPath) -> URL {
