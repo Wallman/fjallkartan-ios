@@ -18,7 +18,7 @@ struct RemoteSettingsTests {
         "minAppVersion": "1.1",
         "lantmaterietUrl": "https://example.com/se/{z}/{y}/{x}.png",
         "kartverketUrl": "https://example.com/no/{z}/{y}/{x}.png",
-        "norwayElevationUrl": "https://example.com/elevation/{z}/{y}/{x}"
+        "norwaySlopeUrl": "https://example.com/slope/{z}/{y}/{x}"
     }
     """.data(using: .utf8)!
 
@@ -35,7 +35,7 @@ struct RemoteSettingsTests {
         #expect(se.contains("TileRow=3"))
         #expect(se.contains("TileCol=2"))
 
-        #expect(settings.norwayElevationTileURL(z: 10, x: 2, y: 3).absoluteString
+        #expect(settings.norwaySlopeTileURL(z: 10, x: 2, y: 3).absoluteString
                 == "https://gis3.nve.no/arcgis/rest/services/wmts/Bratthet_med_utlop_2024/MapServer/tile/10/3/2")
     }
 
@@ -48,8 +48,8 @@ struct RemoteSettingsTests {
                 == "https://example.com/no/7/2/1.png")
         #expect(settings.tileURL(server: .lantmateriet, z: 7, x: 1, y: 2).absoluteString
                 == "https://example.com/se/7/2/1.png")
-        #expect(settings.norwayElevationTileURL(z: 7, x: 1, y: 2).absoluteString
-                == "https://example.com/elevation/7/2/1")
+        #expect(settings.norwaySlopeTileURL(z: 7, x: 1, y: 2).absoluteString
+                == "https://example.com/slope/7/2/1")
     }
 
     @Test func settingsSurviveAFreshInstance() {

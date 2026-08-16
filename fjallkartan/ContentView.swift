@@ -16,7 +16,7 @@ struct ContentView: View {
     @State private var isLegendPresented = false
     @State private var isAboutPresented = false
     @State private var isSavedRoutesPresented = false
-    @State private var isElevationLayerVisible = false
+    @State private var isSlopeLayerVisible = false
     @State private var offlineModel = CustomTileOverlay.defaultStore.map(OfflineRegionsModel.init)
     @State private var savedRoutesModel = (try? SavedRouteStore()).map(SavedRoutesModel.init)
     @State private var savedPinsModel = (try? SavedPinStore()).map(SavedPinsModel.init)
@@ -50,7 +50,7 @@ struct ContentView: View {
                 routeFitToken: routeFitToken,
                 selectedPlace: search.selection,
                 isRegionPreviewVisible: isPickingRegion,
-                isElevationLayerVisible: isElevationLayerVisible,
+                isSlopeLayerVisible: isSlopeLayerVisible,
                 pins: savedPinsModel?.pins ?? [],
                 onDropPin: { coordinate in
                     savedPinsModel?.save(SavedPin(coordinate: Coord(coordinate)))
@@ -120,11 +120,11 @@ struct ContentView: View {
                     }
 
                     Button {
-                        isElevationLayerVisible.toggle()
+                        isSlopeLayerVisible.toggle()
                     } label: {
                         Image(systemName: "triangle.righthalf.filled")
                             .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(isElevationLayerVisible ? Color.orange : Color.primary)
+                            .foregroundStyle(isSlopeLayerVisible ? Color.orange : Color.primary)
                             .buttonStyle()
                     }
 

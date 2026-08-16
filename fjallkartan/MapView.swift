@@ -108,7 +108,7 @@ struct MapView: UIViewRepresentable {
 
     let isRegionPreviewVisible: Bool
 
-    var isElevationLayerVisible: Bool = false
+    var isSlopeLayerVisible: Bool = false
 
     let pins: [SavedPin]
     var onDropPin: ((CLLocationCoordinate2D) -> Void)?
@@ -180,7 +180,7 @@ struct MapView: UIViewRepresentable {
         context.coordinator.fitRouteIfNeeded(on: uiView, measurement: measurement, fitToken: routeFitToken)
         context.coordinator.syncSelection(selectedPlace, on: uiView)
         context.coordinator.syncRegionPreview(isVisible: isRegionPreviewVisible)
-        context.coordinator.syncElevationLayer(isVisible: isElevationLayerVisible, on: uiView)
+        context.coordinator.syncSlopeLayer(isVisible: isSlopeLayerVisible, on: uiView)
         context.coordinator.syncPins(on: uiView, pins: pins)
         context.coordinator.setLongPressEnabled(!isMeasuring && !isRegionPreviewVisible)
     }
@@ -196,7 +196,7 @@ struct MapView: UIViewRepresentable {
         private var shownPlaceID: Int64?
         private var wantsTrackingOnceAuthorized = false
         private weak var regionPreviewBorder: RegionPreviewBorderView?
-        private weak var elevationOverlay: ElevationTileOverlay?
+        private weak var slopeOverlay: SlopeTileOverlay?
         static let searchMarkerIdentifier = "SearchResultMarker"
         static let savedPinIdentifier = "SavedPinMarker"
         @Binding var metersPerPoint: Double
@@ -318,17 +318,17 @@ struct MapView: UIViewRepresentable {
             regionPreviewBorder?.isHidden = !isVisible
         }
 
-        // MARK: - Elevation / slope layer
+        // MARK: - Slope layer
 
-        func syncElevationLayer(isVisible: Bool, on map: MKMapView) {
-            guard isVisible != (elevationOverlay != nil) else { return }
+        func syncSlopeLayer(isVisible: Bool, on map: MKMapView) {
+            guard isVisible != (slopeOverlay != nil) else { return }
             if isVisible {
-                let overlay = ElevationTileOverlay.norway()
+                let overlay = SlopeTileOverlay.norway()
                 map.addOverlay(overlay, level: .aboveLabels)
-                elevationOverlay = overlay
-            } else if let overlay = elevationOverlay {
+                slopeOverlay = overlay
+            } else if let overlay = slopeOverlay {
                 map.removeOverlay(overlay)
-                elevationOverlay = nil
+                slopeOverlay = nil
             }
         }
 
@@ -488,8 +488,8 @@ struct MapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-            if let elevation = overlay as? ElevationTileOverlay {
-                let renderer = MKTileOverlayRenderer(tileOverlay: elevation)
+            if let slope = overlay as? SlopeTileOverlay {
+                let renderer = MKTileOverlayRenderer(tileOverlay: slope)
                 renderer.alpha = 0.6
                 return renderer
             }
