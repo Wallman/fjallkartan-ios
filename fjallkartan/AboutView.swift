@@ -19,6 +19,7 @@ struct AboutSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     private static let privacyPolicyURL = URL(string: "https://wallman.github.io/fjallkartan-ios/privacy.html")!
+    private static let supportURL = URL(string: "https://wallman.github.io/fjallkartan-ios/support.html")!
     private static let kartverketURL = URL(string: "https://www.kartverket.no/")!
     private static let lantmaterietURL = URL(string: "https://www.lantmateriet.se/")!
     private static let nveURL = URL(string: "https://www.nve.no/")!
@@ -40,6 +41,15 @@ struct AboutSheet: View {
                 }
 
                 Section {
+                    Link(destination: Self.supportURL) {
+                        LabeledContent {
+                            Image(systemName: "arrow.up.right")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        } label: {
+                            Text("Support")
+                        }
+                    }
                     Link(destination: Self.privacyPolicyURL) {
                         LabeledContent {
                             Image(systemName: "arrow.up.right")
