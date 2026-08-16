@@ -1,5 +1,4 @@
 import MapKit
-import OSLog
 import UIKit
 
 enum TileServer {
@@ -15,19 +14,7 @@ enum TileServer {
 }
 
 final class CustomTileOverlay: MKTileOverlay {
-    private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "fjallkartan", category: "CustomTileOverlay")
-
-    private static let sharedCache = URLCache(
-        memoryCapacity: 0,
-        diskCapacity: 500 * 1024 * 1024 // 500 MB
-    )
-    private static let sharedSession: URLSession = {
-        let config = URLSessionConfiguration.default
-        config.urlCache = sharedCache
-        config.requestCachePolicy = .reloadIgnoringLocalCacheData // cache retrieval done manually, to put custom TTL
-        config.httpMaximumConnectionsPerHost = 12
-        return URLSession(configuration: config)
-    }()
+    private static let fetcher = TileFetcher.mapTiles
 
     /// Shared across both server overlays so downloaded regions are visible
     /// to each. `try?` because a store failure (e.g. disk full) should degrade
@@ -68,90 +55,21 @@ final class CustomTileOverlay: MKTileOverlay {
             return
         }
 
-        let url = tileURL(path)
-        let request = URLRequest(url: url)
-
-        if let cached = Self.sharedCache.cachedResponse(for: request) {
-            completion(cached.data)
-            return
-        }
-
-        fetchWithRetry(url: url, request: request, attempt: 1, delay: 1.0) { [store] data in
-            guard let data else {
-                // No network tile available after retries. Above the
-                // downloaded z7-z14 cap, fall back to a softened upscale of
-                // the nearest stored ancestor rather than leaving the tile blank.
-                if let store, z > TilePyramid.maxZoom,
-                   let ancestor = store.nearestAncestorTile(server: code, z: z, x: x, y: y) {
-                    completion(TileUpscaler.upscaledTile(ancestor: ancestor, targetZ: z, targetX: x, targetY: y))
-                } else {
-                    completion(nil)
-                }
-                return
-            }
-            completion(data)
-        }
-    }
-
-    /// Fetches a tile with retry + exponential backoff, mirroring
-    /// `OfflineRegionDownloader.fetchTile`: `429`/`503` honor `Retry-After`,
-    /// other network errors back off and retry, up to 3 attempts total.
-    /// A genuine 404/no-data response is not retried.
-    private func fetchWithRetry(url: URL, request: URLRequest, attempt: Int, delay: Double,
-                                completion: @escaping (Data?) -> Void) {
-        Self.sharedSession.dataTask(with: request) { data, response, error in
-            if let data, error == nil,
-               let r = response as? HTTPURLResponse,
-               (200...299).contains(r.statusCode),
-               r.mimeType?.hasPrefix("image/") ?? false {
-                if let cacheResponse = HTTPURLResponse(url: url, statusCode: 200,
-                                                       httpVersion: nil,
-                                                       headerFields: ["Cache-Control": "max-age=31536000"]) {
-                    Self.sharedCache.storeCachedResponse(CachedURLResponse(response: cacheResponse, data: data), for: request)
-                }
+        Self.fetcher.fetch(url: tileURL(path)) { [store] outcome in
+            if case .success(let data) = outcome {
                 completion(data)
                 return
             }
-            if let r = response as? HTTPURLResponse, !(200...299).contains(r.statusCode) {
-                Self.log.error("HTTP \(r.statusCode) for \(url.absoluteString, privacy: .public), attempt \(attempt)")
-            } else if let error {
-                Self.log.error("request failed for \(url.absoluteString, privacy: .public), attempt \(attempt): \(error.localizedDescription, privacy: .public)")
-            }
-
-            guard attempt < 3 else {
-                Self.log.error("giving up after \(attempt) attempts for \(url.absoluteString, privacy: .public)")
+            // No network tile available. Above the downloaded z7-z14 cap, fall
+            // back to a softened upscale of the nearest stored ancestor rather
+            // than leaving the tile blank. Both `noData` and `failure` end up
+            // here: for the base map either way means nothing to draw.
+            if let store, z > TilePyramid.maxZoom,
+               let ancestor = store.nearestAncestorTile(server: code, z: z, x: x, y: y) {
+                completion(TileUpscaler.upscaledTile(ancestor: ancestor, targetZ: z, targetX: x, targetY: y))
+            } else {
                 completion(nil)
-                return
             }
-
-            if let error = error as? URLError, Self.isConnectivityError(error) {
-                // There is no connection to wait for
-                completion(nil)
-                return
-            }
-
-            if let r = response as? HTTPURLResponse, !(r.statusCode == 429 || r.statusCode == 503 || r.statusCode >= 500) {
-                // A genuine client error (e.g. 404 no-data tile); not worth retrying.
-                completion(nil)
-                return
-            }
-
-            let retryAfter = (response as? HTTPURLResponse)?
-                .value(forHTTPHeaderField: "Retry-After").flatMap(Double.init) ?? delay
-            DispatchQueue.global().asyncAfter(deadline: .now() + retryAfter) {
-                self.fetchWithRetry(url: url, request: request, attempt: attempt + 1, delay: delay * 2, completion: completion)
-            }
-        }.resume()
-    }
-
-    private static func isConnectivityError(_ error: URLError) -> Bool {
-        switch error.code {
-        case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost,
-             .cannotFindHost, .dnsLookupFailed, .dataNotAllowed, .internationalRoamingOff,
-             .callIsActive:
-            return true
-        default:
-            return false
         }
     }
 

@@ -10,6 +10,7 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/ContentView.swift` | Root SwiftUI view; hosts `MapView` plus the scale bar, copyright notice and measurement overlays. |
 | `fjallkartan/MapView.swift` | `UIViewRepresentable` wrapping `MKMapView`; adds the tile overlays, sets camera limits, reports scale, and renders the measured route. |
 | `fjallkartan/CustomTileOverlay.swift` | `MKTileOverlay` subclass; fetches, caches and post-processes tiles for one server |
+| `fjallkartan/TileFetcher.swift` | Shared tile HTTP layer: manual `URLCache` lookup/storage with a fixed TTL plus retry with backoff, returning `success`/`noData`/`failure`. |
 | `fjallkartan/DistanceMeasurement.swift` | `@Observable` model holding the traced route and its geodesic length, plus `LineSimplifier` (Ramer–Douglas–Peucker). |
 | `fjallkartan/MeasureCaptureView.swift` | Transparent `UIView` over the map that captures freehand strokes and draws live preview. |
 | `fjallkartan/PlaceSearch.swift` | SQLite-backed FTS5 lookup of place names (`PlaceSearch`, `PlaceResult`, `PlaceKind`) against the bundled `places.sqlite`. |
@@ -47,10 +48,7 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 - **`CustomTileOverlay`**
   - Tiles are always requested from both servers, and empty/no-data areas simply come back blank.
   - Kartverket's no-data fill is transparent at low zoom but an opaque cream (~255,255,230) from ~z15; `kartverketNoDataToTransparentPNG` rewrites those pixels to transparent so Lantmäteriet shows through. Lantmäteriet tiles are passed through untouched.
-  - All instances share one `URLSession` / `URLCache` (64 MB memory, 500 MB disk).
-  - Cache lookup and storage is done **manually** with a TTL of 1 year.
-  - Cache key = the real tile URL.
-  - Lookup order is **offline store → `URLCache` → network**; the offline store wins even when online, since a disk read beats a round trip. Above the downloaded z14 cap, an offline miss with no network falls back to `OfflineTileStore.nearestAncestorTile`, cropping and upscaling the nearest stored ancestor instead of leaving the tile blank.
+  - Lookup order is **offline store → `URLCache` → network**; Above the downloaded z14 cap, an offline miss with no network falls back to `OfflineTileStore.nearestAncestorTile`, cropping and upscaling the nearest stored ancestor instead of leaving the tile blank.
   - `tileURL(server:z:x:y:)` just delegates to `RemoteSettings`, so both the overlay and `OfflineRegionDownloader` follow a remotely changed endpoint.
 
 - **Remote settings**
@@ -68,7 +66,7 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 - **Offline map regions**
   - Downloads are capped to a fixed **z7–z14** pyramid (`TilePyramid`) — enough for route/terrain reading, still smaller than the online z18 ceiling, with a hard refusal above ~1.5 GB (purely a guard against selecting the whole of Scandinavia) or when `OfflineTileStore.availableCapacityBytes` shows the device doesn't have enough free space for the estimate.
   - `OfflineTileStore` persists raw (pre-`CustomTileOverlay`-processing) tile bytes in `Application Support/offline-tiles.sqlite` (excluded from backup). Tiles are deduped and refcounted across regions via `region_tiles`; `deleteRegion` only removes tiles with no remaining owner.
-  - `OfflineRegionDownloader` fetches both servers for every tile position (borders need both), with max 4 concurrent requests, exponential backoff on `429`/`503`, and up to 3 retries before skipping a tile and continuing. Progress is written to SQLite in ~50-tile batches, so `resume` (or a fresh app launch) just re-enumerates and skips tiles already present. A SQLite write failure (e.g. disk full) aborts the download and surfaces as `.failed(message)`, shown in the region row instead of silently reporting success.
+  - `OfflineRegionDownloader` fetches both servers for every tile position (borders need both). Progress is written to SQLite in ~50-tile batches, so `resume` (or a fresh app launch) just re-enumerates and skips tiles already present. A SQLite write failure (e.g. disk full) aborts the download and surfaces as `.failed(message)`, shown in the region row instead of silently reporting success.
   - `OfflineRegionsSheet`'s "current view" download area is an inset of `MapView`'s `visibleMapRect`; the same rect is drawn as a dashed `RegionPreviewOverlay` on the map while the sheet is open.
 
 - **Distance measurement**

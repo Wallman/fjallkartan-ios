@@ -1,9 +1,12 @@
+import Foundation
 import MapKit
 
 final class SlopeTileOverlay: MKTileOverlay {
     enum Country {
         case norway, sweden
     }
+
+    private static let fetcher = TileFetcher.mapTiles
 
     let country: Country
 
@@ -43,7 +46,7 @@ final class SlopeTileOverlay: MKTileOverlay {
                            result: @escaping (Data?, Error?) -> Void) {
         let z = Int(path.z)
         guard z > sourceMaximumZ else {
-            super.loadTile(at: path, result: result)
+            fetch(path: path, result: result)
             return
         }
 
@@ -53,7 +56,7 @@ final class SlopeTileOverlay: MKTileOverlay {
         ancestor.x = path.x >> levels
         ancestor.y = path.y >> levels
 
-        super.loadTile(at: ancestor) { data, error in
+        fetch(path: ancestor) { data, error in
             guard let data else {
                 result(nil, error)
                 return
@@ -66,7 +69,21 @@ final class SlopeTileOverlay: MKTileOverlay {
                 targetZ: z, targetX: Int(path.x), targetY: Int(path.y),
                 interpolation: .none
             )
-            result(scaled, scaled == nil ? error : nil)
+            result(scaled, nil)
+        }
+    }
+
+    /// Both tilesets are sparse, so a no-data response yields `(nil, nil)` — an
+    /// empty tile MapKit keeps. Transport failures and 5xx are surfaced as
+    /// errors instead, so MapKit re-requests them later.
+    private func fetch(path: MKTileOverlayPath,
+                       result: @escaping (Data?, Error?) -> Void) {
+        Self.fetcher.fetch(url: url(forTilePath: path)) { outcome in
+            switch outcome {
+            case .success(let data): result(data, nil)
+            case .noData: result(nil, nil)
+            case .failure(let error): result(nil, error)
+            }
         }
     }
 }

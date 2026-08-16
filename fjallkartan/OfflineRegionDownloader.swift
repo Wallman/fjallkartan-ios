@@ -24,7 +24,7 @@ final class OfflineRegionDownloader {
     private(set) var bytesDownloaded = 0
 
     private let store: OfflineTileStore
-    private let session: URLSession
+    private let fetcher: TileFetcher
     private var isPaused = false
     private var isCancelled = false
     private var writeFailureMessage: String?
@@ -34,13 +34,13 @@ final class OfflineRegionDownloader {
     /// `session` is overridable so tests can inject a stubbed `URLProtocol`.
     init(store: OfflineTileStore, session: URLSession? = nil) {
         self.store = store
-        if let session {
-            self.session = session
-        } else {
+        let session = session ?? {
             let config = URLSessionConfiguration.default
             config.httpMaximumConnectionsPerHost = 4
-            self.session = URLSession(configuration: config)
-        }
+            config.urlCache = nil
+            return URLSession(configuration: config)
+        }()
+        self.fetcher = TileFetcher(session: session, cache: nil, category: "OfflineRegionDownloader")
     }
 
     /// Starts (or resumes, if `regionID` already exists) downloading `rect`.
@@ -118,7 +118,7 @@ final class OfflineRegionDownloader {
                 guard active < maxConcurrent, let job = iterator.next() else { return }
                 active += 1
                 group.addTask {
-                    await Self.fetchTile(session: self.session, server: job.server, path: job.path)
+                    await Self.fetchTile(fetcher: self.fetcher, server: job.server, path: job.path)
                 }
             }
             for _ in 0..<maxConcurrent { addNext() }
@@ -184,40 +184,13 @@ final class OfflineRegionDownloader {
                                         status: .complete)
     }
 
-    /// Fetches one raw tile with retry + exponential backoff on `429`/`503`.
-    /// Other failures (network error, unexpected status) are retried up to 3
-    /// times total, then the tile is skipped so the region download keeps
-    /// making progress instead of stalling on one bad tile.
-    private static func fetchTile(session: URLSession, server: TileServer,
-                                  path: MKTileOverlayPath) async -> OfflineTileStore.PendingTile? {
+    private static func fetchTile(fetcher: TileFetcher, server: TileServer, path: MKTileOverlayPath) async -> OfflineTileStore.PendingTile? {
         let url = CustomTileOverlay.tileURL(server: server, z: Int(path.z), x: Int(path.x), y: Int(path.y))
-        var delay = 1.0
-
-        for attempt in 1...3 {
-            do {
-                let (data, response) = try await session.data(from: url)
-                guard let http = response as? HTTPURLResponse else { return nil }
-
-                if (200...299).contains(http.statusCode) {
-                    return OfflineTileStore.PendingTile(server: server.storeCode,
-                                                        z: Int(path.z), x: Int(path.x), y: Int(path.y),
-                                                        data: data)
-                }
-                if http.statusCode == 429 || http.statusCode == 503 {
-                    let retryAfter = http.value(forHTTPHeaderField: "Retry-After").flatMap(Double.init) ?? delay
-                    try? await Task.sleep(nanoseconds: UInt64(retryAfter * 1_000_000_000))
-                    delay *= 2
-                    continue
-                }
-                // A genuine 404/no-data tile; not worth retrying.
-                return nil
-            } catch {
-                guard attempt < 3 else { return nil }
-                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-                delay *= 2
-            }
+        let outcome = await withCheckedContinuation { continuation in
+            fetcher.fetch(url: url) { continuation.resume(returning: $0) }
         }
-        return nil
+        guard case .success(let data) = outcome else { return nil }
+        return OfflineTileStore.PendingTile(server: server.storeCode, z: Int(path.z), x: Int(path.x), y: Int(path.y), data: data)
     }
 
     // MARK: - Background task
