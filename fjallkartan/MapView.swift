@@ -74,6 +74,10 @@ final class SearchResultAnnotation: NSObject, MKAnnotation {
 
     var coordinate: CLLocationCoordinate2D { result.coordinate }
     var title: String? { result.name }
+    var subtitle: String? {
+        let subtitle = result.subtitle
+        return subtitle.isEmpty ? nil : subtitle
+    }
     var placeID: Int64 { result.id }
 
     init(result: PlaceResult) {
@@ -444,8 +448,8 @@ struct MapView: UIViewRepresentable {
                 view?.glyphImage = UIImage(systemName: "mappin")
                 view?.displayPriority = .required
                 view?.canShowCallout = true
-                view?.leftCalloutAccessoryView = calloutButton(systemName: "bookmark")
-                view?.rightCalloutAccessoryView = calloutButton(systemName: "xmark.circle")
+                view?.leftCalloutAccessoryView = calloutButton(systemName: "bookmark", tint: .systemOrange)
+                view?.rightCalloutAccessoryView = calloutButton(systemName: "xmark", tint: .secondaryLabel)
                 return view
             }
             if annotation is SavedPinAnnotation {
@@ -463,10 +467,13 @@ struct MapView: UIViewRepresentable {
             )
         }
 
-        private func calloutButton(systemName: String) -> UIButton {
+        private func calloutButton(systemName: String, tint: UIColor) -> UIButton {
             let button = UIButton(type: .system)
-            button.setImage(UIImage(systemName: systemName), for: .normal)
-            button.frame = CGRect(x: 0, y: 0, width: 28, height: 28)
+            let symbol = UIImage(systemName: systemName,
+                                 withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold))
+            button.setImage(symbol, for: .normal)
+            button.tintColor = tint
+            button.frame = CGRect(x: 0, y: 0, width: 32, height: 32)
             return button
         }
 
