@@ -40,7 +40,7 @@ final class OfflineRegionDownloader {
             config.urlCache = nil
             return URLSession(configuration: config)
         }()
-        self.fetcher = TileFetcher(session: session, cache: cache, storesResponses: false, category: "OfflineRegionDownloader")
+        self.fetcher = TileFetcher(session: session, cache: cache, storesResponses: false)
     }
 
     /// Starts (or resumes, if `regionID` already exists) downloading `rect`.

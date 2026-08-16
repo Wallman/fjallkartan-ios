@@ -80,8 +80,7 @@ struct TileFetcherTests {
     private func makeFetcher(cache: URLCache? = nil) -> TileFetcher {
         var configuration = TileFetcher.Configuration()
         configuration.initialRetryDelay = 0.01
-        return TileFetcher(session: makeSession(cache: cache), cache: cache,
-                           configuration: configuration, category: "TileFetcherTests")
+        return TileFetcher(session: makeSession(cache: cache), cache: cache, configuration: configuration)
     }
 
     /// `TileFetcher` is callback-based; bridge it once for the assertions.

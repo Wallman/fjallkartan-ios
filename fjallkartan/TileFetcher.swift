@@ -24,25 +24,24 @@ nonisolated final class TileFetcher: @unchecked Sendable {
         config.urlCache = sharedTileCache
         config.requestCachePolicy = .reloadIgnoringLocalCacheData // cache retrieval done manually, to put custom TTL
         config.httpMaximumConnectionsPerHost = 12
-        return TileFetcher(session: URLSession(configuration: config), cache: sharedTileCache, category: "TileFetcher")
+        return TileFetcher(session: URLSession(configuration: config), cache: sharedTileCache)
     }()
 
     private let session: URLSession
     private let cache: URLCache?
     private let storesResponses: Bool
     private let configuration: Configuration
-    private let log: Logger
+
+    private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "fjallkartan", category: "TileFetcher")
 
     init(session: URLSession,
          cache: URLCache? = nil,
          storesResponses: Bool = true,
-         configuration: Configuration = Configuration(),
-         category: String) {
+         configuration: Configuration = Configuration()) {
         self.session = session
         self.cache = cache
         self.storesResponses = storesResponses
         self.configuration = configuration
-        self.log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "fjallkartan", category: category)
     }
 
     func fetch(url: URL, completion: @escaping (TileFetchOutcome) -> Void) {
@@ -73,9 +72,9 @@ nonisolated final class TileFetcher: @unchecked Sendable {
             }
 
             if let http, !(200...299).contains(http.statusCode) {
-                log.error("HTTP \(http.statusCode) for \(url.absoluteString, privacy: .public), attempt \(attempt)")
+                Self.log.error("HTTP \(http.statusCode) for \(url.absoluteString, privacy: .public), attempt \(attempt)")
             } else if let error {
-                log.error("request failed for \(url.absoluteString, privacy: .public), attempt \(attempt): \(error.localizedDescription, privacy: .public)")
+                Self.log.error("request failed for \(url.absoluteString, privacy: .public), attempt \(attempt): \(error.localizedDescription, privacy: .public)")
             }
 
             // A client error other than throttling is a genuine no-data tile.
@@ -90,7 +89,7 @@ nonisolated final class TileFetcher: @unchecked Sendable {
             }
 
             guard attempt < configuration.maximumAttempts else {
-                log.error("giving up after \(attempt) attempts for \(url.absoluteString, privacy: .public)")
+                Self.log.error("giving up after \(attempt) attempts for \(url.absoluteString, privacy: .public)")
                 completion(.failure(error ?? URLError(.badServerResponse)))
                 return
             }
