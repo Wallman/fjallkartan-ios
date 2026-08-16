@@ -4,9 +4,16 @@ import MapKit
 /// Pure functions for enumerating and sizing the tile pyramid that
 /// `OfflineRegionDownloader` fetches and `OfflineTileStore` persists.
 /// The fixed z7–z14 range for offline download is a deliberate cap.
-enum TilePyramid {
+nonisolated enum TilePyramid {
     static let minZoom = 7
     static let maxZoom = 14
+
+    struct Job {
+        let server: TileServer
+        let path: MKTileOverlayPath
+    }
+
+    static let layers: [TileServer] = TileServer.allCases
 
     /// Measured bytes per tile position at each zoom, for size estimation.
     private static let measuredBytesPerPosition: [Int: Double] = [
@@ -15,6 +22,20 @@ enum TilePyramid {
         13: 55_000,
         14: 50_000,
     ]
+
+    /// Measured bytes per slope tile position at each zoom, for size estimation.
+    private static let measuredSlopeBytesPerPosition: [Int: Double] = [
+        7: 34_000,
+        8: 31_000,
+        9: 37_000,
+        10: 38_000,
+        11: 25_000,
+        12: 21_000,
+        13: 15_000,
+        14: 10_000,
+    ]
+
+    private static let slopeCoverageFactor = 0.45
 
     static let maxDownloadBytes = 1_500_000_000
 
@@ -32,21 +53,34 @@ enum TilePyramid {
         return paths
     }
 
+    static func jobs(in rect: MKMapRect) -> [Job] {
+        let region = MKCoordinateRegion(rect)
+        var jobs: [Job] = []
+        for z in minZoom...maxZoom {
+            let servers = layers.filter { z <= $0.offlineMaximumZ }
+            for (x, y) in tileIndices(for: region, z: z) {
+                let path = MKTileOverlayPath(x: x, y: y, z: z, contentScaleFactor: 1)
+                jobs.append(contentsOf: servers.map { Job(server: $0, path: path) })
+            }
+        }
+        return jobs
+    }
+
     /// Estimated tile count and total download size (bytes) for `rect`,
     static func estimate(rect: MKMapRect) -> (tileCount: Int, bytes: Int) {
         let region = MKCoordinateRegion(rect)
-        var positions = 0
+        var totalTiles = 0
         var bytes = 0.0
         for z in minZoom...maxZoom {
-            let count = tileCount(for: region, z: z)
-            positions += count
-            bytes += Double(count) * bytesPerPosition(atZoom: z)
+            let positions = tileCount(for: region, z: z)
+            totalTiles += positions * layers.filter { z <= $0.offlineMaximumZ }.count
+            bytes += Double(positions) * (baseBytesPerPosition(atZoom: z) + slopeBytesPerPosition(atZoom: z))
         }
-        // Both servers are fetched for every position.
-        return (tileCount: positions * 2, bytes: Int(bytes))
+        return (tileCount: totalTiles, bytes: Int(bytes))
     }
 
-    private static func bytesPerPosition(atZoom z: Int) -> Double {
+    /// Bytes for one position of the base map, i.e. both base servers together.
+    static func baseBytesPerPosition(atZoom z: Int) -> Double {
         if let measured = measuredBytesPerPosition[z] { return measured }
         if z > maxZoom, let top = measuredBytesPerPosition[maxZoom] { return top }
         // Extrapolate below the lowest measured zoom, halving per level.
@@ -56,6 +90,11 @@ enum TilePyramid {
         }
         let levels = lowestMeasured - z
         return base / pow(2, Double(levels))
+    }
+
+    static func slopeBytesPerPosition(atZoom z: Int) -> Double {
+        let measured = measuredSlopeBytesPerPosition[z] ?? measuredSlopeBytesPerPosition[maxZoom] ?? 10_000
+        return measured * slopeCoverageFactor
     }
 
     /// Tile x/y indices (Web Mercator) covering `region` at zoom `z`, with

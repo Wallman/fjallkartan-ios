@@ -9,8 +9,7 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/fjallkartanApp.swift` | App entry point |
 | `fjallkartan/ContentView.swift` | Root SwiftUI view; hosts `MapView` plus the scale bar, copyright notice and measurement overlays. |
 | `fjallkartan/MapView.swift` | `UIViewRepresentable` wrapping `MKMapView`; adds the tile overlays, sets camera limits, reports scale, and renders the measured route. |
-| `fjallkartan/CustomTileOverlay.swift` | `MKTileOverlay` subclass; fetches, caches and post-processes tiles for one server |
-| `fjallkartan/TileFetcher.swift` | Shared tile HTTP layer: manual `URLCache` lookup/storage with a fixed TTL plus retry with backoff, returning `success`/`noData`/`failure`. |
+| `fjallkartan/TileFetcher.swift` | Shared tile layer: does offline store → `URLCache` → network → ancestor upscale (fixed-TTL cache, retry with backoff, `success`/`noData`/`failure`). |
 | `fjallkartan/DistanceMeasurement.swift` | `@Observable` model holding the traced route and its geodesic length, plus `LineSimplifier` (Ramer–Douglas–Peucker). |
 | `fjallkartan/MeasureCaptureView.swift` | Transparent `UIView` over the map that captures freehand strokes and draws live preview. |
 | `fjallkartan/PlaceSearch.swift` | SQLite-backed FTS5 lookup of place names (`PlaceSearch`, `PlaceResult`, `PlaceKind`) against the bundled `places.sqlite`. |
@@ -24,7 +23,7 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/SavedPinStore.swift` | Thin wrapper over `DocumentDirectoryStore<SavedPin>`, adding `rename(_:to:)`. |
 | `fjallkartan/SavedPinsView.swift` | `SavedPinsModel` (load/save/rename/delete for saved pins) and `SavedSheet` (the "Saved" toolbar sheet, routes-only). |
 | `fjallkartan/PinDetailSheet.swift` | Low bottom sheet (Rename + destructive Delete) opened when a pin annotation is tapped on the map. |
-| `fjallkartan/TilePyramid.swift` | Pure functions enumerating the fixed z7–z14 offline tile pyramid and estimating its download size. |
+| `fjallkartan/TilePyramid.swift` | Pure functions enumerating the fixed z7–z14 offline tile pyramid — positions, per-layer `Job`s and download size estimate. |
 | `fjallkartan/RemoteSettings.swift` | Remotely configurable tile URL templates (`TileSettings`: Lantmäteriet, Kartverket, Norwegian slope, Swedish slope), fetched from `settings.json` with built-in fallbacks. |
 | `fjallkartan/SlopeTileOverlay.swift` | `MKTileOverlay` for the steepness layer; one instance per `Country`, each with its own zoom limits. |
 | `fjallkartan/TileUpscaler.swift` | Shared helper that builds a deep-zoom tile by cropping and magnifying the ancestor containing it; used by both tile layers. |
@@ -53,8 +52,6 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 - **`CustomTileOverlay`**
   - Tiles are always requested from both servers, and empty/no-data areas simply come back blank.
   - Kartverket's no-data fill is transparent at low zoom but an opaque cream (~255,255,230) from ~z15; `kartverketNoDataToTransparentPNG` rewrites those pixels to transparent so Lantmäteriet shows through. Lantmäteriet tiles are passed through untouched.
-  - Lookup order is **offline store → `URLCache` → network**; Above the downloaded z14 cap, an offline miss with no network falls back to `OfflineTileStore.nearestAncestorTile`, cropping and upscaling the nearest stored ancestor instead of leaving the tile blank.
-  - `tileURL(server:z:x:y:)` just delegates to `RemoteSettings`, so both the overlay and `OfflineRegionDownloader` follow a remotely changed endpoint.
 
 - **Remote settings**
   - `RemoteSettings.shared.refresh()` runs on scene activation and fetches `https://tiles.wallman.dev/settings.json` at most once per 6 h, so a provider that changes its URL can be followed without an app update.
@@ -62,7 +59,7 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
   - A changed URL only affects online fetches: `URLCache` is keyed on the real URL (so it self-invalidates), but `OfflineTileStore` is keyed by `(server, z, x, y)` and is consulted first, so already-downloaded regions keep serving the old provider's tiles until the region is re-downloaded.
 
 - **Slope layer**
-  - Two `SlopeTileOverlay` instances, one per `Country`, both drawn at `alpha = 0.6`. Norway serves NVE's finished `Bratthet_med_utlop_2024` pictures (z5–16); Sweden has no such service, so we render our own (z5–13) — hence the per-country zoom limits.
+  - Two `SlopeTileOverlay` instances, one per country, both drawn at `alpha = 0.6`. Norway serves NVE's finished `Bratthet_med_utlop_2024` pictures (z5–16); Sweden has no such service, so we render our own (z5–13) — hence the per-country zoom limits. Above `sourceMaximumZ` the overlay itself fetches the deepest published ancestor and magnifies it.
   - Both tilesets are sparse, so 404s is the normal case. `TileFetcher` therefore caches a no-data marker for a 4xx in the same `URLCache`.
   - The Swedish tiles are built offline by `tools/build_sweden_slope_tiles.py` and match NVE's palette exactly, minus the runout blues (Sweden publishes no runout model) and minus the green <30° band.
   - Slope is computed with Horn 3×3 in EPSG:3006 **before** warping to Web Mercator — Mercator inflates distances by 1/cos(lat) (~2.2× at 63°N), which would flatten every slope. The warp is nearest-neighbour because the pixel values are class labels, not quantities. Only z13 is computed from elevation; lower zooms are max-pooled from their four children so a steep face stays visible as it shrinks below a pixel.
@@ -71,6 +68,7 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 
 - **Offline map regions**
   - Downloads are capped to a fixed **z7–z14** pyramid (`TilePyramid`) — enough for route/terrain reading, still smaller than the online z18 ceiling, with a hard refusal above ~1.5 GB (purely a guard against selecting the whole of Scandinavia) or when `OfflineTileStore.availableCapacityBytes` shows the device doesn't have enough free space for the estimate.
+  - All four layers are downloaded, each stopping at its own `offlineMaximumZ`, so the Swedish slope tiles (published only to z13) are never requested at z14. `TilePyramid.jobs(in:)` is the single enumeration both the downloader and the size estimate use, so a progress bar can't disagree with what is actually fetched.
   - `OfflineTileStore` persists raw (pre-`CustomTileOverlay`-processing) tile bytes in `Application Support/offline-tiles.sqlite` (excluded from backup). Tiles are deduped and refcounted across regions via `region_tiles`; `deleteRegion` only removes tiles with no remaining owner.
   - `OfflineRegionDownloader` fetches both servers for every tile position (borders need both). It reads the shared browse cache (`TileFetcher.sharedTileCache`) before going to the network, so tiles the user already panned over are copied straight into the offline store; that lookup is read-only (`storesResponses: false`) since the downloader keeps its own copy anyway and a bulk region download would otherwise evict the map's cached tiles. Progress is written to SQLite in ~50-tile batches, so `resume` (or a fresh app launch) just re-enumerates and skips tiles already present. A SQLite write failure (e.g. disk full) aborts the download and surfaces as `.failed(message)`, shown in the region row instead of silently reporting success.
   - `OfflineRegionsSheet`'s "current view" download area is an inset of `MapView`'s `visibleMapRect`; the same rect is drawn as a dashed `RegionPreviewOverlay` on the map while the sheet is open.

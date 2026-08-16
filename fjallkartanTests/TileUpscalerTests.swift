@@ -37,6 +37,15 @@ struct TileUpscalerTests {
         return UIImage(cgImage: ctx.makeImage()!).pngData()!
     }
 
+    /// The raw RGBA bytes of a PNG, for comparing two tiles pixel for pixel.
+    private func pixels(_ data: Data) -> [UInt8] {
+        let cg = UIImage(data: data)!.cgImage!
+        let ctx = context(width: cg.width, height: cg.height)
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+        let raw = ctx.data!.assumingMemoryBound(to: UInt8.self)
+        return Array(UnsafeBufferPointer(start: raw, count: cg.width * cg.height * 4))
+    }
+
     /// Every distinct RGB triple in a PNG.
     private func colours(_ data: Data) -> Set<[UInt8]> {
         let cg = UIImage(data: data)!.cgImage!
@@ -102,5 +111,32 @@ struct TileUpscalerTests {
             ancestor: (z: 13, x: 10, y: 20, data: tile),
             targetZ: 13, targetX: 10, targetY: 20, interpolation: .none))
         #expect(data == tile)
+    }
+
+    /// Offline above z16, `SlopeTileOverlay` and `TileFetcher` both magnify:
+    /// the overlay asks for the deepest published zoom (z16 for Norway), the
+    /// fetcher can only answer it from the deepest *downloaded* zoom (z14), and
+    /// the overlay then magnifies that answer again. Nearest-neighbour at
+    /// power-of-two factors composes exactly, so the two-step result is the
+    /// same picture as going straight from the stored ancestor.
+    @Test func upscalingTwiceMatchesUpscalingOnce() throws {
+        let stored = (z: 14, x: 250, y: 500, data: quadrantTile(size: 64))
+        // A z17 tile inside that z14 tile, and the z16 tile between them.
+        let (targetX, targetY) = (250 * 8 + 5, 500 * 8 + 3)
+        let (midX, midY) = (targetX >> 1, targetY >> 1)
+
+        let direct = try #require(TileUpscaler.upscaledTile(
+            ancestor: stored, targetZ: 17, targetX: targetX, targetY: targetY,
+            interpolation: .none, outputSize: 256))
+
+        let viaPublishedZoom = try #require(TileUpscaler.upscaledTile(
+            ancestor: stored, targetZ: 16, targetX: midX, targetY: midY,
+            interpolation: .none, outputSize: 256))
+        let twoStep = try #require(TileUpscaler.upscaledTile(
+            ancestor: (z: 16, x: midX, y: midY, data: viaPublishedZoom),
+            targetZ: 17, targetX: targetX, targetY: targetY,
+            interpolation: .none, outputSize: 256))
+
+        #expect(pixels(twoStep) == pixels(direct))
     }
 }

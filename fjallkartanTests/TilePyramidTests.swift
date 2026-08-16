@@ -63,12 +63,51 @@ struct TilePyramidTests {
         #expect(indices[0].y >= 0 && indices[0].y < n)
     }
 
-    @Test func estimateCountsBothServersPerPosition() {
+    @Test func estimateCountsEveryLayerItWillActuallyFetch() {
         let rect = region(center: CLLocationCoordinate2D(latitude: 68.35, longitude: 18.83),
                           spanDegrees: 0.2).toMapRect()
-        let positions = TilePyramid.tiles(in: rect).count
         let estimate = TilePyramid.estimate(rect: rect)
-        #expect(estimate.tileCount == positions * 2)
+        #expect(estimate.tileCount == TilePyramid.jobs(in: rect).count)
+    }
+
+    @Test func jobsCoverEveryLayerWithinItsOwnZoomCap() {
+        let rect = region(center: CLLocationCoordinate2D(latitude: 68.35, longitude: 18.83),
+                          spanDegrees: 0.2).toMapRect()
+        let jobs = TilePyramid.jobs(in: rect)
+
+        #expect(Set(jobs.map(\.server)) == Set(TileServer.allCases))
+        for server in TileServer.allCases {
+            let zooms = Set(jobs.filter { $0.server == server }.map { Int($0.path.z) })
+            #expect(zooms == Set(TilePyramid.minZoom...server.offlineMaximumZ))
+        }
+        // Sweden publishes no slope tiles above z13, so z14 must not be requested.
+        #expect(!jobs.contains { $0.server == .swedenSlope && Int($0.path.z) > 13 })
+        #expect(jobs.contains { $0.server == .norwaySlope && Int($0.path.z) == TilePyramid.maxZoom })
+    }
+
+    @Test func jobsAreOrderedLowToHighZoom() {
+        let rect = region(center: CLLocationCoordinate2D(latitude: 68.35, longitude: 18.83),
+                          spanDegrees: 0.3).toMapRect()
+        var lastZ = TilePyramid.minZoom
+        for job in TilePyramid.jobs(in: rect) {
+            #expect(Int(job.path.z) >= lastZ)
+            lastZ = max(lastZ, Int(job.path.z))
+        }
+    }
+
+    @Test func slopeLayersAddAModestShareOfTheEstimate() {
+        let rect = region(center: CLLocationCoordinate2D(latitude: 68.35, longitude: 18.83),
+                          spanDegrees: 0.2).toMapRect()
+        let region = MKCoordinateRegion(rect)
+        // Base map alone, using the same per-position arithmetic as `estimate`.
+        var baseOnly = 0.0
+        for z in TilePyramid.minZoom...TilePyramid.maxZoom {
+            baseOnly += Double(TilePyramid.tileCount(for: region, z: z)) * TilePyramid.baseBytesPerPosition(atZoom: z)
+        }
+        let total = Double(TilePyramid.estimate(rect: rect).bytes)
+        // Slope is about a tenth on top of the base map, not a doubling.
+        #expect(total > baseOnly * 1.05)
+        #expect(total < baseOnly * 1.15)
     }
 
     @Test func estimateGrowsWithArea() {

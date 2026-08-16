@@ -2,44 +2,29 @@ import Foundation
 import MapKit
 
 final class SlopeTileOverlay: MKTileOverlay {
-    enum Country {
-        case norway, sweden
-    }
-
     private static let fetcher = TileFetcher.mapTiles
 
-    let country: Country
+    let server: TileServer
 
     static func norway() -> SlopeTileOverlay {
-        SlopeTileOverlay(country: .norway)
+        SlopeTileOverlay(server: .norwaySlope)
     }
 
     static func sweden() -> SlopeTileOverlay {
-        SlopeTileOverlay(country: .sweden)
+        SlopeTileOverlay(server: .swedenSlope)
     }
 
-    var sourceMaximumZ: Int {
-        switch country {
-        case .norway: return 16
-        case .sweden: return 13
-        }
-    }
+    var sourceMaximumZ: Int { server.sourceMaximumZ }
 
-    init(country: Country) {
-        self.country = country
+    init(server: TileServer) {
+        self.server = server
         super.init(urlTemplate: nil)
         canReplaceMapContent = false
         minimumZ = 5
     }
 
     override func url(forTilePath path: MKTileOverlayPath) -> URL {
-        let z = Int(path.z), x = Int(path.x), y = Int(path.y)
-        switch country {
-        case .norway:
-            return RemoteSettings.shared.norwaySlopeTileURL(z: z, x: x, y: y)
-        case .sweden:
-            return RemoteSettings.shared.swedenSlopeTileURL(z: z, x: x, y: y)
-        }
+        server.url(z: Int(path.z), x: Int(path.x), y: Int(path.y))
     }
 
     override func loadTile(at path: MKTileOverlayPath,
@@ -78,7 +63,7 @@ final class SlopeTileOverlay: MKTileOverlay {
     /// errors instead, so MapKit re-requests them later.
     private func fetch(path: MKTileOverlayPath,
                        result: @escaping (Data?, Error?) -> Void) {
-        Self.fetcher.fetch(url: url(forTilePath: path)) { outcome in
+        Self.fetcher.fetchTile(server: server, z: Int(path.z), x: Int(path.x), y: Int(path.y)) { outcome in
             switch outcome {
             case .success(let data): result(data, nil)
             case .noData: result(nil, nil)

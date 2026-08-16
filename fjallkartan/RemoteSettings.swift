@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
 
-struct TileSettings: Codable, Equatable {
+nonisolated struct TileSettings: Codable, Equatable {
     var minAppVersion: String
     var lantmaterietUrl: String
     var kartverketUrl: String
@@ -37,7 +37,7 @@ struct TileSettings: Codable, Equatable {
     }
 }
 
-final class RemoteSettings {
+nonisolated final class RemoteSettings: @unchecked Sendable {
     static let shared = RemoteSettings()
     static let settingsURL = URL(string: "https://tiles.wallman.dev/settings.json")!
     static let refreshInterval: TimeInterval = 6 * 60 * 60 // 6h
@@ -109,27 +109,17 @@ final class RemoteSettings {
         case .lantmateriet:
             template = current.lantmaterietUrl
             fallback = Self.builtIn.lantmaterietUrl
+        case .norwaySlope:
+            template = current.norwaySlopeUrl
+            fallback = Self.builtIn.norwaySlopeUrl
+        case .swedenSlope:
+            template = current.swedenSlopeUrl
+            fallback = Self.builtIn.swedenSlopeUrl
         }
         if let url = TileSettings.url(from: template, z: z, x: x, y: y) {
             return url
         }
         return TileSettings.url(from: fallback, z: z, x: x, y: y)!
-    }
-
-    func norwaySlopeTileURL(z: Int, x: Int, y: Int) -> URL {
-        let template = settings.norwaySlopeUrl
-        if let url = TileSettings.url(from: template, z: z, x: x, y: y) {
-            return url
-        }
-        return TileSettings.url(from: Self.builtIn.norwaySlopeUrl, z: z, x: x, y: y)!
-    }
-
-    func swedenSlopeTileURL(z: Int, x: Int, y: Int) -> URL {
-        let template = settings.swedenSlopeUrl
-        if let url = TileSettings.url(from: template, z: z, x: x, y: y) {
-            return url
-        }
-        return TileSettings.url(from: Self.builtIn.swedenSlopeUrl, z: z, x: x, y: y)!
     }
 
     // MARK: - Refresh

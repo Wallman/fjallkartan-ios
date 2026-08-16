@@ -2,7 +2,7 @@ import CoreGraphics
 import UIKit
 
 /// Builds a deep-zoom tile by magnifying the ancestor tile that contains it.
-enum TileUpscaler {
+nonisolated enum TileUpscaler {
     static func upscaledTile(ancestor: (z: Int, x: Int, y: Int, data: Data),
                              targetZ: Int,
                              targetX: Int,

@@ -4,8 +4,7 @@ import MapKit
 import UIKit
 
 /// Downloads every tile in the fixed z7–z14 pyramid (`TilePyramid`) for a
-/// user-picked region into `OfflineTileStore`, with pause/resume and a
-/// bounded concurrency of 4 requests.
+/// user-picked region into `OfflineTileStore`, with pause/resume.
 @MainActor
 @Observable
 final class OfflineRegionDownloader {
@@ -50,10 +49,7 @@ final class OfflineRegionDownloader {
         isPaused = false
 
         let region = MKCoordinateRegion(rect)
-        let allPaths = TilePyramid.tiles(in: rect)
-        let jobs = allPaths.flatMap { path in
-            [TileServer.kartverket, .lantmateriet].map { (server: $0, path: path) }
-        }
+        let jobs = TilePyramid.jobs(in: rect)
 
         let existing = store.existingTileKeys(regionID: regionID)
         let remaining = jobs.filter {
@@ -106,7 +102,7 @@ final class OfflineRegionDownloader {
     private static let maxConcurrent = 4
     private static let batchSize = 50
 
-    private func run(jobs: [(server: TileServer, path: MKTileOverlayPath)], regionID: String) async {
+    private func run(jobs: [TilePyramid.Job], regionID: String) async {
         var buffer: [OfflineTileStore.PendingTile] = []
         let maxConcurrent = Self.maxConcurrent
 
@@ -185,7 +181,7 @@ final class OfflineRegionDownloader {
     }
 
     private static func fetchTile(fetcher: TileFetcher, server: TileServer, path: MKTileOverlayPath) async -> OfflineTileStore.PendingTile? {
-        let url = CustomTileOverlay.tileURL(server: server, z: Int(path.z), x: Int(path.x), y: Int(path.y))
+        let url = server.url(z: Int(path.z), x: Int(path.x), y: Int(path.y))
         let outcome = await withCheckedContinuation { continuation in
             fetcher.fetch(url: url) { continuation.resume(returning: $0) }
         }

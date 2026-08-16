@@ -17,7 +17,7 @@ struct ContentView: View {
     @State private var isAboutPresented = false
     @State private var isSavedRoutesPresented = false
     @State private var isSlopeLayerVisible = false
-    @State private var offlineModel = CustomTileOverlay.defaultStore.map(OfflineRegionsModel.init)
+    @State private var offlineModel = OfflineTileStore.shared.map(OfflineRegionsModel.init)
     @State private var savedRoutesModel = (try? SavedRouteStore()).map(SavedRoutesModel.init)
     @State private var savedPinsModel = (try? SavedPinStore()).map(SavedPinsModel.init)
     @State private var routeFitToken = 0 // Needed to avoid re-centering when drawing
