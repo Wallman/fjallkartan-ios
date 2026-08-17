@@ -277,7 +277,6 @@ struct MeasureControlsView: View {
     let elevation: ElevationProfile
     let savedRoutesModel: SavedRoutesModel?
     var isHorizontal = false
-    @State private var didSave = false
     @State private var isNamingRoute = false
 
     var body: some View {
@@ -319,16 +318,9 @@ struct MeasureControlsView: View {
                     Button {
                         isNamingRoute = true
                     } label: {
-                        Group {
-                            if didSave {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(Color.green)
-                            } else {
-                                Image(systemName: "bookmark")
-                            }
-                        }
-                        .font(.system(size: 15, weight: .semibold))
-                        .buttonStyle()
+                        Image(systemName: "bookmark")
+                            .font(.system(size: 15, weight: .semibold))
+                            .buttonStyle()
                     }
                     .disabled(measurement.isEmpty)
                     .sheet(isPresented: $isNamingRoute) {
@@ -337,19 +329,12 @@ struct MeasureControlsView: View {
                             savedRoutesModel.save(
                                 measurement.snapshot(elevation: elevation).renamed(to: name)
                             )
-                            didSave = true
                         }
-                    }
-                    .task(id: didSave) {
-                        guard didSave else { return }
-                        try? await Task.sleep(for: .seconds(2.5))
-                        didSave = false
                     }
                 }
             }
         }
         .animation(.easeInOut(duration: 0.2), value: measurement.isMeasuring)
-        .animation(.easeInOut(duration: 0.15), value: didSave)
     }
 }
 
