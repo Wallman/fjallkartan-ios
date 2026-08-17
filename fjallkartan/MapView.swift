@@ -97,6 +97,82 @@ final class SavedPinAnnotation: NSObject, MKAnnotation {
     }
 }
 
+final class DistanceMarkerAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    let meters: Double
+
+    var label: String { DistanceMeasurement.markerLabel(meters: meters) }
+
+    init(coordinate: CLLocationCoordinate2D, meters: Double) {
+        self.coordinate = coordinate
+        self.meters = meters
+    }
+
+    /// Round distances survive decluttering first, so zooming out thins the
+    /// markers down to 10 km, then 50 km, rather than dropping a random subset.
+    var displayPriority: MKFeatureDisplayPriority {
+        let kilometers = Int((meters / 1000).rounded())
+        if kilometers % 50 == 0 { return MKFeatureDisplayPriority(rawValue: 720) }
+        if kilometers % 10 == 0 { return MKFeatureDisplayPriority(rawValue: 620) }
+        if kilometers % 5 == 0 { return MKFeatureDisplayPriority(rawValue: 520) }
+        return MKFeatureDisplayPriority(rawValue: 420)
+    }
+}
+
+final class DistanceMarkerView: MKAnnotationView {
+    static let reuseIdentifier = "DistanceMarker"
+
+    private let numberLabel = UILabel()
+    private let unitLabel = UILabel()
+
+    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
+        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+        isUserInteractionEnabled = false
+        collisionMode = .circle
+        backgroundColor = MeasurementStyle.casingColor
+        layer.borderWidth = 2
+        layer.borderColor = MeasurementStyle.strokeColor.cgColor
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.2
+        layer.shadowRadius = 2
+        layer.shadowOffset = CGSize(width: 0, height: 1)
+
+        numberLabel.font = .systemFont(ofSize: 11, weight: .bold)
+        numberLabel.textColor = .label
+        numberLabel.textAlignment = .center
+        unitLabel.font = .systemFont(ofSize: 7, weight: .semibold)
+        unitLabel.textColor = .secondaryLabel
+        unitLabel.textAlignment = .center
+        unitLabel.text = DistanceMeasurement.markerUnit
+        addSubview(numberLabel)
+        addSubview(unitLabel)
+
+        applyAnnotation()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override var annotation: MKAnnotation? {
+        didSet { applyAnnotation() }
+    }
+
+    /// Stacking the unit under the number keeps the badge round and small, so a
+    /// dense stretch of route stays readable underneath the markers.
+    private func applyAnnotation() {
+        guard let marker = annotation as? DistanceMarkerAnnotation else { return }
+        numberLabel.text = DistanceMeasurement.markerNumber(meters: marker.meters)
+        displayPriority = marker.displayPriority
+        accessibilityLabel = marker.label
+
+        let diameter = max(26, (numberLabel.intrinsicContentSize.width + 10).rounded())
+        bounds = CGRect(x: 0, y: 0, width: diameter, height: 26)
+        numberLabel.frame = CGRect(x: 0, y: 3, width: diameter, height: 12)
+        unitLabel.frame = CGRect(x: 0, y: 14, width: diameter, height: 8)
+        layer.cornerRadius = 13
+    }
+}
+
 struct MapView: UIViewRepresentable {
     @Binding var metersPerPoint: Double
     @Binding var visibleMapRect: MKMapRect
@@ -157,6 +233,8 @@ struct MapView: UIViewRepresentable {
 
         map.register(MeasurementEndpointView.self,
                      forAnnotationViewWithReuseIdentifier: MeasurementEndpointView.reuseIdentifier)
+        map.register(DistanceMarkerView.self,
+                     forAnnotationViewWithReuseIdentifier: DistanceMarkerView.reuseIdentifier)
         map.register(MKMarkerAnnotationView.self,
                      forAnnotationViewWithReuseIdentifier: Coordinator.searchMarkerIdentifier)
         map.register(MKMarkerAnnotationView.self,
@@ -196,6 +274,8 @@ struct MapView: UIViewRepresentable {
         private var captureView: MeasureCaptureView?
         private var routeOverlays: [MKOverlay] = []
         private var renderedVersion = -1
+        private var routeCoordinates: [CLLocationCoordinate2D] = []
+        private var renderedMarkerSpacing: Double = 0
         private var renderedFitToken = 0
         private var shownPlaceID: Int64?
         private var wantsTrackingOnceAuthorized = false
@@ -269,10 +349,14 @@ struct MapView: UIViewRepresentable {
 
             map.removeOverlays(routeOverlays)
             routeOverlays.removeAll()
-            map.removeAnnotations(map.annotations.filter { $0 is MeasurementEndpoint })
+            map.removeAnnotations(map.annotations.filter { $0 is MeasurementEndpoint || $0 is DistanceMarkerAnnotation })
 
             let coordinates = measurement.coordinates
-            guard coordinates.count >= 2 else { return }
+            guard coordinates.count >= 2 else {
+                routeCoordinates = []
+                renderedMarkerSpacing = 0
+                return
+            }
 
             routeOverlays = [
                 RouteCasingPolyline(coordinates: coordinates, count: coordinates.count),
@@ -284,6 +368,33 @@ struct MapView: UIViewRepresentable {
                 MeasurementEndpoint(coordinate: coordinates[0], kind: .start),
                 MeasurementEndpoint(coordinate: coordinates[coordinates.count - 1], kind: .end),
             ])
+
+            routeCoordinates = coordinates
+            syncDistanceMarkers(on: map, force: true)
+        }
+
+        func syncDistanceMarkers(on map: MKMapView, force: Bool = false) {
+            let spacing = routeCoordinates.count >= 2
+                ? DistanceMeasurement.markerSpacing(forZoomLevel: Self.zoomLevel(of: map),
+                                                    routeLength: DistanceMeasurement.length(of: routeCoordinates))
+                : 0
+            guard force || spacing != renderedMarkerSpacing else { return }
+            renderedMarkerSpacing = spacing
+
+            map.removeAnnotations(map.annotations.filter { $0 is DistanceMarkerAnnotation })
+            guard spacing > 0 else { return }
+
+            map.addAnnotations(
+                DistanceMeasurement.distanceMarkers(along: routeCoordinates, spacing: spacing).map {
+                    DistanceMarkerAnnotation(coordinate: $0.coordinate, meters: $0.meters)
+                }
+            )
+        }
+
+        private static func zoomLevel(of map: MKMapView) -> Double {
+            let longitudeDelta = map.region.span.longitudeDelta
+            guard longitudeDelta > 0, map.bounds.width > 0 else { return 0 }
+            return log2(360 * (map.bounds.width / 256) / longitudeDelta)
         }
 
         func fitRouteIfNeeded(on map: MKMapView, measurement: DistanceMeasurement, fitToken: Int) {
@@ -414,10 +525,12 @@ struct MapView: UIViewRepresentable {
 
         func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {
             updateRegion(for: mapView)
+            syncDistanceMarkers(on: mapView)
         }
 
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
             updateRegion(for: mapView)
+            syncDistanceMarkers(on: mapView)
         }
 
         private func updateRegion(for mapView: MKMapView) {
@@ -459,6 +572,12 @@ struct MapView: UIViewRepresentable {
                 view?.markerTintColor = .systemIndigo
                 view?.glyphImage = UIImage(systemName: "bookmark.fill")
                 return view
+            }
+            if annotation is DistanceMarkerAnnotation {
+                return mapView.dequeueReusableAnnotationView(
+                    withIdentifier: DistanceMarkerView.reuseIdentifier,
+                    for: annotation
+                )
             }
             guard annotation is MeasurementEndpoint else { return nil }
             return mapView.dequeueReusableAnnotationView(

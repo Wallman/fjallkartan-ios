@@ -255,3 +255,61 @@ struct LineSimplifierTests {
         #expect(abs(length(simplified) - length(zigzag)) / length(zigzag) < 0.2)
     }
 }
+
+@MainActor
+struct DistanceMarkerTests {
+    private let abisko = CLLocationCoordinate2D(latitude: 68.35, longitude: 18.83)
+
+    private static func north(_ start: CLLocationCoordinate2D, steps: Int) -> [CLLocationCoordinate2D] {
+        (0...steps).map {
+            CLLocationCoordinate2D(latitude: start.latitude + 0.01 * Double($0),
+                                   longitude: start.longitude)
+        }
+    }
+
+    /// Markers must sit at exact multiples of the spacing measured along the
+    /// route, not at evenly spaced vertices.
+    @Test func markersLandOnWholeKilometresAlongTheRoute() {
+        // ~22 km due north from Abisko.
+        let route = Self.north(abisko, steps: 20)
+        let markers = DistanceMeasurement.distanceMarkers(along: route, spacing: 1_000)
+        #expect(markers.count == Int(DistanceMeasurement.length(of: route) / 1_000))
+        for (index, marker) in markers.enumerated() {
+            #expect(marker.meters == Double(index + 1) * 1_000)
+            let travelled = DistanceMeasurement.length(of: [route[0], marker.coordinate])
+            #expect(abs(travelled - marker.meters) < 5)
+        }
+    }
+
+    @Test func shortRouteHasNoMarkers() {
+        let route = [abisko,
+                     CLLocationCoordinate2D(latitude: abisko.latitude + 0.001, longitude: abisko.longitude)]
+        #expect(DistanceMeasurement.distanceMarkers(along: route, spacing: 1_000).isEmpty)
+    }
+
+    /// Spacing widens with route length so a very long route can't produce
+    /// hundreds of labels.
+    @Test func markerSpacingWidensForLongRoutes() {
+        #expect(DistanceMeasurement.markerSpacing(forRouteLength: 12_000) == 1_000)
+        #expect(DistanceMeasurement.markerSpacing(forRouteLength: 200_000) == 5_000)
+        #expect(DistanceMeasurement.markerSpacing(forRouteLength: 2_000_000) == 50_000)
+
+        // Zoom decides too: the same 20 km route gets 1 km markers up close and
+        // far coarser ones when zoomed out to a regional view.
+        #expect(DistanceMeasurement.markerSpacing(forZoomLevel: 14, routeLength: 20_000) == 1_000)
+        #expect(DistanceMeasurement.markerSpacing(forZoomLevel: 12, routeLength: 20_000) == 2_000)
+        #expect(DistanceMeasurement.markerSpacing(forZoomLevel: 8, routeLength: 20_000) == 25_000)
+        // The length cap still wins when it is the stricter of the two.
+        #expect(DistanceMeasurement.markerSpacing(forZoomLevel: 14, routeLength: 2_000_000) == 50_000)
+
+        let long = (0...400).map {
+            CLLocationCoordinate2D(latitude: 60 + 0.01 * Double($0), longitude: 15)
+        }
+        #expect(DistanceMeasurement.distanceMarkers(along: long).count <= 60)
+    }
+
+    @Test func markerLabelIsWholeKilometres() {
+        #expect(DistanceMeasurement.markerLabel(meters: 5_000).contains("5"))
+        #expect(DistanceMeasurement.markerLabel(meters: 5_000).contains("km"))
+    }
+}

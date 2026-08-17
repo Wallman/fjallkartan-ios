@@ -108,6 +108,79 @@ final class DistanceMeasurement {
             .reduce(0) { $0 + meters(from: $1.0, to: $1.1) }
     }
 
+    // MARK: - Distance markers
+
+    struct DistanceMarkerPoint {
+        let coordinate: CLLocationCoordinate2D
+        let meters: Double
+    }
+
+    private nonisolated static let markerSpacings: [Double] = [1_000, 2_000, 5_000, 10_000, 25_000, 50_000, 100_000]
+    private nonisolated static let maximumMarkers = 60
+
+    nonisolated static func markerSpacing(forRouteLength meters: Double) -> Double {
+        markerSpacings.first { meters / $0 <= Double(maximumMarkers) } ?? markerSpacings[markerSpacings.count - 1]
+    }
+
+    nonisolated static func markerSpacing(forZoomLevel zoom: Double, routeLength meters: Double) -> Double {
+        let byZoom: Double
+        switch zoom {
+        case ..<6: byZoom = 100_000
+        case ..<7: byZoom = 100_000
+        case ..<8: byZoom = 50_000
+        case ..<9: byZoom = 25_000
+        case ..<10: byZoom = 25_000
+        case ..<11: byZoom = 10_000
+        case ..<12: byZoom = 5_000
+        case ..<13: byZoom = 2_000
+        default: byZoom = 1_000
+        }
+        let byLength = markerSpacing(forRouteLength: meters)
+        return max(byZoom, byLength)
+    }
+
+    /// Walks the route accumulating geodesic length and emits a point every
+    /// `spacing` metres, interpolating inside the segment that crosses it.
+    nonisolated static func distanceMarkers(along coordinates: [CLLocationCoordinate2D],
+                                            spacing: Double? = nil) -> [DistanceMarkerPoint] {
+        guard coordinates.count >= 2 else { return [] }
+        let total = length(of: coordinates)
+        let step = spacing ?? markerSpacing(forRouteLength: total)
+        guard step > 0, total >= step else { return [] }
+
+        var markers: [DistanceMarkerPoint] = []
+        var travelled: Double = 0
+        var next = step
+
+        for (a, b) in zip(coordinates, coordinates.dropFirst()) {
+            let segment = meters(from: a, to: b)
+            guard segment > 0 else { continue }
+            while next <= travelled + segment {
+                let t = (next - travelled) / segment
+                markers.append(DistanceMarkerPoint(coordinate: interpolate(from: a, to: b, fraction: t),
+                                                   meters: next))
+                next += step
+            }
+            travelled += segment
+        }
+        return markers
+    }
+
+    /// Linear interpolation is accurate enough here: segments are short enough
+    /// that the great-circle and the straight lat/lon path are indistinguishable.
+    private nonisolated static func interpolate(from a: CLLocationCoordinate2D,
+                                                to b: CLLocationCoordinate2D,
+                                                fraction: Double) -> CLLocationCoordinate2D {
+        var deltaLongitude = b.longitude - a.longitude
+        if deltaLongitude > 180 { deltaLongitude -= 360 }
+        if deltaLongitude < -180 { deltaLongitude += 360 }
+        var longitude = a.longitude + deltaLongitude * fraction
+        if longitude > 180 { longitude -= 360 }
+        if longitude < -180 { longitude += 360 }
+        return CLLocationCoordinate2D(latitude: a.latitude + (b.latitude - a.latitude) * fraction,
+                                      longitude: longitude)
+    }
+
     // MARK: - Formatting
 
     private static let metersFormatter: MeasurementFormatter = {
@@ -137,6 +210,35 @@ final class DistanceMeasurement {
         return kilometersFormatter.string(from: Measurement(value: meters / 1000,
                                                              unit: UnitLength.kilometers))
     }
+
+    private static let markerFormatter: MeasurementFormatter = {
+        let f = MeasurementFormatter()
+        f.unitOptions = .providedUnit
+        f.unitStyle = .medium
+        f.numberFormatter.maximumFractionDigits = 0
+        return f
+    }()
+
+    static func markerLabel(meters: Double) -> String {
+        markerFormatter.string(from: Measurement(value: (meters / 1000).rounded(),
+                                                 unit: UnitLength.kilometers))
+    }
+
+    private static let markerNumberFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.maximumFractionDigits = 0
+        return f
+    }()
+
+    /// The number half of a marker label, drawn above the unit so the badge can
+    /// stay small enough not to cover the map.
+    static func markerNumber(meters: Double) -> String {
+        markerNumberFormatter.string(from: NSNumber(value: (meters / 1000).rounded()))
+            ?? String(Int((meters / 1000).rounded()))
+    }
+
+    static var markerUnit: String { UnitLength.kilometers.symbol }
 }
 
 /// Ramer–Douglas–Peucker simplification to counter ~3% finger jitter, run in screen space so the tolerance scales naturally with zoom.
