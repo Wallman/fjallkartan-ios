@@ -30,6 +30,8 @@ final class DistanceMeasurement {
     /// Number of coordinates contributed by each committed stroke, used for undo.
     private(set) var strokeSizes: [Int] = []
 
+    private(set) var hasUnsavedChanges = false
+
     var totalMeters: Double { committedMeters + (previewMeters ?? 0) }
     var isEmpty: Bool { coordinates.isEmpty }
     var canUndo: Bool { !strokeSizes.isEmpty }
@@ -43,6 +45,7 @@ final class DistanceMeasurement {
         coordinates.append(contentsOf: stroke)
         strokeSizes.append(stroke.count)
         committedMeters = Self.length(of: coordinates)
+        hasUnsavedChanges = true
         version += 1
     }
 
@@ -51,6 +54,7 @@ final class DistanceMeasurement {
         coordinates.removeLast(size)
         committedMeters = Self.length(of: coordinates)
         previewMeters = nil
+        hasUnsavedChanges = true
         version += 1
     }
 
@@ -60,6 +64,7 @@ final class DistanceMeasurement {
         strokeSizes.removeAll()
         committedMeters = 0
         previewMeters = nil
+        hasUnsavedChanges = false
         version += 1
     }
 
@@ -79,7 +84,12 @@ final class DistanceMeasurement {
         strokeSizes = route.strokeSizes
         committedMeters = route.meters
         previewMeters = nil
+        hasUnsavedChanges = false
         version += 1
+    }
+
+    func markSaved() {
+        hasUnsavedChanges = false
     }
 
     // MARK: - Distance

@@ -127,7 +127,8 @@ struct ContentView: View {
                         }
                         .sheet(isPresented: $isSavedRoutesPresented) {
                             SavedRoutesSheet(model: savedRoutesModel,
-                                            hasUnsavedRoute: !measurement.isEmpty) { route in
+                                            hasUnsavedRoute: !measurement.isEmpty
+                                                && measurement.hasUnsavedChanges) { route in
                                 measurement.load(route)
                                 elevation.load(route)
                                 routeFitToken += 1
@@ -329,6 +330,7 @@ struct MeasureControlsView: View {
                             savedRoutesModel.save(
                                 measurement.snapshot(elevation: elevation).renamed(to: name)
                             )
+                            measurement.markSaved()
                         }
                     }
                 }
