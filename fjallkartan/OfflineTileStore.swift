@@ -8,7 +8,9 @@ import SQLite3
 /// Backed by SQLite rather than one file per tile: with 60k+ tiles in a
 /// typical region, individual files are pathological on iOS, and SQLite gives
 /// atomic refcounted deletes (`deleteRegion`) for free. Every fetched tile is stored verbatim.
-final class OfflineTileStore {
+nonisolated final class OfflineTileStore {
+    static let shared = try? OfflineTileStore()
+
     enum RegionStatus: String {
         case downloading, paused, complete, failed
     }

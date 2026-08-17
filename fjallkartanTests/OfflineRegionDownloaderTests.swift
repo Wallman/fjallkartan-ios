@@ -53,6 +53,17 @@ struct OfflineRegionDownloaderTests {
         return URLSession(configuration: config)
     }
 
+    /// `cache: nil` by default so tests never touch the app's real browse cache.
+    private func makeDownloader(store: OfflineTileStore, cache: URLCache? = nil) -> OfflineRegionDownloader {
+        OfflineRegionDownloader(store: store, session: makeStubSession(), cache: cache)
+    }
+
+    private func makeBrowseCache() -> URLCache {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("OfflineRegionDownloaderTests-cache-\(UUID().uuidString)")
+        return URLCache(memoryCapacity: 1 << 20, diskCapacity: 1 << 22, directory: url)
+    }
+
     private func makeStore() throws -> OfflineTileStore {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("OfflineRegionDownloaderTests-\(UUID().uuidString).sqlite")
@@ -76,7 +87,7 @@ struct OfflineRegionDownloaderTests {
     @Test func downloadsAllTilesAndCompletes() async throws {
         StubURLProtocol.handler = { _ in (200, Self.tinyPNG, ["Content-Type": "image/png"]) }
         let store = try makeStore()
-        let downloader = OfflineRegionDownloader(store: store, session: makeStubSession())
+        let downloader = makeDownloader(store: store)
 
         downloader.start(regionID: "r1", name: "Test", rect: tinyRect)
         await waitUntil({ downloader.status == .completed })
@@ -95,7 +106,7 @@ struct OfflineRegionDownloaderTests {
             return (200, Self.tinyPNG, ["Content-Type": "image/png"])
         }
         let store = try makeStore()
-        let downloader = OfflineRegionDownloader(store: store, session: makeStubSession())
+        let downloader = makeDownloader(store: store)
 
         downloader.start(regionID: "r1", name: "Test", rect: tinyRect)
         await waitUntil({ downloader.status == .completed }, timeout: 10)
@@ -114,18 +125,37 @@ struct OfflineRegionDownloaderTests {
             return (200, Self.tinyPNG, ["Content-Type": "image/png"])
         }
         let store = try makeStore()
-        let downloader = OfflineRegionDownloader(store: store, session: makeStubSession())
+        let downloader = makeDownloader(store: store)
 
         downloader.start(regionID: "r1", name: "Test", rect: tinyRect)
         await waitUntil({ downloader.status == .completed }, timeout: 10)
 
         #expect(downloader.status == .completed)
         #expect(downloader.tilesDone == downloader.tilesTotal)
-        // Every position contributes one Lantmäteriet tile; Kartverket's 404s
-        // were skipped rather than stored, so no tile has server code 0.
+        // Kartverket's 404s were skipped rather than stored, so no tile has
+        // server code 0, while the other layers all round-tripped.
         let keys = store.existingTileKeys(regionID: "r1")
         #expect(!keys.isEmpty)
-        #expect(keys.allSatisfy { $0.server == TileServer.lantmateriet.storeCode })
+        #expect(!keys.contains { $0.server == TileServer.kartverket.storeCode })
+        #expect(keys.contains { $0.server == TileServer.lantmateriet.storeCode })
+    }
+
+    @Test func slopeLayersAreDownloadedAndCappedAtTheirOwnMaximumZoom() async throws {
+        StubURLProtocol.handler = { _ in (200, Self.tinyPNG, ["Content-Type": "image/png"]) }
+        let store = try makeStore()
+        let downloader = makeDownloader(store: store)
+
+        downloader.start(regionID: "r1", name: "Test", rect: tinyRect)
+        await waitUntil({ downloader.status == .completed }, timeout: 10)
+
+        #expect(downloader.status == .completed)
+        let keys = store.existingTileKeys(regionID: "r1")
+        for server in TileServer.allCases {
+            let zooms = Set(keys.filter { $0.server == server.storeCode }.map(\.z))
+            #expect(zooms == Set(TilePyramid.minZoom...server.offlineMaximumZ))
+        }
+        // Sweden publishes no slope tiles at z14, so none may be requested.
+        #expect(!keys.contains { $0.server == TileServer.swedenSlope.storeCode && $0.z > 13 })
     }
 
     @Test func pauseStopsProgressAndResumeCompletes() async throws {
@@ -134,7 +164,7 @@ struct OfflineRegionDownloaderTests {
             return (200, Self.tinyPNG, ["Content-Type": "image/png"])
         }
         let store = try makeStore()
-        let downloader = OfflineRegionDownloader(store: store, session: makeStubSession())
+        let downloader = makeDownloader(store: store)
 
         downloader.start(regionID: "r1", name: "Test", rect: tinyRect)
         downloader.pause()
@@ -154,7 +184,7 @@ struct OfflineRegionDownloaderTests {
     @Test func resumeAfterCancelSkipsAlreadyDownloadedTiles() async throws {
         StubURLProtocol.handler = { _ in (200, Self.tinyPNG, ["Content-Type": "image/png"]) }
         let store = try makeStore()
-        let first = OfflineRegionDownloader(store: store, session: makeStubSession())
+        let first = makeDownloader(store: store)
 
         first.start(regionID: "r1", name: "Test", rect: tinyRect)
         await waitUntil({ first.status == .completed }, timeout: 10)
@@ -162,19 +192,73 @@ struct OfflineRegionDownloaderTests {
 
         // Restarting the same region id should see every tile already
         // present and finish immediately without re-fetching.
-        let second = OfflineRegionDownloader(store: store, session: makeStubSession())
+        let second = makeDownloader(store: store)
         second.start(regionID: "r1", name: "Test", rect: tinyRect)
         await waitUntil({ second.status == .completed }, timeout: 10)
 
         #expect(second.tilesDone == second.tilesTotal)
         #expect(store.totalBytes() == bytesAfterFirstRun)
     }
+
+    @Test func browseCachedTilesAreUsedWithoutHittingTheNetwork() async throws {
+        let requests = Counter()
+        StubURLProtocol.handler = { _ in
+            _ = requests.increment()
+            return (200, Self.tinyPNG, ["Content-Type": "image/png"])
+        }
+        let cache = makeBrowseCache()
+        let cachedBody = Data([0xCA, 0xFE, 0xBA, 0xBE])
+        for job in TilePyramid.jobs(in: tinyRect) {
+            let url = job.server.url(z: Int(job.path.z), x: Int(job.path.x), y: Int(job.path.y))
+            let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil,
+                                           headerFields: ["Content-Type": "image/png"])!
+            cache.storeCachedResponse(CachedURLResponse(response: response, data: cachedBody),
+                                      for: URLRequest(url: url))
+        }
+
+        let store = try makeStore()
+        let downloader = makeDownloader(store: store, cache: cache)
+        downloader.start(regionID: "r1", name: "Test", rect: tinyRect)
+        await waitUntil({ downloader.status == .completed }, timeout: 10)
+
+        #expect(downloader.status == .completed)
+        #expect(downloader.tilesDone == downloader.tilesTotal)
+        #expect(requests.count == 0)
+        // The bytes the browse cache already held are what got persisted.
+        let path = TilePyramid.tiles(in: tinyRect)[0]
+        let stored = store.tileData(server: TileServer.lantmateriet.storeCode,
+                                    z: Int(path.z), x: Int(path.x), y: Int(path.y))
+        #expect(stored == cachedBody)
+        cache.removeAllCachedResponses()
+    }
+
+    @Test func downloadedTilesAreNotWrittenBackIntoTheBrowseCache() async throws {
+        StubURLProtocol.handler = { _ in (200, Self.tinyPNG, ["Content-Type": "image/png"]) }
+        let cache = makeBrowseCache()
+        let store = try makeStore()
+        let downloader = makeDownloader(store: store, cache: cache)
+
+        downloader.start(regionID: "r1", name: "Test", rect: tinyRect)
+        await waitUntil({ downloader.status == .completed }, timeout: 10)
+
+        #expect(downloader.status == .completed)
+        // A bulk region download must not evict the map's own cached tiles.
+        let path = TilePyramid.tiles(in: tinyRect)[0]
+        let url = TileServer.lantmateriet.url(z: Int(path.z), x: Int(path.x), y: Int(path.y))
+        #expect(cache.cachedResponse(for: URLRequest(url: url)) == nil)
+        cache.removeAllCachedResponses()
+    }
 }
 
 /// Thread-safe counter for stub handlers exercised by concurrent requests.
-final class Counter: @unchecked Sendable {
+final class Counter {
     private let lock = NSLock()
     private var value = 0
+
+    var count: Int {
+        lock.lock(); defer { lock.unlock() }
+        return value
+    }
 
     func increment() -> Int {
         lock.lock(); defer { lock.unlock() }

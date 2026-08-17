@@ -16,9 +16,12 @@ struct ContentView: View {
     @State private var isLegendPresented = false
     @State private var isAboutPresented = false
     @State private var isSavedRoutesPresented = false
-    @State private var offlineModel = CustomTileOverlay.defaultStore.map(OfflineRegionsModel.init)
+    @State private var isSlopeLayerVisible = false
+    @State private var offlineModel = OfflineTileStore.shared.map(OfflineRegionsModel.init)
     @State private var savedRoutesModel = (try? SavedRouteStore()).map(SavedRoutesModel.init)
+    @State private var savedPinsModel = (try? SavedPinStore()).map(SavedPinsModel.init)
     @State private var routeFitToken = 0 // Needed to avoid re-centering when drawing
+    @State private var pinDetail: SavedPin?
 
     @State private var measuringStartVersion = 0
     private let reviewPrompter = ReviewPrompter.shared
@@ -33,6 +36,7 @@ struct ContentView: View {
             && !isAboutPresented
             && !isPickingRegion
             && !isSavedRoutesPresented
+            && pinDetail == nil
     }
 
     private var isCompactHeight: Bool { verticalSizeClass == .compact }
@@ -45,7 +49,21 @@ struct ContentView: View {
                 routeVersion: measurement.version,
                 routeFitToken: routeFitToken,
                 selectedPlace: search.selection,
-                isRegionPreviewVisible: isPickingRegion)
+                isRegionPreviewVisible: isPickingRegion,
+                isSlopeLayerVisible: isSlopeLayerVisible,
+                pins: savedPinsModel?.pins ?? [],
+                onDropPin: { coordinate in
+                    savedPinsModel?.save(SavedPin(coordinate: Coord(coordinate)))
+                },
+                onSavePlace: { place in
+                    savedPinsModel?.save(SavedPin(coordinate: Coord(place.coordinate), name: place.name))
+                },
+                onDismissPlace: {
+                    search.selection = nil
+                },
+                onOpenPinDetail: { pin in
+                    pinDetail = pin
+                })
             .ignoresSafeArea()
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -99,6 +117,15 @@ struct ContentView: View {
                                 routeFitToken += 1
                             }
                         }
+                    }
+
+                    Button {
+                        isSlopeLayerVisible.toggle()
+                    } label: {
+                        Image(systemName: "triangle.righthalf.filled")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(isSlopeLayerVisible ? Color.orange : Color.primary)
+                            .buttonStyle()
                     }
 
                     Button {
@@ -167,6 +194,11 @@ struct ContentView: View {
             .sheet(isPresented: $isLegendPresented) {
                 LegendSheet()
             }
+            .sheet(item: $pinDetail) { pin in
+                PinDetailSheet(pin: pin,
+                              onSave: { updated in savedPinsModel?.save(updated) },
+                              onDelete: { savedPinsModel?.delete(pin) })
+            }
             .onChange(of: measurement.isMeasuring) { _, isMeasuring in
                 if isMeasuring {
                     measuringStartVersion = measurement.version
@@ -182,7 +214,7 @@ struct ContentView: View {
                                           isQuiet: isQuietForReviewPrompt)) {
                 guard reviewPrompter.pendingToken > 0, isQuietForReviewPrompt else { return }
                 try? await Task.sleep(for: .seconds(3))
-                guard !Task.isCancelled, isQuietForReviewPrompt else { return }
+                guard !Task.isCancelled, isQuietForReviewPrompt, await NetworkCheck.hasConnectivity() else { return }
                 if reviewPrompter.consumePendingPrompt() { requestReview() }
             }
     }

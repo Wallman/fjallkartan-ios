@@ -1,15 +1,19 @@
 import Foundation
 import OSLog
 
-struct TileSettings: Codable, Equatable {
+nonisolated struct TileSettings: Codable, Equatable {
     var minAppVersion: String
     var lantmaterietUrl: String
     var kartverketUrl: String
+    var norwaySlopeUrl: String
+    var swedenSlopeUrl: String
 
     var isUsable: Bool {
         Self.isWellFormedVersion(minAppVersion)
             && Self.isUsableTemplate(lantmaterietUrl)
             && Self.isUsableTemplate(kartverketUrl)
+            && Self.isUsableTemplate(norwaySlopeUrl)
+            && Self.isUsableTemplate(swedenSlopeUrl)
     }
 
     static func isWellFormedVersion(_ version: String) -> Bool {
@@ -33,7 +37,7 @@ struct TileSettings: Codable, Equatable {
     }
 }
 
-final class RemoteSettings {
+nonisolated final class RemoteSettings: @unchecked Sendable {
     static let shared = RemoteSettings()
     static let settingsURL = URL(string: "https://tiles.wallman.dev/settings.json")!
     static let refreshInterval: TimeInterval = 6 * 60 * 60 // 6h
@@ -43,7 +47,9 @@ final class RemoteSettings {
         lantmaterietUrl: "https://minkarta.lantmateriet.se/map/topowebbcache"
             + "?layer=topowebb&style=default&tilematrixset=3857&Service=WMTS&Request=GetTile"
             + "&Version=1.0.0&Format=image/png&TileMatrix={z}&TileRow={y}&TileCol={x}",
-        kartverketUrl: "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
+        kartverketUrl: "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png",
+        norwaySlopeUrl: "https://gis3.nve.no/arcgis/rest/services/wmts/Bratthet_med_utlop_2024/MapServer/tile/{z}/{y}/{x}",
+        swedenSlopeUrl: "https://tiles.wallman.dev/slope/v1/{z}/{y}/{x}.png"
     )
 
     private enum Key {
@@ -103,6 +109,12 @@ final class RemoteSettings {
         case .lantmateriet:
             template = current.lantmaterietUrl
             fallback = Self.builtIn.lantmaterietUrl
+        case .norwaySlope:
+            template = current.norwaySlopeUrl
+            fallback = Self.builtIn.norwaySlopeUrl
+        case .swedenSlope:
+            template = current.swedenSlopeUrl
+            fallback = Self.builtIn.swedenSlopeUrl
         }
         if let url = TileSettings.url(from: template, z: z, x: x, y: y) {
             return url
