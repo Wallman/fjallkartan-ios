@@ -85,6 +85,7 @@ final class DistanceMeasurement {
         committedMeters = route.meters
         previewMeters = nil
         hasUnsavedChanges = false
+        isMeasuring = false
         version += 1
     }
 
