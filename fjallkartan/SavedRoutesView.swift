@@ -70,21 +70,21 @@ struct SavedRoutesSheet: View {
                 } else {
                     List {
                         ForEach(model.routes) { route in
-                            SavedRouteRowButton(route: route,
-                                                hasUnsavedRoute: hasUnsavedRoute) {
-                                onSelect(route)
-                                dismiss()
-                            }
-                            .swipeActions(edge: .leading) {
-                                Button("Rename") { renamingRoute = route }
-                                    .tint(.blue)
+                            HStack {
+                                SavedRouteRowButton(route: route,
+                                                    hasUnsavedRoute: hasUnsavedRoute) {
+                                    onSelect(route)
+                                    dismiss()
+                                }
+                                DeleteRouteButton(route: route) {
+                                    model.delete(route)
+                                }
                             }
                             .contextMenu {
-                                Button("Rename") { renamingRoute = route }
+                                Button("Rename", systemImage: "pencil") {
+                                    renamingRoute = route
+                                }
                             }
-                        }
-                        .onDelete { offsets in
-                            for index in offsets { model.delete(model.routes[index]) }
                         }
                     }
                 }
@@ -131,6 +131,33 @@ private struct SavedRouteRowButton: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Your current measurement isn't saved and will be lost.")
+        }
+    }
+}
+
+/// Mirrors the offline-region rows: an explicit trash button with a
+/// confirmation, rather than a hidden swipe action.
+private struct DeleteRouteButton: View {
+    let route: SavedRoute
+    let onDelete: () -> Void
+    @State private var isConfirmingDelete = false
+
+    var body: some View {
+        Button(role: .destructive) {
+            isConfirmingDelete = true
+        } label: {
+            Image(systemName: "trash")
+        }
+        .buttonStyle(.borderless)
+        .confirmationDialog(
+            "Delete this route?",
+            isPresented: $isConfirmingDelete,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive, action: onDelete)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes \"\(route.displayName)\" from this device.")
         }
     }
 }
