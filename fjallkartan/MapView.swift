@@ -122,13 +122,12 @@ final class DistanceMarkerAnnotation: NSObject, MKAnnotation {
 final class DistanceMarkerView: MKAnnotationView {
     static let reuseIdentifier = "DistanceMarker"
 
-    private let numberLabel = UILabel()
-    private let unitLabel = UILabel()
+    private let label = UILabel()
 
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
         isUserInteractionEnabled = false
-        collisionMode = .circle
+        collisionMode = .rectangle
         backgroundColor = MeasurementStyle.casingColor
         layer.borderWidth = 2
         layer.borderColor = MeasurementStyle.strokeColor.cgColor
@@ -137,15 +136,10 @@ final class DistanceMarkerView: MKAnnotationView {
         layer.shadowRadius = 2
         layer.shadowOffset = CGSize(width: 0, height: 1)
 
-        numberLabel.font = .systemFont(ofSize: 11, weight: .bold)
-        numberLabel.textColor = .label
-        numberLabel.textAlignment = .center
-        unitLabel.font = .systemFont(ofSize: 7, weight: .semibold)
-        unitLabel.textColor = .secondaryLabel
-        unitLabel.textAlignment = .center
-        unitLabel.text = DistanceMeasurement.markerUnit
-        addSubview(numberLabel)
-        addSubview(unitLabel)
+        label.font = .systemFont(ofSize: 11, weight: .bold)
+        label.textColor = .label
+        label.textAlignment = .center
+        addSubview(label)
 
         applyAnnotation()
     }
@@ -157,19 +151,19 @@ final class DistanceMarkerView: MKAnnotationView {
         didSet { applyAnnotation() }
     }
 
-    /// Stacking the unit under the number keeps the badge round and small, so a
-    /// dense stretch of route stays readable underneath the markers.
+    /// A pill sized to its text keeps the unit on the same line as the number
+    /// while staying short enough not to cover much of the route.
     private func applyAnnotation() {
         guard let marker = annotation as? DistanceMarkerAnnotation else { return }
-        numberLabel.text = DistanceMeasurement.markerNumber(meters: marker.meters)
+        label.text = marker.label
         displayPriority = marker.displayPriority
         accessibilityLabel = marker.label
 
-        let diameter = max(26, (numberLabel.intrinsicContentSize.width + 10).rounded())
-        bounds = CGRect(x: 0, y: 0, width: diameter, height: 26)
-        numberLabel.frame = CGRect(x: 0, y: 3, width: diameter, height: 12)
-        unitLabel.frame = CGRect(x: 0, y: 14, width: diameter, height: 8)
-        layer.cornerRadius = 13
+        let height: CGFloat = 20
+        let width = max(height, (label.intrinsicContentSize.width + 14).rounded())
+        bounds = CGRect(x: 0, y: 0, width: width, height: height)
+        label.frame = bounds
+        layer.cornerRadius = height / 2
     }
 }
 

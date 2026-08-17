@@ -223,22 +223,6 @@ final class DistanceMeasurement {
         markerFormatter.string(from: Measurement(value: (meters / 1000).rounded(),
                                                  unit: UnitLength.kilometers))
     }
-
-    private static let markerNumberFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        f.maximumFractionDigits = 0
-        return f
-    }()
-
-    /// The number half of a marker label, drawn above the unit so the badge can
-    /// stay small enough not to cover the map.
-    static func markerNumber(meters: Double) -> String {
-        markerNumberFormatter.string(from: NSNumber(value: (meters / 1000).rounded()))
-            ?? String(Int((meters / 1000).rounded()))
-    }
-
-    static var markerUnit: String { UnitLength.kilometers.symbol }
 }
 
 /// Ramer–Douglas–Peucker simplification to counter ~3% finger jitter, run in screen space so the tolerance scales naturally with zoom.
