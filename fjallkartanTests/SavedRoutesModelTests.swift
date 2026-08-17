@@ -32,10 +32,10 @@ struct SavedRoutesModelTests {
 
     @Test func defaultNameSkipsNamesAlreadyTaken() throws {
         let model = try makeModel()
-        // Two routes saved, but the free number is 3 because 2 is taken.
-        model.save(makeRoute(name: SavedRoutesModel.defaultName(2)))
+        model.save(makeRoute(name: SavedRoutesModel.defaultName(1)))
+        model.save(makeRoute(name: SavedRoutesModel.defaultName(3)))
         model.save(makeRoute(name: "Sarek"))
-        #expect(model.nextDefaultName() == SavedRoutesModel.defaultName(3))
+        #expect(model.nextDefaultName() == SavedRoutesModel.defaultName(2))
     }
 
     @Test func renameUpdatesTheStoredRoute() throws {
