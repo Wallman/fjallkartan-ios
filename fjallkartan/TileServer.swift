@@ -19,6 +19,27 @@ nonisolated enum TileServer: CaseIterable {
         }
     }
 
+    init?(storeCode: Int) {
+        guard let match = TileServer.allCases.first(where: { $0.storeCode == storeCode }) else { return nil }
+        self = match
+    }
+
+    /// Unlocalized, for logs and the tile metrics screen.
+    var debugName: String {
+        switch self {
+        case .kartverket: return "Kartverket"
+        case .lantmateriet: return "Lantmäteriet"
+        case .norwaySlope: return "Slope NO"
+        case .swedenSlope: return "Slope SE"
+        case .elevation: return "Elevation"
+        }
+    }
+
+    /// If 404s are expected
+    var publishesSparseTiles: Bool {
+        isSlope || isData
+    }
+
     var isSlope: Bool {
         switch self {
         case .kartverket, .lantmateriet, .elevation: return false

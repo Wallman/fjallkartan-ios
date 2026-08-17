@@ -78,11 +78,20 @@ struct TileFetcherTests {
         return URLCache(memoryCapacity: 0, diskCapacity: 8 * 1024 * 1024, directory: directory)
     }
 
-    private func makeFetcher(cache: URLCache? = nil, offlineStore: OfflineTileStore? = nil) -> TileFetcher {
+    private func makeFetcher(cache: URLCache? = nil, offlineStore: OfflineTileStore? = nil,
+                             metrics: TileMetrics? = nil) -> TileFetcher {
         var configuration = TileFetcher.Configuration()
         configuration.initialRetryDelay = 0.01
         return TileFetcher(session: makeSession(cache: cache), cache: cache,
-                           offlineStore: offlineStore, configuration: configuration)
+                           offlineStore: offlineStore, configuration: configuration,
+                           metrics: metrics)
+    }
+
+    /// In-memory: no shared file, nothing surviving between runs.
+    private func makeMetrics() -> TileMetrics { TileMetrics(url: nil) }
+
+    private func count(_ metrics: TileMetrics, _ server: TileServer, _ source: TileMetrics.Source) -> Int {
+        metrics.snapshot().layers.first { $0.server == server }?.count(source) ?? 0
     }
 
     private func makeStore() throws -> OfflineTileStore {
@@ -296,5 +305,139 @@ struct TileFetcherTests {
             Issue.record("expected noData, got \(outcome)")
             return
         }
+    }
+
+    // MARK: - Metrics attribution
+
+    @Test func offlineStoreHitIsAttributedToTheStore() async throws {
+        TileFetcherStubURLProtocol.handler = { _ in (200, Self.png, Self.imageHeaders) }
+        let metrics = makeMetrics()
+        let store = try makeStore()
+        try store.putTiles([.init(server: TileServer.swedenSlope.storeCode, z: 12, x: 3, y: 4,
+                                  data: Data([0xCA, 0xFE]))],
+                           regionID: "r1")
+
+        _ = await fetchTile(makeFetcher(offlineStore: store, metrics: metrics),
+                            server: .swedenSlope, z: 12, x: 3, y: 4)
+
+        #expect(count(metrics, .swedenSlope, .offlineStore) == 1)
+        #expect(count(metrics, .swedenSlope, .network) == 0)
+    }
+
+    @Test func networkThenCacheAreAttributedSeparately() async {
+        TileFetcherStubURLProtocol.handler = { _ in (200, Self.png, Self.imageHeaders) }
+        let metrics = makeMetrics()
+        let cache = makeCache()
+        let fetcher = makeFetcher(cache: cache, metrics: metrics)
+
+        _ = await fetchTile(fetcher, server: .kartverket, z: 10, x: 1, y: 2)
+        _ = await fetchTile(fetcher, server: .kartverket, z: 10, x: 1, y: 2)
+
+        #expect(count(metrics, .kartverket, .network) == 1)
+        #expect(count(metrics, .kartverket, .urlCache) == 1)
+        cache.removeAllCachedResponses()
+    }
+
+    /// The slope and elevation tilesets are published only where data exists,
+    /// so their 404s must not read as breakage — otherwise the fault rate is
+    /// dominated by the layers working exactly as designed.
+    @Test func sparseTilesetNotFoundIsNotCountedAsAFault() async {
+        TileFetcherStubURLProtocol.handler = { _ in (404, Data(), [:]) }
+        let metrics = makeMetrics()
+
+        _ = await fetchTile(makeFetcher(metrics: metrics), server: .swedenSlope, z: 12, x: 3, y: 4)
+
+        #expect(count(metrics, .swedenSlope, .expectedNoData) == 1)
+        #expect(count(metrics, .swedenSlope, .unexpectedNoData) == 0)
+        #expect(metrics.snapshot().layers.first { $0.server == .swedenSlope }?.faultRate == nil)
+    }
+
+    @Test func denseLayerNotFoundIsCountedAsAFault() async {
+        TileFetcherStubURLProtocol.handler = { _ in (404, Data(), [:]) }
+        let metrics = makeMetrics()
+
+        _ = await fetchTile(makeFetcher(metrics: metrics), server: .kartverket, z: 10, x: 1, y: 2)
+
+        #expect(count(metrics, .kartverket, .unexpectedNoData) == 1)
+        #expect(metrics.snapshot().layers.first { $0.server == .kartverket }?.faultRate == 1)
+    }
+
+    @Test func nonImageSuccessIsCountedAsAFault() async {
+        TileFetcherStubURLProtocol.handler = { _ in (200, Data("<html>oops</html>".utf8), ["Content-Type": "text/html"]) }
+        let metrics = makeMetrics()
+
+        _ = await fetchTile(makeFetcher(metrics: metrics), server: .lantmateriet, z: 9, x: 1, y: 1)
+
+        #expect(count(metrics, .lantmateriet, .unexpectedNoData) == 1)
+        #expect(count(metrics, .lantmateriet, .network) == 0)
+    }
+
+    @Test func upscaledAncestorIsAttributedSeparatelyFromTheMiss() async throws {
+        TileFetcherStubURLProtocol.handler = { _ in (404, Data(), [:]) }
+        let metrics = makeMetrics()
+        let store = try makeStore()
+        try store.putTiles([.init(server: TileServer.norwaySlope.storeCode, z: 14, x: 250, y: 500,
+                                  data: makeTilePNG())],
+                           regionID: "r1")
+
+        _ = await fetchTile(makeFetcher(offlineStore: store, metrics: metrics),
+                            server: .norwaySlope, z: 16, x: 1000, y: 2000)
+
+        // One request, one record: the 404 that preceded the upscale is not
+        // also counted, or the totals would no longer sum to requests made.
+        #expect(count(metrics, .norwaySlope, .upscaledAncestor) == 1)
+        #expect(count(metrics, .norwaySlope, .expectedNoData) == 0)
+        #expect(metrics.snapshot().layers.first { $0.server == .norwaySlope }?.total == 1)
+    }
+
+    @Test func retriesAreCountedAgainstTheSucceedingRequest() async {
+        TileFetcherStubURLProtocol.handler = { _ in
+            TileFetcherStubURLProtocol.requestCount <= 2
+                ? (500, Data(), [:])
+                : (200, Self.png, Self.imageHeaders)
+        }
+        let metrics = makeMetrics()
+
+        _ = await fetchTile(makeFetcher(metrics: metrics), server: .kartverket, z: 8, x: 1, y: 1)
+
+        let layer = metrics.snapshot().layers.first { $0.server == .kartverket }
+        #expect(count(metrics, .kartverket, .network) == 1)
+        #expect(layer?.retriedRequests == 1)
+        #expect(layer?.retryAttempts == 2)
+    }
+
+    @Test func connectivityLossIsRecordedAsFailure() async {
+        TileFetcherStubURLProtocol.handler = { _ in (200, Self.png, Self.imageHeaders) }
+        TileFetcherStubURLProtocol.errorHandler = { _ in URLError(.notConnectedToInternet) }
+        let metrics = makeMetrics()
+
+        _ = await fetchTile(makeFetcher(metrics: metrics), server: .lantmateriet, z: 11, x: 5, y: 6)
+
+        #expect(count(metrics, .lantmateriet, .failure) == 1)
+    }
+
+    @Test func everyRequestContributesALatencySample() async {
+        TileFetcherStubURLProtocol.handler = { _ in (200, Self.png, Self.imageHeaders) }
+        let metrics = makeMetrics()
+
+        _ = await fetchTile(makeFetcher(metrics: metrics), server: .kartverket, z: 12, x: 1, y: 1)
+
+        #expect(metrics.snapshot().layers.first { $0.server == .kartverket }?.latencyPercentile(0.5) != nil)
+    }
+
+    /// The bulk region downloader goes through `fetch(url:server:)`, which is
+    /// never recorded: a region download is tens of thousands of fetches in a
+    /// burst and would drown out what ordinary browsing looks like.
+    @Test func theBulkDownloadEntryPointIsNotRecorded() async {
+        TileFetcherStubURLProtocol.handler = { _ in (200, Self.png, Self.imageHeaders) }
+        let metrics = makeMetrics()
+
+        _ = await withCheckedContinuation { continuation in
+            makeFetcher(metrics: metrics).fetch(url: url, server: .kartverket) {
+                continuation.resume(returning: $0)
+            }
+        }
+
+        #expect(metrics.snapshot().isEmpty)
     }
 }

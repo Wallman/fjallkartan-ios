@@ -14,7 +14,9 @@ struct fjallkartanApp: App {
             case .active:
                 reviewPrompter.noteBecameActive()
                 RemoteSettings.shared.refresh()
-            case .background: reviewPrompter.noteEnteredBackground()
+            case .background:
+                reviewPrompter.noteEnteredBackground()
+                TileMetrics.shared.flush()
             default: break
             }
         }

@@ -17,6 +17,7 @@ struct AboutButton: View {
 
 struct AboutSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var isShowingTileMetrics = false
 
     private static let privacyPolicyURL = URL(string: "https://wallman.github.io/fjallkartan-ios/privacy.html")!
     private static let supportURL = URL(string: "https://wallman.github.io/fjallkartan-ios/support.html")!
@@ -60,6 +61,9 @@ struct AboutSheet: View {
                         }
                     }
                     LabeledContent("Version", value: appVersion)
+                        .contentShape(Rectangle())
+                        // Undiscoverable on purpose
+                        .onLongPressGesture { isShowingTileMetrics = true }
                 }
             }
             .navigationTitle("About")
@@ -68,6 +72,9 @@ struct AboutSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $isShowingTileMetrics) {
+                DebugSheet()
             }
         }
         .presentationDetents([.large])

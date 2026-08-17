@@ -10,6 +10,8 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/ContentView.swift` | Root SwiftUI view; hosts `MapView` plus the scale bar, copyright notice and measurement overlays. |
 | `fjallkartan/MapView.swift` | `UIViewRepresentable` wrapping `MKMapView`; adds the tile overlays, sets camera limits, reports scale, and renders the measured route. |
 | `fjallkartan/TileFetcher.swift` | Shared tile layer: does offline store → `URLCache` → network → ancestor upscale (fixed-TTL cache, retry with backoff, `success`/`noData`/`failure`). |
+| `fjallkartan/TileMetrics.swift` | On-device aggregate counters for tile requests (source breakdown, fault rate, latency histogram), persisted to `Application Support/tile-metrics.json`. |
+| `fjallkartan/DebugView.swift` | DebugSheet  reading `TileMetrics`, opened by long-pressing the version row in `AboutSheet`. |
 | `fjallkartan/DistanceMeasurement.swift` | `@Observable` model holding the traced route and its geodesic length, plus `LineSimplifier` (Ramer–Douglas–Peucker). |
 | `fjallkartan/MeasureCaptureView.swift` | Transparent `UIView` over the map that captures freehand strokes and draws live preview. |
 | `fjallkartan/PlaceSearch.swift` | SQLite-backed FTS5 lookup of place names (`PlaceSearch`, `PlaceResult`, `PlaceKind`) against the bundled `places.sqlite`. |
@@ -57,6 +59,12 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 - **`CustomTileOverlay`**
   - Tiles are always requested from both servers, and empty/no-data areas simply come back blank.
   - Kartverket's no-data fill is transparent at low zoom but an opaque cream (~255,255,230) from ~z15; `kartverketNoDataToTransparentPNG` rewrites those pixels to transparent so Lantmäteriet shows through. Lantmäteriet tiles are passed through untouched.
+
+- **Tile metrics**
+  - Counters are **aggregate-only and coordinate-free**: the key is `(layer, zoom)`, never `(x, y)`. Nothing leaves the device.
+  - Attribution lives entirely inside `TileFetcher`: a private `Resolution` tags each lookup as offline store / `URLCache` / network / upscaled ancestor / no-data / failure.
+  - Latency is a fixed-bound histogram rather than a running mean, and percentiles are reported as the containing bucket bound (`≤ 300 ms`).
+  - Recording is a lock plus a dictionary increment on the URLSession completion thread; the file is written only every 200 records and on scene-background.
 
 - **Remote settings**
   - `RemoteSettings.shared.refresh()` runs on scene activation and fetches `https://tiles.wallman.dev/settings.json` at most once per 6 h, so a provider that changes its URL can be followed without an app update.
