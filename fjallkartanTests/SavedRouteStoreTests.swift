@@ -78,4 +78,58 @@ struct SavedRouteStoreTests {
 
         #expect(store.load().count == 1)
     }
+
+    @Test func nameRoundTrips() throws {
+        let (store, _) = try makeStore()
+        try store.save(makeRoute().renamed(to: "Kebnekaise"))
+
+        let loaded = try #require(store.load().first)
+        #expect(loaded.name == "Kebnekaise")
+        #expect(loaded.displayName == "Kebnekaise")
+    }
+
+    @Test func routeWithoutNameFallsBackToDate() throws {
+        let route = makeRoute()
+        #expect(route.name == nil)
+        #expect(route.displayName == route.defaultName)
+    }
+
+    @Test func legacyFileWithoutNameDecodes() throws {
+        let (store, directory) = try makeStore()
+        let id = UUID()
+        let json = """
+        {"id":"\(id.uuidString)","createdAt":"2024-06-01T10:00:00Z","meters":1500,\
+        "coordinates":[{"latitude":68.35,"longitude":18.83}],\
+        "strokeSizes":[1],"ascent":0,"descent":0,"elevations":[],"schemaVersion":1}
+        """
+        try Data(json.utf8).write(to: directory.appendingPathComponent("\(id.uuidString).json"))
+
+        let loaded = try #require(store.load().first)
+        #expect(loaded.name == nil)
+        #expect(loaded.displayName == loaded.defaultName)
+    }
+
+    @Test func renameTrimsWhitespace() throws {
+        let (store, _) = try makeStore()
+        let route = makeRoute()
+        try store.save(route)
+
+        try store.rename(route, to: "  Sarek  ")
+
+        let loaded = store.load()
+        #expect(loaded.count == 1)
+        #expect(loaded.first?.name == "Sarek")
+    }
+
+    @Test func renameToBlankClearsName() throws {
+        let (store, _) = try makeStore()
+        let route = makeRoute().renamed(to: "Sarek")
+        try store.save(route)
+
+        try store.rename(route, to: "   ")
+
+        let loaded = try #require(store.load().first)
+        #expect(loaded.name == nil)
+        #expect(loaded.displayName == loaded.defaultName)
+    }
 }

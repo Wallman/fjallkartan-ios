@@ -107,12 +107,21 @@ struct ContentView: View {
                                         savedRoutesModel: savedRoutesModel,
                                         isHorizontal: isCompactHeight)
 
+                    Button {
+                        isSlopeLayerVisible.toggle()
+                    } label: {
+                        Image(systemName: "triangle.righthalf.filled")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(isSlopeLayerVisible ? Color.orange : Color.primary)
+                            .buttonStyle()
+                    }
+                    
                     if let savedRoutesModel {
                         Button {
                             isSavedRoutesPresented = true
                         } label: {
-                            Image(systemName: "bookmark")
-                                .font(.system(size: 17, weight: .semibold))
+                            Image(systemName: "bookmark.fill")
+                                .font(.system(size: 16, weight: .semibold))
                                 .foregroundStyle(Color.primary)
                                 .buttonStyle()
                         }
@@ -124,15 +133,6 @@ struct ContentView: View {
                                 routeFitToken += 1
                             }
                         }
-                    }
-
-                    Button {
-                        isSlopeLayerVisible.toggle()
-                    } label: {
-                        Image(systemName: "triangle.righthalf.filled")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(isSlopeLayerVisible ? Color.orange : Color.primary)
-                            .buttonStyle()
                     }
 
                     Button {
@@ -278,6 +278,7 @@ struct MeasureControlsView: View {
     let savedRoutesModel: SavedRoutesModel?
     var isHorizontal = false
     @State private var didSave = false
+    @State private var isNamingRoute = false
 
     var body: some View {
         let layout = isHorizontal
@@ -316,8 +317,7 @@ struct MeasureControlsView: View {
 
                 if let savedRoutesModel {
                     Button {
-                        savedRoutesModel.save(measurement.snapshot(elevation: elevation))
-                        didSave = true
+                        isNamingRoute = true
                     } label: {
                         Group {
                             if didSave {
@@ -331,6 +331,15 @@ struct MeasureControlsView: View {
                         .buttonStyle()
                     }
                     .disabled(measurement.isEmpty)
+                    .sheet(isPresented: $isNamingRoute) {
+                        RouteNameSheet(title: "Name route",
+                                       initialName: savedRoutesModel.nextDefaultName()) { name in
+                            savedRoutesModel.save(
+                                measurement.snapshot(elevation: elevation).renamed(to: name)
+                            )
+                            didSave = true
+                        }
+                    }
                     .task(id: didSave) {
                         guard didSave else { return }
                         try? await Task.sleep(for: .seconds(2.5))

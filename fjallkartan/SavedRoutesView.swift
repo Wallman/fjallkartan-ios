@@ -33,6 +33,22 @@ final class SavedRoutesModel {
         store.delete(route)
         refresh()
     }
+
+    func rename(_ route: SavedRoute, to name: String) {
+        try? store.rename(route, to: name)
+        refresh()
+    }
+
+    func nextDefaultName() -> String {
+        let taken = Set(routes.compactMap(\.name))
+        var number = 1
+        while taken.contains(Self.defaultName(number)) { number += 1 }
+        return Self.defaultName(number)
+    }
+
+    static func defaultName(_ number: Int) -> String {
+        String(localized: "Route \(number)")
+    }
 }
 
 struct SavedRoutesSheet: View {
@@ -40,6 +56,7 @@ struct SavedRoutesSheet: View {
     let hasUnsavedRoute: Bool
     let onSelect: (SavedRoute) -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var renamingRoute: SavedRoute?
 
     var body: some View {
         NavigationStack {
@@ -58,6 +75,13 @@ struct SavedRoutesSheet: View {
                                 onSelect(route)
                                 dismiss()
                             }
+                            .swipeActions(edge: .leading) {
+                                Button("Rename") { renamingRoute = route }
+                                    .tint(.blue)
+                            }
+                            .contextMenu {
+                                Button("Rename") { renamingRoute = route }
+                            }
                         }
                         .onDelete { offsets in
                             for index in offsets { model.delete(model.routes[index]) }
@@ -66,6 +90,12 @@ struct SavedRoutesSheet: View {
                 }
             }
             .navigationTitle("Saved routes")
+            .sheet(item: $renamingRoute) { route in
+                RouteNameSheet(title: "Rename route",
+                               initialName: route.displayName) { name in
+                    model.rename(route, to: name)
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }

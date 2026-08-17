@@ -30,6 +30,10 @@ final class SavedRouteStore {
         base.delete(route)
     }
 
+    func rename(_ route: SavedRoute, to name: String) throws {
+        try base.save(route.renamed(to: name))
+    }
+
     func syncWithiCloudIfAvailable() async {
         await base.syncWithiCloudIfAvailable()
     }

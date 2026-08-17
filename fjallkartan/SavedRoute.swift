@@ -17,6 +17,7 @@ struct SavedRoute: Identifiable, Codable, Hashable {
     /// downloaded the region would otherwise have to fetch. A `nil` element is
     /// a stretch the tiles had no data for.
     let elevations: [Double?]
+    var name: String?
     let schemaVersion: Int
 
     init(id: UUID = UUID(),
@@ -27,6 +28,7 @@ struct SavedRoute: Identifiable, Codable, Hashable {
          ascent: Double = 0,
          descent: Double = 0,
          elevations: [Double?] = [],
+         name: String? = nil,
          schemaVersion: Int = SavedRoute.currentSchemaVersion) {
         self.id = id
         self.createdAt = createdAt
@@ -36,11 +38,26 @@ struct SavedRoute: Identifiable, Codable, Hashable {
         self.ascent = ascent
         self.descent = descent
         self.elevations = elevations
+        self.name = name
         self.schemaVersion = schemaVersion
     }
 
     var displayName: String {
-        Self.nameFormatter.string(from: createdAt)
+        if let name, !name.isEmpty { return name }
+        return Self.defaultName(for: createdAt)
+    }
+
+    var defaultName: String { Self.defaultName(for: createdAt) }
+
+    static func defaultName(for date: Date) -> String {
+        nameFormatter.string(from: date)
+    }
+
+    func renamed(to name: String) -> SavedRoute {
+        var copy = self
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        copy.name = trimmed.isEmpty ? nil : trimmed
+        return copy
     }
 
     private static let nameFormatter: DateFormatter = {
