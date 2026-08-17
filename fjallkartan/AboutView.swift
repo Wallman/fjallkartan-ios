@@ -18,6 +18,7 @@ struct AboutButton: View {
 struct AboutSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isShowingTileMetrics = false
+    @State private var isShowingGuide = false
 
     private static let privacyPolicyURL = URL(string: "https://wallman.github.io/fjallkartan-ios/privacy.html")!
     private static let supportURL = URL(string: "https://wallman.github.io/fjallkartan-ios/support.html")!
@@ -42,6 +43,17 @@ struct AboutSheet: View {
                 }
 
                 Section {
+                    Button {
+                        isShowingGuide = true
+                    } label: {
+                        LabeledContent {
+                            Image(systemName: "chevron.right")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        } label: {
+                            Text("How to use the app")
+                        }
+                    }
                     Link(destination: Self.supportURL) {
                         LabeledContent {
                             Image(systemName: "arrow.up.right")
@@ -75,6 +87,9 @@ struct AboutSheet: View {
             }
             .sheet(isPresented: $isShowingTileMetrics) {
                 DebugSheet()
+            }
+            .sheet(isPresented: $isShowingGuide) {
+                OnboardingSheet()
             }
         }
         .presentationDetents([.large])
