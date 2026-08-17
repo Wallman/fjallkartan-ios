@@ -7,6 +7,7 @@ nonisolated struct TileSettings: Codable, Equatable {
     var kartverketUrl: String
     var norwaySlopeUrl: String
     var swedenSlopeUrl: String
+    var elevationUrl: String
 
     var isUsable: Bool {
         Self.isWellFormedVersion(minAppVersion)
@@ -14,6 +15,7 @@ nonisolated struct TileSettings: Codable, Equatable {
             && Self.isUsableTemplate(kartverketUrl)
             && Self.isUsableTemplate(norwaySlopeUrl)
             && Self.isUsableTemplate(swedenSlopeUrl)
+            && Self.isUsableTemplate(elevationUrl)
     }
 
     static func isWellFormedVersion(_ version: String) -> Bool {
@@ -49,7 +51,8 @@ nonisolated final class RemoteSettings: @unchecked Sendable {
             + "&Version=1.0.0&Format=image/png&TileMatrix={z}&TileRow={y}&TileCol={x}",
         kartverketUrl: "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png",
         norwaySlopeUrl: "https://gis3.nve.no/arcgis/rest/services/wmts/Bratthet_med_utlop_2024/MapServer/tile/{z}/{y}/{x}",
-        swedenSlopeUrl: "https://tiles.wallman.dev/slope/v1/{z}/{y}/{x}.png"
+        swedenSlopeUrl: "https://tiles.wallman.dev/slope/v1/{z}/{y}/{x}.png",
+        elevationUrl: "https://tiles.wallman.dev/elevation/v1/{z}/{y}/{x}.png"
     )
 
     private enum Key {
@@ -115,6 +118,9 @@ nonisolated final class RemoteSettings: @unchecked Sendable {
         case .swedenSlope:
             template = current.swedenSlopeUrl
             fallback = Self.builtIn.swedenSlopeUrl
+        case .elevation:
+            template = current.elevationUrl
+            fallback = Self.builtIn.elevationUrl
         }
         if let url = TileSettings.url(from: template, z: z, x: x, y: y) {
             return url

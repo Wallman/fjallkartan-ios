@@ -78,11 +78,15 @@ struct TilePyramidTests {
         #expect(Set(jobs.map(\.server)) == Set(TileServer.allCases))
         for server in TileServer.allCases {
             let zooms = Set(jobs.filter { $0.server == server }.map { Int($0.path.z) })
-            #expect(zooms == Set(TilePyramid.minZoom...server.offlineMaximumZ))
+            #expect(zooms == Set(server.offlineMinimumZ...server.offlineMaximumZ))
         }
         // Sweden publishes no slope tiles above z13, so z14 must not be requested.
         #expect(!jobs.contains { $0.server == .swedenSlope && Int($0.path.z) > 13 })
         #expect(jobs.contains { $0.server == .norwaySlope && Int($0.path.z) == TilePyramid.maxZoom })
+        // Elevation is published at one zoom only and is never drawn, so the
+        // coarser levels the picture layers need must not be fetched.
+        #expect(Set(jobs.filter { $0.server == .elevation }.map { Int($0.path.z) })
+                == [TileServer.elevation.sourceMaximumZ])
     }
 
     @Test func jobsAreOrderedLowToHighZoom() {

@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var metersPerPoint: Double = 0
     @State private var visibleMapRect = MKMapRect.world
     @State private var measurement = DistanceMeasurement()
+    @State private var elevation = ElevationProfile()
     @State private var search = PlaceSearchModel()
     @State private var isSearchPresented = false
     @State private var isPickingRegion = false
@@ -16,6 +17,7 @@ struct ContentView: View {
     @State private var isLegendPresented = false
     @State private var isAboutPresented = false
     @State private var isSavedRoutesPresented = false
+    @State private var isElevationPresented = false
     @State private var isSlopeLayerVisible = false
     @State private var offlineModel = OfflineTileStore.shared.map(OfflineRegionsModel.init)
     @State private var savedRoutesModel = (try? SavedRouteStore()).map(SavedRoutesModel.init)
@@ -36,6 +38,7 @@ struct ContentView: View {
             && !isAboutPresented
             && !isPickingRegion
             && !isSavedRoutesPresented
+            && !isElevationPresented
             && pinDetail == nil
     }
 
@@ -68,7 +71,9 @@ struct ContentView: View {
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 8) {
                     if isCompactHeight {
-                        MeasureReadoutView(measurement: measurement)
+                        MeasureReadoutView(measurement: measurement, elevation: elevation) {
+                            isElevationPresented = true
+                        }
                     }
                     ScaleBarView(metersPerPoint: metersPerPoint)
                 }
@@ -98,6 +103,7 @@ struct ContentView: View {
                     }
 
                     MeasureControlsView(measurement: measurement,
+                                        elevation: elevation,
                                         savedRoutesModel: savedRoutesModel,
                                         isHorizontal: isCompactHeight)
 
@@ -114,6 +120,7 @@ struct ContentView: View {
                             SavedRoutesSheet(model: savedRoutesModel,
                                             hasUnsavedRoute: !measurement.isEmpty) { route in
                                 measurement.load(route)
+                                elevation.load(route)
                                 routeFitToken += 1
                             }
                         }
@@ -170,8 +177,10 @@ struct ContentView: View {
             }
             .overlay(alignment: .top) {
                 if !isCompactHeight {
-                    MeasureReadoutView(measurement: measurement)
-                        .padding(.top, 16)
+                    MeasureReadoutView(measurement: measurement, elevation: elevation) {
+                        isElevationPresented = true
+                    }
+                    .padding(.top, 16)
                 }
             }
             .overlay(alignment: .bottom) {
@@ -194,6 +203,9 @@ struct ContentView: View {
             .sheet(isPresented: $isLegendPresented) {
                 LegendSheet()
             }
+            .sheet(isPresented: $isElevationPresented) {
+                ElevationProfileSheet(profile: elevation)
+            }
             .sheet(item: $pinDetail) { pin in
                 PinDetailSheet(pin: pin,
                               onSave: { updated in savedPinsModel?.save(updated) },
@@ -206,6 +218,18 @@ struct ContentView: View {
                           measurement.committedMeters >= ReviewPrompter.minimumMeasurementMeters {
                     reviewPrompter.recordCompletedMeasurement()
                 }
+            }
+            // Debounced so tracing a long route in several strokes does not
+            // start a tile fetch per stroke; `task(id:)` cancels the previous
+            // run whenever the route changes again.
+            .task(id: measurement.version) {
+                guard !measurement.isEmpty else {
+                    elevation.clear()
+                    return
+                }
+                try? await Task.sleep(for: .milliseconds(400))
+                guard !Task.isCancelled else { return }
+                await elevation.update(for: measurement.coordinates)
             }
             // Re-evaluated both when a prompt falls due and when the map goes
             // quiet again, so a prompt earned while the regions sheet was open
@@ -250,6 +274,7 @@ extension View {
 
 struct MeasureControlsView: View {
     @Bindable var measurement: DistanceMeasurement
+    let elevation: ElevationProfile
     let savedRoutesModel: SavedRoutesModel?
     var isHorizontal = false
     @State private var didSave = false
@@ -291,7 +316,7 @@ struct MeasureControlsView: View {
 
                 if let savedRoutesModel {
                     Button {
-                        savedRoutesModel.save(measurement.snapshot())
+                        savedRoutesModel.save(measurement.snapshot(elevation: elevation))
                         didSave = true
                     } label: {
                         Group {
@@ -321,6 +346,8 @@ struct MeasureControlsView: View {
 
 struct MeasureReadoutView: View {
     let measurement: DistanceMeasurement
+    let elevation: ElevationProfile
+    var onOpenElevation: () -> Void = {}
 
     var body: some View {
         if measurement.isMeasuring || !measurement.isEmpty {
@@ -332,11 +359,32 @@ struct MeasureReadoutView: View {
                     Text("Drag to trace a route")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
+                } else if elevation.hasData {
+                    HStack(spacing: 8) {
+                        Label(elevation.formattedAscent, systemImage: "arrow.up")
+                        Label(elevation.formattedDescent, systemImage: "arrow.down")
+                        if elevation.isPartial {
+                            // The route left the tiles, so the totals shown are
+                            // a floor rather than the real climb.
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .labelStyle(.titleAndIcon)
                 }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+            .animation(.easeInOut(duration: 0.2), value: elevation.hasData)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                guard elevation.hasData else { return }
+                onOpenElevation()
+            }
         }
     }
 }

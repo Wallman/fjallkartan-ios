@@ -114,12 +114,29 @@ private struct SavedRouteRow: View {
                 Text(route.displayName)
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(Color.primary)
-                Text(route.formattedDistance)
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 10) {
+                    Text(route.formattedDistance)
+                    if route.hasElevation {
+                        climb("arrow.up", route.formattedAscent)
+                        climb("arrow.down", route.formattedDescent)
+                    }
+                }
+                .font(.system(size: 13))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
             }
             Spacer()
         }
         .contentShape(Rectangle())
+    }
+
+    /// A tight arrow-and-number pair. `Label` would draw the glyph at the full
+    /// text size with its own spacing, which crowds the row.
+    private func climb(_ symbol: String, _ value: String) -> some View {
+        HStack(spacing: 1) {
+            Image(systemName: symbol)
+                .font(.system(size: 10, weight: .semibold))
+            Text(value)
+        }
     }
 }

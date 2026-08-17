@@ -19,7 +19,8 @@ struct RemoteSettingsTests {
         "lantmaterietUrl": "https://example.com/se/{z}/{y}/{x}.png",
         "kartverketUrl": "https://example.com/no/{z}/{y}/{x}.png",
         "norwaySlopeUrl": "https://example.com/slope/{z}/{y}/{x}",
-        "swedenSlopeUrl": "https://example.com/slope-se/{z}/{y}/{x}.png"
+        "swedenSlopeUrl": "https://example.com/slope-se/{z}/{y}/{x}.png",
+        "elevationUrl": "https://example.com/elevation/{z}/{y}/{x}.png"
     }
     """.data(using: .utf8)!
 

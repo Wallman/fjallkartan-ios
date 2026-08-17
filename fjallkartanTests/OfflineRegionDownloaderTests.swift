@@ -152,10 +152,13 @@ struct OfflineRegionDownloaderTests {
         let keys = store.existingTileKeys(regionID: "r1")
         for server in TileServer.allCases {
             let zooms = Set(keys.filter { $0.server == server.storeCode }.map(\.z))
-            #expect(zooms == Set(TilePyramid.minZoom...server.offlineMaximumZ))
+            #expect(zooms == Set(server.offlineMinimumZ...server.offlineMaximumZ))
         }
         // Sweden publishes no slope tiles at z14, so none may be requested.
         #expect(!keys.contains { $0.server == TileServer.swedenSlope.storeCode && $0.z > 13 })
+        // Elevation exists at one zoom only.
+        #expect(Set(keys.filter { $0.server == TileServer.elevation.storeCode }.map(\.z))
+                == [TileServer.elevation.sourceMaximumZ])
     }
 
     @Test func pauseStopsProgressAndResumeCompletes() async throws {

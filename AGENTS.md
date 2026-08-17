@@ -23,6 +23,9 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/SavedPinStore.swift` | Thin wrapper over `DocumentDirectoryStore<SavedPin>`, adding `rename(_:to:)`. |
 | `fjallkartan/SavedPinsView.swift` | `SavedPinsModel` (load/save/rename/delete for saved pins) and `SavedSheet` (the "Saved" toolbar sheet, routes-only). |
 | `fjallkartan/PinDetailSheet.swift` | Low bottom sheet (Rename + destructive Delete) opened when a pin annotation is tapped on the map. |
+| `fjallkartan/ElevationService.swift` | Samples terrain height from the prebaked z12 elevation tiles: fetch via `TileFetcher`, RGBA→metres decode, per-tile cache and in-flight dedupe. |
+| `fjallkartan/ElevationProfile.swift` | `@Observable` profile of the measured route — fixed-spacing resampling, ascent/descent with hysteresis, coverage. |
+| `fjallkartan/ElevationProfileView.swift` | `ElevationProfileSheet`: Swift Charts terrain profile opened from the distance readout. |
 | `fjallkartan/TilePyramid.swift` | Pure functions enumerating the fixed z7–z14 offline tile pyramid — positions, per-layer `Job`s and download size estimate. |
 | `fjallkartan/RemoteSettings.swift` | Remotely configurable tile URL templates (`TileSettings`: Lantmäteriet, Kartverket, Norwegian slope, Swedish slope), fetched from `settings.json` with built-in fallbacks. |
 | `fjallkartan/SlopeTileOverlay.swift` | `MKTileOverlay` for the steepness layer; one instance per `Country`, each with its own zoom limits. |
@@ -43,6 +46,7 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `tools/build_places_db.py` | Builds `places.sqlite` (place, alias, municipality tables + `place_fts` FTS5 index) bundled with the app. |
 | `tools/compose_screenshots.py` | Composes screenshots into captioned App Store screenshots in `marketing/appstore/<lang>/`. |
 | `tools/make_app_icon.py` | Regenerates the app icon. |
+| `tools/build_elevation_tiles.py` | Builds the z12 elevation tiles for both countries and uploads them to R2 (`tiles` → `verify` → `upload`). |
 | `tools/build_sweden_slope_tiles.py` | Derives the Swedish slope tiles from Lantmäteriet elevation data and uploads them to R2 (`fetch` → `tiles` → `verify` → `upload`). |
 
 ## Architecture notes
@@ -67,9 +71,17 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
   - Agreement with NVE across the border is 96.6 % exact / 99.5 % within one class over 1,395,357 pixels sampled from 60 border tiles.
   - The tiles are hosted on Cloudflare R2 (bucket `tiles`, prefix `slope/v1`), fronted by `tiles.wallman.dev`.
 
+- **Elevation**
+  - Elevation come from prebaked XYZ tiles (`https://tiles.wallman.dev/elevation/v1/{z}/{y}/{x}.png`). This makes it work offline. 
+  - The tiles are **data, not pictures**, and are never added to the map: each pixel carries `metres + 32768` as `R = value >> 8`, `G = value & 0xFF`, `B = 0`, with a fully transparent pixel meaning no data. The offset puts every Nordic height in the R ≈ 128–137 band, which is why an elevation tile looks like flat dark red with fine noise when opened in an image viewer.
+  - 1 m precision is deliberate: decimetres would put noise in the low byte and roughly triple the PNG size for no gain.
+  - Published at **z12 only** (~18 m per pixel at 62°N), which matches the 25 m spacing routes are sampled at. z13 was built and measured: it is ~60% better per point but changes ascent totals by well under 1%.
+  - Norway is exported from Kartverket's `NHM_DTM_25833` ImageServer (the same source behind the Geonorge point API, which the build script uses only as a verification oracle); Sweden is warped from the local DEM mosaic shared with the slope build. Both verified against their official point service: median error 0.60 m (NO) and 0.33 m (SE). Border tiles merge the two sources, since neither service alone covers a tile on the line.
+  - `ElevationProfile` resamples at a fixed 25 m so totals don't depend on how fast the route was traced, and applies 4 m hysteresis so metre-level model noise doesn't accumulate into phantom climb (measured: ~2.5% of the total). A no-data gap **breaks** the run rather than being bridged, so the unknown step across it is never invented.
+
 - **Offline map regions**
   - Downloads are capped to a fixed **z7–z14** pyramid (`TilePyramid`) — enough for route/terrain reading, still smaller than the online z18 ceiling, with a hard refusal above ~1.5 GB (purely a guard against selecting the whole of Scandinavia) or when `OfflineTileStore.availableCapacityBytes` shows the device doesn't have enough free space for the estimate.
-  - All four layers are downloaded, each stopping at its own `offlineMaximumZ`, so the Swedish slope tiles (published only to z13) are never requested at z14. `TilePyramid.jobs(in:)` is the single enumeration both the downloader and the size estimate use, so a progress bar can't disagree with what is actually fetched.
+  - All layers are downloaded, each within its own `offlineMinimumZ...offlineMaximumZ`, so the Swedish slope tiles (published only to z13) are never requested at z14. `TilePyramid.jobs(in:)` is the single enumeration both the downloader and the size estimate use, so a progress bar can't disagree with what is actually fetched.
   - `OfflineTileStore` persists raw (pre-`CustomTileOverlay`-processing) tile bytes in `Application Support/offline-tiles.sqlite` (excluded from backup). Tiles are deduped and refcounted across regions via `region_tiles`; `deleteRegion` only removes tiles with no remaining owner.
   - `OfflineRegionDownloader` fetches both servers for every tile position (borders need both). It reads the shared browse cache (`TileFetcher.sharedTileCache`) before going to the network, so tiles the user already panned over are copied straight into the offline store; that lookup is read-only (`storesResponses: false`) since the downloader keeps its own copy anyway and a bulk region download would otherwise evict the map's cached tiles. Progress is written to SQLite in ~50-tile batches, so `resume` (or a fresh app launch) just re-enumerates and skips tiles already present. A SQLite write failure (e.g. disk full) aborts the download and surfaces as `.failed(message)`, shown in the region row instead of silently reporting success.
   - `OfflineRegionsSheet`'s "current view" download area is an inset of `MapView`'s `visibleMapRect`; the same rect is drawn as a dashed `RegionPreviewOverlay` on the map while the sheet is open.

@@ -37,6 +37,13 @@ nonisolated enum TilePyramid {
 
     private static let slopeCoverageFactor = 0.45
 
+    /// Mean bytes of a published elevation tile, measured over all 54,801 of
+    /// them. They exist at one zoom only, and only over land in Norway and
+    /// Sweden — the coverage factor allows for the sea and border tiles a
+    /// region usually includes.
+    private static let measuredElevationBytes = 18_400.0
+    private static let elevationCoverageFactor = 0.8
+
     static let maxDownloadBytes = 1_500_000_000
 
     /// All tile positions covering `rect` across the fixed z7–z14 range, in
@@ -57,7 +64,8 @@ nonisolated enum TilePyramid {
         let region = MKCoordinateRegion(rect)
         var jobs: [Job] = []
         for z in minZoom...maxZoom {
-            let servers = layers.filter { z <= $0.offlineMaximumZ }
+            let servers = layers.filter { $0.covers(zoom: z) }
+            guard !servers.isEmpty else { continue }
             for (x, y) in tileIndices(for: region, z: z) {
                 let path = MKTileOverlayPath(x: x, y: y, z: z, contentScaleFactor: 1)
                 jobs.append(contentsOf: servers.map { Job(server: $0, path: path) })
@@ -73,8 +81,10 @@ nonisolated enum TilePyramid {
         var bytes = 0.0
         for z in minZoom...maxZoom {
             let positions = tileCount(for: region, z: z)
-            totalTiles += positions * layers.filter { z <= $0.offlineMaximumZ }.count
-            bytes += Double(positions) * (baseBytesPerPosition(atZoom: z) + slopeBytesPerPosition(atZoom: z))
+            totalTiles += positions * layers.filter { $0.covers(zoom: z) }.count
+            bytes += Double(positions) * (baseBytesPerPosition(atZoom: z)
+                                          + slopeBytesPerPosition(atZoom: z)
+                                          + elevationBytesPerPosition(atZoom: z))
         }
         return (tileCount: totalTiles, bytes: Int(bytes))
     }
@@ -95,6 +105,13 @@ nonisolated enum TilePyramid {
     static func slopeBytesPerPosition(atZoom z: Int) -> Double {
         let measured = measuredSlopeBytesPerPosition[z] ?? measuredSlopeBytesPerPosition[maxZoom] ?? 10_000
         return measured * slopeCoverageFactor
+    }
+
+    /// Bytes for one position of the elevation layer, which is published at a
+    /// single zoom and so contributes nothing at any other level.
+    static func elevationBytesPerPosition(atZoom z: Int) -> Double {
+        guard TileServer.elevation.covers(zoom: z) else { return 0 }
+        return measuredElevationBytes * elevationCoverageFactor
     }
 
     /// Tile x/y indices (Web Mercator) covering `region` at zoom `z`, with

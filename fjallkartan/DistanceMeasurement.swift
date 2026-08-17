@@ -65,10 +65,13 @@ final class DistanceMeasurement {
 
     // MARK: - Saved routes
 
-    func snapshot() -> SavedRoute {
+    func snapshot(elevation: ElevationProfile? = nil) -> SavedRoute {
         SavedRoute(meters: committedMeters,
                    coordinates: coordinates.map { Coord($0) },
-                   strokeSizes: strokeSizes)
+                   strokeSizes: strokeSizes,
+                   ascent: elevation?.ascent ?? 0,
+                   descent: elevation?.descent ?? 0,
+                   elevations: elevation?.points.map(\.elevation) ?? [])
     }
 
     func load(_ route: SavedRoute) {
@@ -83,12 +86,12 @@ final class DistanceMeasurement {
 
     /// Geodesic distance, which stays accurate at Nordic latitudes where a
     /// Mercator-space measurement would overstate by a factor of ~2.5.
-    static func meters(from a: CLLocationCoordinate2D, to b: CLLocationCoordinate2D) -> Double {
+    nonisolated static func meters(from a: CLLocationCoordinate2D, to b: CLLocationCoordinate2D) -> Double {
         CLLocation(latitude: a.latitude, longitude: a.longitude)
             .distance(from: CLLocation(latitude: b.latitude, longitude: b.longitude))
     }
 
-    static func length(of coordinates: [CLLocationCoordinate2D]) -> Double {
+    nonisolated static func length(of coordinates: [CLLocationCoordinate2D]) -> Double {
         guard coordinates.count >= 2 else { return 0 }
         return zip(coordinates, coordinates.dropFirst())
             .reduce(0) { $0 + meters(from: $1.0, to: $1.1) }
