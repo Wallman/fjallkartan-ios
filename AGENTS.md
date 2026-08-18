@@ -35,7 +35,10 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/SlopeTileOverlay.swift` | `MKTileOverlay` for the steepness layer; one instance per `Country`, each with its own zoom limits. |
 | `fjallkartan/TileUpscaler.swift` | Shared helper that builds a deep-zoom tile by cropping and magnifying the ancestor containing it; used by both tile layers. |
 | `fjallkartan/LegendCatalog.swift` | All legend entries — grouped into sections. |
-| `fjallkartan/AboutView.swift` | `AboutButton` and `AboutSheet`: data-source attribution (Kartverket, Lantmäteriet, NVE) plus privacy-policy and support links. |
+| `fjallkartan/LegendView.swift` | `LegendCountry` and `LegendSheet`; renders the bundled per-country legend PDFs (`legend_no` / `legend_se`) via PDFKit. |
+| `fjallkartan/AboutView.swift` | `AboutButton` and `AboutSheet`: data-source attribution (Kartverket, Lantmäteriet, NVE) plus privacy-policy and support links, and the row that reopens the get-started guide. |
+| `fjallkartan/OnboardingView.swift` | `OnboardingPage`/`OnboardingNote` content plus `OnboardingSheet`, the paged get-started guide shown on first launch. |
+| `fjallkartan/GuideTipView.swift` | `GuideTip` (one-time contextual hints, one `UserDefaults` key each) and the `GuideTipBadge` that renders them over the map. |
 | `fjallkartan/ReviewPrompter.swift` | Throttling logic deciding when to ask for an App Store review. |
 | `fjallkartan/NetworkCheck.swift` | One-shot `NWPathMonitor` connectivity check (no persistent monitor); used to postpone the review prompt while offline. |
 | `fjallkartan/OfflineTileStore.swift` | SQLite blob store for downloaded tiles (`tiles`, `region_tiles`, `regions` tables), with refcounted region deletion and ancestor lookup for upscaling. |
@@ -109,6 +112,12 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
   - On touch-up the stroke is simplified in screen space, converted to coordinates and appended to `DistanceMeasurement`; consecutive strokes are joined by a straight connector so the user can pan between them.
   - Distances are geodesic (`CLLocation.distance(from:)`). A Mercator-space measurement would overstate by ~2.7x at 68°N.
   - `MapView` rebuilds the route overlay only when `DistanceMeasurement.version` changes. `ContentView` passes `isMeasuring` / `routeVersion` as plain values so Observation triggers `updateUIView`.
+
+- **Get started guide**
+  - Two layers. `OnboardingSheet` is the paged tour, auto-presented once (`@AppStorage("guide.didShowOnboarding")`, 600 ms after launch so it opens over a drawn map) and reachable afterwards from `AboutSheet`. `GuideTip` is the contextual layer: a hint shown the first time a mode is actually entered, which is the only moment a gesture can be acted on.
+  - Both cover the interactions that are invisible in the UI: two-finger pan/pinch while drawing, tapping the distance readout for the profile, long-press to drop a pin or rename a saved route, the search callout's bookmark/✗, and where a saved route reappears. The tile-metrics debug sheet is deliberately left out.
+  - `ContentView` owns tip arbitration: `updateVisibleTip()` shows the highest-priority unseen tip whose condition holds, marks it seen **on display** (an ignored tip has had its chance), and retires it when the condition ends or after 7 s. Only one tip is ever on screen, so placement is a single overlay.
+  - Guide strings are `LocalizedStringResource` rather than `LocalizedStringKey` so `OnboardingGuideTests` can assert every string is in the catalog (a missing entry resolves back to its own key) and every SF Symbol exists — both fail silently at runtime otherwise.
 
 - **App Store review prompt**
   - Two conditions must line up: **≥3 app opens** (engagement) and a success — either an offline region download reaching `.completed`, or **3 finished measurements** of ≥500 m (`ReviewPrompter.minimumMeasurementMeters`). Only a success arms the prompt; `noteBecameActive()` just accrues opens, so crossing the open threshold alone never triggers anything.

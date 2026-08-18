@@ -19,6 +19,10 @@ struct ContentView: View {
     @State private var isSavedRoutesPresented = false
     @State private var isElevationPresented = false
     @State private var isSlopeLayerVisible = false
+    @AppStorage("guide.didShowOnboarding") private var didShowOnboarding = false
+    @State private var isOnboardingPresented = false
+    @State private var visibleTip: GuideTip?
+    @State private var didSaveRoute = false
     @State private var offlineModel = OfflineTileStore.shared.map(OfflineRegionsModel.init)
     @State private var savedRoutesModel = (try? SavedRouteStore()).map(SavedRoutesModel.init)
     @State private var savedPinsModel = (try? SavedPinStore()).map(SavedPinsModel.init)
@@ -39,10 +43,55 @@ struct ContentView: View {
             && !isPickingRegion
             && !isSavedRoutesPresented
             && !isElevationPresented
+            && !isOnboardingPresented
             && pinDetail == nil
     }
 
     private var isCompactHeight: Bool { verticalSizeClass == .compact }
+
+    private var tipBottomPadding: CGFloat {
+        if isPickingRegion { return 130 }
+        if isCompactHeight { return 120 }
+        return 76
+    }
+
+    private func isStillRelevant(_ tip: GuideTip) -> Bool {
+        switch tip {
+        case .measuringGestures: measurement.isMeasuring
+        case .elevationReadout: elevation.hasData && !isElevationPresented
+        case .regionPreview: isPickingRegion
+        case .routeSaved: didSaveRoute
+        }
+    }
+
+    private func noteRouteSaved() {
+        guard !GuideTip.routeSaved.hasBeenSeen else { return }
+        Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            didSaveRoute = true
+            updateVisibleTip()
+        }
+    }
+
+    private func dismissTip() {
+        visibleTip = nil
+        didSaveRoute = false
+        updateVisibleTip()
+    }
+
+    /// Shows the highest-priority unseen tip whose moment has arrived, and
+    /// retires the visible one as soon as its moment has passed.
+    private func updateVisibleTip() {
+        if let visibleTip, !isStillRelevant(visibleTip) {
+            self.visibleTip = nil
+        }
+        guard visibleTip == nil, !isOnboardingPresented else { return }
+        let candidate = [GuideTip.routeSaved, .measuringGestures, .regionPreview, .elevationReadout]
+            .first { isStillRelevant($0) && !$0.hasBeenSeen }
+        guard let candidate else { return }
+        candidate.markSeen()
+        visibleTip = candidate
+    }
 
     var body: some View {
         MapView(metersPerPoint: $metersPerPoint,
@@ -105,7 +154,8 @@ struct ContentView: View {
                     MeasureControlsView(measurement: measurement,
                                         elevation: elevation,
                                         savedRoutesModel: savedRoutesModel,
-                                        isHorizontal: isCompactHeight)
+                                        isHorizontal: isCompactHeight,
+                                        onRouteSaved: noteRouteSaved)
 
                     Button {
                         isSlopeLayerVisible.toggle()
@@ -198,6 +248,15 @@ struct ContentView: View {
                     .padding(.bottom, 16)
                 }
             }
+            .overlay(alignment: .bottom) {
+                if let visibleTip {
+                    GuideTipBadge(tip: visibleTip) { dismissTip() }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, tipBottomPadding)
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                }
+            }
+            .animation(.easeInOut(duration: 0.25), value: visibleTip)
             .sheet(isPresented: $isSearchPresented) {
                 PlaceSearchSheet(model: search)
             }
@@ -211,6 +270,32 @@ struct ContentView: View {
                 PinDetailSheet(pin: pin,
                               onSave: { updated in savedPinsModel?.save(updated) },
                               onDelete: { savedPinsModel?.delete(pin) })
+            }
+            .sheet(isPresented: $isOnboardingPresented) {
+                OnboardingSheet()
+            }
+            // Delayed so the guide opens over a drawn map rather than a blank one.
+            .task {
+                guard !didShowOnboarding else { return }
+                try? await Task.sleep(for: .milliseconds(600))
+                guard !Task.isCancelled else { return }
+                didShowOnboarding = true
+                isOnboardingPresented = true
+            }
+            .onChange(of: TipTrigger(isMeasuring: measurement.isMeasuring,
+                                     isPickingRegion: isPickingRegion,
+                                     hasElevation: elevation.hasData,
+                                     isElevationPresented: isElevationPresented,
+                                     isOnboardingPresented: isOnboardingPresented,
+                                     didSaveRoute: didSaveRoute),
+                      initial: true) { _, _ in
+                updateVisibleTip()
+            }
+            .task(id: visibleTip) {
+                guard visibleTip != nil else { return }
+                try? await Task.sleep(for: .seconds(7))
+                guard !Task.isCancelled else { return }
+                dismissTip()
             }
             .onChange(of: measurement.isMeasuring) { _, isMeasuring in
                 if isMeasuring {
@@ -250,6 +335,15 @@ private struct ReviewPromptTrigger: Equatable {
     let isQuiet: Bool
 }
 
+private struct TipTrigger: Equatable {
+    let isMeasuring: Bool
+    let isPickingRegion: Bool
+    let hasElevation: Bool
+    let isElevationPresented: Bool
+    let isOnboardingPresented: Bool
+    let didSaveRoute: Bool
+}
+
 struct ButtonStyleModifier: ViewModifier {
     static let diameter: CGFloat = 44
 
@@ -278,6 +372,7 @@ struct MeasureControlsView: View {
     let elevation: ElevationProfile
     let savedRoutesModel: SavedRoutesModel?
     var isHorizontal = false
+    var onRouteSaved: () -> Void = {}
     @State private var isNamingRoute = false
 
     var body: some View {
@@ -331,6 +426,7 @@ struct MeasureControlsView: View {
                                 measurement.snapshot(elevation: elevation).renamed(to: name)
                             )
                             measurement.markSaved()
+                            onRouteSaved()
                         }
                     }
                 }
