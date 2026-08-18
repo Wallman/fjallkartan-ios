@@ -31,14 +31,17 @@ struct RemoteSettingsTests {
         #expect(settings.tileURL(server: .kartverket, z: 10, x: 2, y: 3).absoluteString
                 == "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/10/3/2.png")
 
-        let se = settings.tileURL(server: .lantmateriet, z: 10, x: 2, y: 3).absoluteString
-        #expect(se.hasPrefix("https://minkarta.lantmateriet.se/map/topowebbcache?"))
-        #expect(se.contains("TileMatrix=10"))
-        #expect(se.contains("TileRow=3"))
-        #expect(se.contains("TileCol=2"))
+        #expect(settings.tileURL(server: .lantmateriet, z: 10, x: 2, y: 3).absoluteString
+                == "https://tiles.wallman.dev/v1/10/3/2.png")
 
         #expect(settings.tileURL(server: .norwaySlope, z: 10, x: 2, y: 3).absoluteString
                 == "https://gis3.nve.no/arcgis/rest/services/wmts/Bratthet_med_utlop_2024/MapServer/tile/10/3/2")
+
+        #expect(settings.tileURL(server: .swedenSlope, z: 10, x: 2, y: 3).absoluteString
+                == "https://tiles.wallman.dev/slope/v1/10/3/2.png")
+
+        #expect(settings.tileURL(server: .elevation, z: 10, x: 2, y: 3).absoluteString
+                == "https://tiles.wallman.dev/elevation/v1/10/3/2.png")
     }
 
     @Test func appliedSettingsReplaceOldSettings() {
