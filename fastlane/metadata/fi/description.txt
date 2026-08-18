@@ -1,0 +1,16 @@
+Tunturikartta tuo Norjan ja Ruotsin viralliset topografiset kartat samaan sovellukseen, saumattomasti yhteen liitettyinä, joten reitti ei katkea valtakunnan rajalle.
+
+Kartat tulevat suoraan Kartverketiltä ja Lantmäterietiltä — samaa kartografiaa kuin paperikartassa, korkeuskäyrineen, merkittyine polkuineen, kämppineen, siltoineen ja talvireitteineen.
+
+TOIMII ILMAN VERKKOA
+Lataa alue ennen lähtöä ja kanna koko kartta puhelimessasi. Kuuluvuutta ei tarvita.
+
+MITTAA REITTI
+Vedä viiva sormella ja lue sen pituus. Etäisyydet ovat geodeettisia ja pitävät siksi paikkansa näinkin pohjoisessa, missä tasokartta liioittelisi niitä.
+
+HAE 1,6 MILJOONASTA PAIKASTA
+Kaikki ruotsalaiset ja norjalaiset paikannimet, haettavissa ilman yhteyttä. Etsi huippu, järvi tai kämppä nimellä ja siirry suoraan sinne.
+
+Ei tiliä, ei rekisteröitymistä, ei seurantaa. Sijaintisi ei poistu puhelimestasi.
+
+Kartta-aineisto © Kartverket ja © Lantmäteriet.

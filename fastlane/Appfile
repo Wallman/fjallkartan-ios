@@ -1,0 +1,5 @@
+# App Store Connect identity. The team id matches DEVELOPMENT_TEAM in the
+# Xcode project; keeping them in step avoids deliver targeting a different team
+# than the build.
+app_identifier("fjallkartan.fjallkartan")
+team_id("6U3WA7JRVA")

@@ -1,0 +1,1 @@
+Kartverketin ja Lantmäterietin kartat yhdessä sovelluksessa. Lataa tarvitsemasi alueet ennen lähtöä ja lue maastoa ilman kuuluvuutta.

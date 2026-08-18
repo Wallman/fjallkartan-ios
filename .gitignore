@@ -1,6 +1,10 @@
 xcuserdata/
 *.xcuserstate
-marketing/appstore/
 marketing/raw/
 marketing/raw-ipad/
 .envrc
+
+# Screenshots are ~220 MB of PNGs derived from the raw captures above.
+fastlane/screenshots/
+fastlane/README.md
+fastlane/report.xml

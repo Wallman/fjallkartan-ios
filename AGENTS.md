@@ -48,13 +48,14 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/Localizable.xcstrings` | All in-app UI strings. |
 | `fjallkartan/PrivacyInfo.xcprivacy` | Privacy manifest: no tracking, no collected data, and the required-reason API declarations. |
 | `fjallkartan/fjallkartan.entitlements` | iCloud Documents entitlements that `DocumentDirectoryStore` needs for its ubiquity container. |
-| `marketing/store-copy.md` | Per-locale App Store name/subtitle/description copy plus the support and privacy URLs. |
+| `fastlane/metadata/` | **Source of truth for the App Store copy**, checked in and hand-edited: one directory per App Store locale holding name/subtitle/promotional text/keywords/description plus the support and privacy URLs, and `copyright.txt` and the two category files at the top level. |
+| `fastlane/Fastfile` | `check_metadata` / `metadata` / `screenshots` / `verify_screenshots` / `store` / `pull` lanes, authenticated with an App Store Connect API key. `check_metadata!` enforces Apple's per-field character limits. |
 | `docs/privacy.html`, `docs/support.html` | GitHub Pages pages linked from `AboutSheet` and App Store. |
 | `tools/extract_legend_symbols.py` | Clips the 27 Swedish legend symbols out of `tools/legend_se_source.pdf` into vector assets (`preview` → `verify` → `assets`); `verify` diffs each against an embed-and-crop oracle. |
 | `tools/build_no_legend_symbols.py` | Draws the 16 Norwegian legend symbols from Kartverket's `Skjermkartografi.otf` using the glyph codes, colours and dash patterns in their published specification (`fetch` → `preview` → `assets`). |
 | `tools/fill_legend_translations.py` | Fills the legend strings in `Localizable.xcstrings` from one table, so the 43 symbol names stay consistent across the 10 translations. |
 | `tools/build_places_db.py` | Builds `places.sqlite` (place, alias, municipality tables + `place_fts` FTS5 index) bundled with the app. |
-| `tools/compose_screenshots.py` | Composes screenshots into captioned App Store screenshots in `marketing/appstore/<lang>/`. |
+| `tools/compose_screenshots.py` | Composes captioned App Store screenshots straight into `fastlane/screenshots/<App Store locale>/`, ready for deliver. Owns the repo-language → App Store-locale mapping (`DELIVER_LOCALES`). |
 | `tools/make_app_icon.py` | Regenerates the app icon. |
 | `tools/build_elevation_tiles.py` | Builds the z12 elevation tiles for both countries and uploads them to R2 (`tiles` → `verify` → `upload`). |
 | `tools/build_sweden_slope_tiles.py` | Derives the Swedish slope tiles from Lantmäteriet elevation data and uploads them to R2 (`fetch` → `tiles` → `verify` → `upload`). |
@@ -129,6 +130,14 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
   - `compose_screenshots.py` keeps geometry and colours in `SCENES` and the marketing copy in `COPY[language][scene]`, so adding a language means adding one `COPY` entry plus one `locale_for()` case. Background gradients are built from `make_app_icon.py`'s `LIGHT` palette, imported at runtime so the screenshots and the icon can't drift apart.
   - Two guards fail the build rather than shipping a bad frame: `check_contrast` enforces WCAG ratios of the caption against its background, and `fitted_font` shrinks any line wider than `TEXT_SAFE_WIDTH` (German and Finnish need it) before a caption can collide with the device frame.
   - SF Pro has no CJK glyphs, so `font()` swaps in Hiragino Sans GB for `zh-*` — and unlike the SF Pro variable font, that face must not be given `set_variation_by_name`.
+
+- **App Store delivery**
+  - fastlane/metadata/` is checked in and hand-edited — it is the source of truth, not a build artefact.
+  - Because the tree is committed, `fastlane ios pull` overwrites it in place and drift shows up as `git diff`.
+  - Metadata edits are only accepted while the version is in *Prepare for Submission*; every other state answers 409.
+  - Everything authenticates with an App Store Connect API key, except two one-time actions that Apple offers no key-based API for: the **App Privacy** questionnaire ("Data Not Collected") and creating the app record. Both stay manual by choice, rather than downgrading the whole pipeline to Apple ID + 2FA.
+  - Release notes are per version, so `release_notes.txt` is simply absent from the tree until a release has notes to show; deliver leaves the existing What's New untouched when the file is missing. Apple ignores the field for a first submission.
+  - **deliver's screenshot upload is not idempotent, so `verify_screenshots!` runs after every screenshot upload.** deliver decides whether a file arrived by looking for its checksum in `source_file_checksum` on App Store Connect, but Apple only fills that in once processing finishes — so anything still processing reads as *missing*, and deliver deletes the incomplete uploads and re-sends the whole set, appending a second copy of everything that did finish in time. One `fastlane ios store` run left 38 surplus images, unevenly spread (sets held 4 to 10 for 4 local files, `it` iPad hitting deliver's 10-per-set cap). The repair keeps the *first* copy of each filename, which is both the original upload and the one in the right display position.
 
 - **Place search**
   - `PlaceSearch` opens `places.sqlite` read-only and runs a single prepared statement (`searchSQL`) that matches, scores, deduplicates and hydrates results in one pass via `place_fts` (FTS5), `alias`, `place` and `municipality`.

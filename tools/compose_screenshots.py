@@ -11,6 +11,14 @@ language's composed screenshot.
 
     tools/compose_screenshots.py [--raw-root DIR] [--out DIR] [--lang LANG]
         [--device iphone|ipad] [scene ...]
+
+Output goes straight into the layout fastlane's deliver expects — one directory
+per App Store locale, every device flat inside it — so there is no staging step
+between composing and uploading. deliver picks the display family from each
+PNG's pixel dimensions rather than its name or folder, which is what lets both
+devices share a directory; it orders within a family alphanumerically, so the
+`01-`..`04-` scene prefixes give the intended order and the non-default device
+takes a name prefix to keep its own four contiguous.
 """
 
 from __future__ import annotations
@@ -66,6 +74,24 @@ HIRAGINO_FACE = {"Bold": 2, "Semibold": 2, "Medium": 0, "Regular": 0}
 DEFAULT_LANGUAGE = "en"
 LANGUAGES = ["en", "sv", "nb", "da", "fi", "de", "fr", "it", "es", "nl", "zh-Hans"]
 
+# Repo language tag -> App Store Connect locale, used for the output directory
+# names. Apple's codes are not guessable: `no` not `nb`, `sv` not `sv-SE`, but
+# `de-DE` not `de`. deliver refuses a directory name it doesn't recognise, so a
+# wrong code fails the upload rather than quietly skipping that language.
+DELIVER_LOCALES = {
+    "en": "en-US",
+    "sv": "sv",
+    "nb": "no",
+    "da": "da",
+    "fi": "fi",
+    "de": "de-DE",
+    "nl": "nl-NL",
+    "fr": "fr-FR",
+    "it": "it",
+    "es": "es-ES",
+    "zh-Hans": "zh-Hans",
+}
+
 BEZEL = 9
 
 # Where the caption block starts; balanced against the device frame below it.
@@ -80,7 +106,10 @@ DEVICES = {
         "canvas": (1320, 2868),
         "raw_dir_name": "raw",
         "per_locale_raw": False,
-        "out_subdir": None,
+        # Filename prefix inside the locale directory. The default device takes
+        # none so its scenes sort first; the other is prefixed, which also keeps
+        # each family's four screenshots contiguous in deliver's ordering.
+        "out_prefix": "",
         "device_width": 0.76,
         "device_top": 0.255,
         "device_corner": 0.125,  # 55pt corner radius over a 440pt-wide screen
@@ -90,7 +119,7 @@ DEVICES = {
         "canvas": (2064, 2752),
         "raw_dir_name": "raw-ipad",
         "per_locale_raw": False,
-        "out_subdir": "ipad-13",
+        "out_prefix": "ipad-",
         "device_width": 0.69,
         "device_top": 0.266,
         "device_corner": 0.045,  # 18pt corner radius over a 1024pt-wide screen
@@ -337,7 +366,7 @@ def compose(scene: dict, raw_dir: Path, out_dir: Path, device: dict,
     canvas.alpha_composite(frame, (left, top))
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / f"{scene['out']}.png"
+    path = out_dir / f"{device['out_prefix']}{scene['out']}.png"
     canvas.convert("RGB").save(path, "PNG")
     return path
 
@@ -347,8 +376,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--raw-root", type=Path, default=root / "marketing",
                         help="directory containing raw/ and raw-ipad/ capture folders")
-    parser.add_argument("--out", type=Path, default=root / "marketing" / "appstore",
-                        help="output directory; per-language subdirectories are created")
+    parser.add_argument("--out", type=Path, default=root / "fastlane" / "screenshots",
+                        help="output directory; one subdirectory per App Store "
+                             "locale is created, ready for fastlane deliver")
     parser.add_argument("--lang", action="append", choices=LANGUAGES, metavar="LANG",
                         help=f"language to compose, repeatable (default: all of "
                              f"{', '.join(LANGUAGES)})")
@@ -365,9 +395,7 @@ def main() -> None:
         raw_base = args.raw_root / device["raw_dir_name"]
         for language in args.lang or LANGUAGES:
             raw_dir = raw_base / language if device["per_locale_raw"] else raw_base
-            out_dir = args.out / language
-            if device["out_subdir"]:
-                out_dir = out_dir / device["out_subdir"]
+            out_dir = args.out / DELIVER_LOCALES[language]
             for scene in SCENES:
                 if wanted and scene["raw"] not in wanted:
                     continue

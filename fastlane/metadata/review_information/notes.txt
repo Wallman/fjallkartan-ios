@@ -1,0 +1,40 @@
+Fjällkartan is a standalone offline topographic map app. There is no account, login, purchase, subscription, or shared user-generated content. Nothing needs to be set up to review it: launch the app and every feature is available. Note that the app only has maps for Sweden/Norway, so you may not see your location outside that area.
+
+1. Tested devices
+
+• iPhone 16 — iOS 26.6 (physical device)
+• iPad — iPadOS 26 (Simulator only)
+Minimum supported OS: iOS/iPadOS 17.0. Universal app (iPhone + iPad).
+
+2. Functions, target audience, problem solved
+
+Fjällkartan shows official government topographic maps of Norway and Sweden in one seamless map, including across the national border, and makes them usable without a mobile signal.
+
+• Target audience: hikers, skiers, hunters, fishers and other outdoor users in the Scandinavian mountains, plus anyone planning a trip there.
+• Problem: mountain areas in Norway and Sweden have little or no cellular coverage, and the two countries' official maps are normally only available separately, so a border-crossing route needs two maps.
+• Value: one continuous cross-border topographic map, downloadable for fully offline use, with distance measurement along a hand-drawn route, place-name search, and saved routes that sync through the user's own iCloud.
+
+3. Setting up and accessing the main features
+
+No credentials, sample files or configuration are required.
+
+1. Map — launch the app; the topographic map appears immediately. Pan and pinch to zoom. Location is not requested at launch: the permission prompt appears only when you tap the location button in the top right. The app works normally if it is declined; only the blue user-location dot is omitted.
+2. Search — tap the search field, type a Nordic place name (e.g. "Kebnekaise" or "Galdhøpiggen"); tap a result to move the map there. Search runs offline against a database bundled inside the app.
+3. Measure distance — tap the ruler button, then draw along the intended route with a finger. The distance is shown live. Multiple strokes can be drawn; pan between strokes and they are joined. Tap the ruler again to stop.
+4. Save / load a route — with a measured route on screen, open the saved routes sheet, save it, and load or delete it later. Routes are stored in the user's own app container and, if signed in to iCloud, their private iCloud Documents container. No server of ours is involved.
+5. Offline maps — open the offline regions sheet, position the map over the area to download, and start the download. When it finishes, enable Airplane Mode: the downloaded area still renders at every zoom level.
+
+4. External services, tools and platforms
+
+Only two, both official national mapping agencies, used solely to fetch map image tiles over HTTPS:
+
+• Kartverket (Norwegian Mapping Authority) — public topographic WMTS tile service,  cache.kartverket.no .
+• Lantmäteriet (Swedish Mapping, Cadastral and Land Registration Authority) — public "Topografisk webbkarta" service,  minkarta.lantmateriet.se .
+
+The map imagery is third-party material used under the providers' open-data terms; both are licensed Creative Commons Attribution 4.0 (CC BY 4.0). Both providers are attributed in the app: the copyright line "©Kartverket ©Lantmäteriet" is displayed persistently on the map, and the About screen links to each provider's website.
+
+The app also fetches a small static JSON configuration file from our own static host,  https://tiles.wallman.dev/settings.json , at most once every six hours. It contains only the tile-service URL templates, so that if either agency changes its endpoint the app keeps working without an update; the app ships with working built-in defaults if the file is unreachable.
+
+5. Regional differences
+
+There are no feature differences; the only content difference is the map data, which covers Norway and Sweden. Outside that area the map is intentionally empty. This is stated in the App Store description and is the same for users in every country.
