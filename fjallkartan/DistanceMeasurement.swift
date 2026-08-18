@@ -32,6 +32,8 @@ final class DistanceMeasurement {
 
     private(set) var hasUnsavedChanges = false
 
+    private(set) var loadedRouteName: String?
+
     var totalMeters: Double { committedMeters + (previewMeters ?? 0) }
     var isEmpty: Bool { coordinates.isEmpty }
     var canUndo: Bool { !strokeSizes.isEmpty }
@@ -65,6 +67,7 @@ final class DistanceMeasurement {
         committedMeters = 0
         previewMeters = nil
         hasUnsavedChanges = false
+        loadedRouteName = nil
         version += 1
     }
 
@@ -85,12 +88,14 @@ final class DistanceMeasurement {
         committedMeters = route.meters
         previewMeters = nil
         hasUnsavedChanges = false
+        loadedRouteName = route.displayName
         isMeasuring = false
         version += 1
     }
 
-    func markSaved() {
+    func markSaved(as name: String? = nil) {
         hasUnsavedChanges = false
+        if let name { loadedRouteName = name }
     }
 
     // MARK: - Distance

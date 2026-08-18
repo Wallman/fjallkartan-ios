@@ -122,6 +122,9 @@ struct ContentView: View {
                     if isCompactHeight {
                         MeasureReadoutView(measurement: measurement, elevation: elevation) {
                             isElevationPresented = true
+                        } onClose: {
+                            measurement.clear()
+                            elevation.clear()
                         }
                     }
                     ScaleBarView(metersPerPoint: metersPerPoint)
@@ -230,6 +233,9 @@ struct ContentView: View {
                 if !isCompactHeight {
                     MeasureReadoutView(measurement: measurement, elevation: elevation) {
                         isElevationPresented = true
+                    } onClose: {
+                        measurement.clear()
+                        elevation.clear()
                     }
                     .padding(.top, 16)
                 }
@@ -422,10 +428,9 @@ struct MeasureControlsView: View {
                     .sheet(isPresented: $isNamingRoute) {
                         RouteNameSheet(title: "Name route",
                                        initialName: savedRoutesModel.nextDefaultName()) { name in
-                            savedRoutesModel.save(
-                                measurement.snapshot(elevation: elevation).renamed(to: name)
-                            )
-                            measurement.markSaved()
+                            let saved = measurement.snapshot(elevation: elevation).renamed(to: name)
+                            savedRoutesModel.save(saved)
+                            measurement.markSaved(as: saved.displayName)
                             onRouteSaved()
                         }
                     }
@@ -440,43 +445,73 @@ struct MeasureReadoutView: View {
     let measurement: DistanceMeasurement
     let elevation: ElevationProfile
     var onOpenElevation: () -> Void = {}
+    var onClose: () -> Void = {}
 
     var body: some View {
-        if measurement.isMeasuring || !measurement.isEmpty {
-            VStack(spacing: 2) {
-                Text(measurement.formattedDistance)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                if measurement.isEmpty {
-                    Text("Drag to trace a route")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                } else if elevation.hasData {
-                    HStack(spacing: 8) {
-                        Label(elevation.formattedAscent, systemImage: "arrow.up")
-                        Label(elevation.formattedDescent, systemImage: "arrow.down")
-                        if elevation.isPartial {
-                            // The route left the tiles, so the totals shown are
-                            // a floor rather than the real climb.
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
-                        }
+        let hasRoute = !measurement.isEmpty
+
+        if measurement.isMeasuring || hasRoute {
+            HStack(spacing: 8) {
+                VStack(spacing: 2) {
+                    if let name = measurement.loadedRouteName, hasRoute {
+                        Text(verbatim: name)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                     }
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    .labelStyle(.titleAndIcon)
+                    Text(measurement.formattedDistance)
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                    if measurement.isEmpty {
+                        Text("Drag to trace a route")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    } else if elevation.hasData {
+                        HStack(spacing: 8) {
+                            Label(elevation.formattedAscent, systemImage: "arrow.up")
+                            Label(elevation.formattedDescent, systemImage: "arrow.down")
+                            if elevation.isPartial {
+                                // The route left the tiles, so the totals shown are
+                                // a floor rather than the real climb.
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .labelStyle(.titleAndIcon)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    guard elevation.hasData else { return }
+                    onOpenElevation()
+                }
+
+                if hasRoute {
+                    Divider().frame(height: 24)
+
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("Remove route from map"))
                 }
             }
-            .padding(.horizontal, 12)
+            .frame(maxWidth: 260)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.leading, 12)
+            .padding(.trailing, hasRoute ? 4 : 12)
             .padding(.vertical, 7)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
             .animation(.easeInOut(duration: 0.2), value: elevation.hasData)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                guard elevation.hasData else { return }
-                onOpenElevation()
-            }
+            .animation(.easeInOut(duration: 0.2), value: hasRoute)
         }
     }
 }

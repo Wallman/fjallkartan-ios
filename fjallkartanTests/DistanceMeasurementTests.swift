@@ -193,6 +193,37 @@ struct DistanceMeasurementTests {
         #expect(m.version > versionBeforeLoad)
         #expect(m.previewMeters == nil)
     }
+
+    @Test func loadNamesTheRouteAndClearForgetsIt() {
+        let m = DistanceMeasurement()
+        m.appendStroke(Self.north(abisko, steps: 2))
+        #expect(m.loadedRouteName == nil)
+
+        let saved = m.snapshot().renamed(to: "Kungsleden")
+        let fresh = DistanceMeasurement()
+        fresh.load(saved)
+        #expect(fresh.loadedRouteName == "Kungsleden")
+
+        // Editing a loaded route keeps it identified as that route.
+        fresh.appendStroke(Self.north(abisko, steps: 1))
+        #expect(fresh.loadedRouteName == "Kungsleden")
+
+        fresh.clear()
+        #expect(fresh.loadedRouteName == nil)
+    }
+
+    @Test func savingAdoptsTheChosenName() {
+        let m = DistanceMeasurement()
+        m.appendStroke(Self.north(abisko, steps: 2))
+
+        m.markSaved(as: "Sarek loop")
+        #expect(m.loadedRouteName == "Sarek loop")
+        #expect(!m.hasUnsavedChanges)
+
+        // Marking saved without a name must not wipe an existing one.
+        m.markSaved()
+        #expect(m.loadedRouteName == "Sarek loop")
+    }
 }
 
 struct LineSimplifierTests {
