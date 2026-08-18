@@ -8,6 +8,8 @@ struct ContentView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var metersPerPoint: Double = 0
     @State private var visibleMapRect = MKMapRect.world
+    @State private var zoomLevel: Double = 0
+    @AppStorage(DebugSettings.showsZoomOverlayKey) private var showsZoomOverlay = false
     @State private var measurement = DistanceMeasurement()
     @State private var elevation = ElevationProfile()
     @State private var search = PlaceSearchModel()
@@ -207,6 +209,7 @@ struct ContentView: View {
     var body: some View {
         MapView(metersPerPoint: $metersPerPoint,
                 visibleMapRect: $visibleMapRect,
+                zoomLevel: $zoomLevel,
                 measurement: measurement,
                 isMeasuring: measurement.isMeasuring,
                 routeVersion: measurement.version,
@@ -237,6 +240,9 @@ struct ContentView: View {
                             measurement.clear()
                             elevation.clear()
                         }
+                    }
+                    if showsZoomOverlay {
+                        ZoomLevelBadge(zoomLevel: zoomLevel)
                     }
                     ScaleBarView(metersPerPoint: metersPerPoint)
                 }
@@ -573,6 +579,21 @@ struct MeasureReadoutView: View {
             .animation(.easeInOut(duration: 0.2), value: elevation.hasData)
             .animation(.easeInOut(duration: 0.2), value: hasRoute)
         }
+    }
+}
+
+/// Debug-only readout of the camera zoom level, toggled from `DebugSheet`.
+struct ZoomLevelBadge: View {
+    let zoomLevel: Double
+
+    var body: some View {
+        Text(verbatim: String(format: "z %.1f", zoomLevel))
+            .font(.system(size: 12, weight: .semibold))
+            .monospacedDigit()
+            .foregroundStyle(Color.primary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(.thinMaterial, in: Capsule())
     }
 }
 

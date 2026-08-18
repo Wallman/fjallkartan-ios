@@ -1,11 +1,16 @@
 import SwiftUI
 
+enum DebugSettings {
+    static let showsZoomOverlayKey = "debug.showsZoomOverlay"
+}
+
 struct DebugSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     private let metrics: TileMetrics
     @State private var snapshot: TileMetrics.Snapshot
     @State private var isConfirmingReset = false
+    @AppStorage(DebugSettings.showsZoomOverlayKey) private var showsZoomOverlay = false
 
     init(metrics: TileMetrics = .shared) {
         self.metrics = metrics
@@ -15,6 +20,12 @@ struct DebugSheet: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Toggle(isOn: $showsZoomOverlay) {
+                        Text(verbatim: "Show zoom level")
+                    }
+                }
+
                 if snapshot.isEmpty {
                     Text(verbatim: "No tile requests recorded yet.")
                         .foregroundStyle(.secondary)

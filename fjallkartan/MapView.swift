@@ -170,6 +170,7 @@ final class DistanceMarkerView: MKAnnotationView {
 struct MapView: UIViewRepresentable {
     @Binding var metersPerPoint: Double
     @Binding var visibleMapRect: MKMapRect
+    @Binding var zoomLevel: Double
 
     let measurement: DistanceMeasurement
     /// Mirrors of `measurement` state. Reading these in `ContentView.body` is what
@@ -191,7 +192,9 @@ struct MapView: UIViewRepresentable {
     var onOpenPinDetail: ((SavedPin) -> Void)?
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(metersPerPoint: $metersPerPoint, visibleMapRect: $visibleMapRect)
+        Coordinator(metersPerPoint: $metersPerPoint,
+                    visibleMapRect: $visibleMapRect,
+                    zoomLevel: $zoomLevel)
     }
 
     func makeUIView(context: Context) -> MKMapView {
@@ -279,6 +282,7 @@ struct MapView: UIViewRepresentable {
         static let savedPinIdentifier = "SavedPinMarker"
         @Binding var metersPerPoint: Double
         @Binding var visibleMapRect: MKMapRect
+        @Binding var zoomLevel: Double
 
         private var renderedPins: [SavedPin] = []
         private weak var longPressRecognizer: UILongPressGestureRecognizer?
@@ -288,9 +292,11 @@ struct MapView: UIViewRepresentable {
         var onOpenPinDetail: ((SavedPin) -> Void)?
 
         init(metersPerPoint: Binding<Double>,
-             visibleMapRect: Binding<MKMapRect>) {
+             visibleMapRect: Binding<MKMapRect>,
+             zoomLevel: Binding<Double>) {
             _metersPerPoint = metersPerPoint
             _visibleMapRect = visibleMapRect
+            _zoomLevel = zoomLevel
         }
 
         func start(with mapView: MKMapView) {
@@ -532,6 +538,7 @@ struct MapView: UIViewRepresentable {
             let metersPerDegree = cos(region.center.latitude * .pi / 180) * 111_319.5
             let updatedMetersPerPoint = region.span.longitudeDelta * metersPerDegree / mapView.bounds.width
             let updatedMapRect = mapView.visibleMapRect
+            let updatedZoomLevel = Self.zoomLevel(of: mapView)
 
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
@@ -542,6 +549,10 @@ struct MapView: UIViewRepresentable {
 
                 if !MKMapRectEqualToRect(visibleMapRect, updatedMapRect) {
                     visibleMapRect = updatedMapRect
+                }
+
+                if zoomLevel != updatedZoomLevel {
+                    zoomLevel = updatedZoomLevel
                 }
             }
         }
