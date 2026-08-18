@@ -14,7 +14,32 @@ final class CustomTileOverlay: MKTileOverlay {
 
     override func loadTile(at path: MKTileOverlayPath,
                            result: @escaping (Data?, Error?) -> Void) {
-        fetcher.fetchTile(server: server, z: Int(path.z), x: Int(path.x), y: Int(path.y)) { [server] outcome in
+        let z = Int(path.z), x = Int(path.x), y = Int(path.y)
+        guard z > server.sourceMaximumZ else {
+            fetch(z: z, x: x, y: y, result: result)
+            return
+        }
+
+        let levels = z - server.sourceMaximumZ
+        let ancestor = (z: server.sourceMaximumZ, x: x >> levels, y: y >> levels)
+
+        fetch(z: ancestor.z, x: ancestor.x, y: ancestor.y) { [server] data, error in
+            guard let data else {
+                result(nil, error)
+                return
+            }
+            let scaled = TileUpscaler.upscaledTile(
+                ancestor: (z: ancestor.z, x: ancestor.x, y: ancestor.y, data: data),
+                targetZ: z, targetX: x, targetY: y,
+                interpolation: server.upscaleInterpolation
+            )
+            result(scaled, nil)
+        }
+    }
+
+    private func fetch(z: Int, x: Int, y: Int,
+                       result: @escaping (Data?, Error?) -> Void) {
+        fetcher.fetchTile(server: server, z: z, x: x, y: y) { [server] outcome in
             switch outcome {
             case .success(let data):
                 result(server == .kartverket ? Self.kartverketNoDataToTransparentPNG(data) : data, nil)

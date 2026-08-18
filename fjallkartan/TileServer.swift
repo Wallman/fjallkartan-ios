@@ -58,7 +58,8 @@ nonisolated enum TileServer: CaseIterable {
 
     var sourceMaximumZ: Int {
         switch self {
-        case .kartverket, .lantmateriet: return 18
+        case .kartverket: return 18
+        case .lantmateriet: return 16
         case .norwaySlope: return 16
         case .swedenSlope: return 13
         case .elevation: return 12
