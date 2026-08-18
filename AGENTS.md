@@ -34,7 +34,7 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/RemoteSettings.swift` | Remotely configurable tile URL templates (`TileSettings`: Lantmäteriet, Kartverket, Norwegian slope, Swedish slope), fetched from `settings.json` with built-in fallbacks. |
 | `fjallkartan/SlopeTileOverlay.swift` | `MKTileOverlay` for the steepness layer; one instance per `Country`, each with its own zoom limits. |
 | `fjallkartan/TileUpscaler.swift` | Shared helper that builds a deep-zoom tile by cropping and magnifying the ancestor containing it; used by both tile layers. |
-| `fjallkartan/LegendView.swift` | `LegendCountry` and `LegendSheet`; renders the bundled per-country legend PDFs (`legend_no` / `legend_se`) via PDFKit. |
+| `fjallkartan/LegendCatalog.swift` | All legend entries — grouped into sections. |
 | `fjallkartan/AboutView.swift` | `AboutButton` and `AboutSheet`: data-source attribution (Kartverket, Lantmäteriet, NVE) plus privacy-policy and support links. |
 | `fjallkartan/ReviewPrompter.swift` | Throttling logic deciding when to ask for an App Store review. |
 | `fjallkartan/NetworkCheck.swift` | One-shot `NWPathMonitor` connectivity check (no persistent monitor); used to postpone the review prompt while offline. |
@@ -47,6 +47,9 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/fjallkartan.entitlements` | iCloud Documents entitlements that `DocumentDirectoryStore` needs for its ubiquity container. |
 | `marketing/store-copy.md` | Per-locale App Store name/subtitle/description copy plus the support and privacy URLs. |
 | `docs/privacy.html`, `docs/support.html` | GitHub Pages pages linked from `AboutSheet` and App Store. |
+| `tools/extract_legend_symbols.py` | Clips the 27 Swedish legend symbols out of `tools/legend_se_source.pdf` into vector assets (`preview` → `verify` → `assets`); `verify` diffs each against an embed-and-crop oracle. |
+| `tools/build_no_legend_symbols.py` | Draws the 16 Norwegian legend symbols from Kartverket's `Skjermkartografi.otf` using the glyph codes, colours and dash patterns in their published specification (`fetch` → `preview` → `assets`). |
+| `tools/fill_legend_translations.py` | Fills the legend strings in `Localizable.xcstrings` from one table, so the 43 symbol names stay consistent across the 10 translations. |
 | `tools/build_places_db.py` | Builds `places.sqlite` (place, alias, municipality tables + `place_fts` FTS5 index) bundled with the app. |
 | `tools/compose_screenshots.py` | Composes screenshots into captioned App Store screenshots in `marketing/appstore/<lang>/`. |
 | `tools/make_app_icon.py` | Regenerates the app icon. |

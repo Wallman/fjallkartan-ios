@@ -1,0 +1,15 @@
+{
+  "images": [
+    {
+      "filename": "solitary_cabin.pdf",
+      "idiom": "universal"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  },
+  "properties": {
+    "preserves-vector-representation": true
+  }
+}
