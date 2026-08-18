@@ -55,37 +55,50 @@ struct SavedRoutesSheet: View {
     @Bindable var model: SavedRoutesModel
     let hasUnsavedRoute: Bool
     let onSelect: (SavedRoute) -> Void
+    var featured: [FeaturedRoute] = FeaturedRoutes.all
     @Environment(\.dismiss) private var dismiss
     @State private var renamingRoute: SavedRoute?
 
     var body: some View {
         NavigationStack {
-            Group {
-                if model.routes.isEmpty {
-                    ContentUnavailableView(
-                        "No saved routes",
-                        systemImage: "bookmark",
-                        description: Text("Save a measurement to see it here.")
-                    )
-                } else {
-                    List {
-                        ForEach(model.routes) { route in
-                            HStack {
-                                SavedRouteRowButton(route: route,
-                                                    hasUnsavedRoute: hasUnsavedRoute) {
-                                    onSelect(route)
-                                    dismiss()
-                                }
-                                DeleteRouteButton(route: route) {
-                                    model.delete(route)
-                                }
+            List {
+                Section("Your routes") {
+                    if model.routes.isEmpty {
+                        Text("Save a measurement to see it here.")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(model.routes) { route in
+                        HStack {
+                            SavedRouteRowButton(route: route,
+                                                hasUnsavedRoute: hasUnsavedRoute) {
+                                onSelect(route)
+                                dismiss()
                             }
-                            .contextMenu {
-                                Button("Rename", systemImage: "pencil") {
-                                    renamingRoute = route
-                                }
+                            DeleteRouteButton(route: route) {
+                                model.delete(route)
                             }
                         }
+                        .contextMenu {
+                            Button("Rename", systemImage: "pencil") {
+                                renamingRoute = route
+                            }
+                        }
+                    }
+                }
+
+                if !featured.isEmpty {
+                    Section {
+                        ForEach(featured) { entry in
+                            SavedRouteRowButton(route: entry.route,
+                                                subtitle: entry.subtitle,
+                                                hasUnsavedRoute: hasUnsavedRoute) {
+                                onSelect(entry.route)
+                                dismiss()
+                            }
+                        }
+                    } header: {
+                        Text("Suggested routes")
                     }
                 }
             }
@@ -107,6 +120,7 @@ struct SavedRoutesSheet: View {
 
 private struct SavedRouteRowButton: View {
     let route: SavedRoute
+    var subtitle: String?
     let hasUnsavedRoute: Bool
     let onConfirm: () -> Void
     @State private var isConfirming = false
@@ -119,7 +133,7 @@ private struct SavedRouteRowButton: View {
                 onConfirm()
             }
         } label: {
-            SavedRouteRow(route: route)
+            SavedRouteRow(route: route, subtitle: subtitle)
         }
         .buttonStyle(.plain)
         .confirmationDialog(
@@ -164,6 +178,7 @@ private struct DeleteRouteButton: View {
 
 private struct SavedRouteRow: View {
     let route: SavedRoute
+    var subtitle: String?
 
     var body: some View {
         HStack {
@@ -171,6 +186,11 @@ private struct SavedRouteRow: View {
                 Text(route.displayName)
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(Color.primary)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
                 HStack(spacing: 10) {
                     Text(route.formattedDistance)
                     if route.hasElevation {

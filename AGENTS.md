@@ -19,6 +19,7 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/SavedRoute.swift` | Codable model for one saved measurement (id, createdAt, coordinates, strokeSizes, optional name, schemaVersion, displayName). |
 | `fjallkartan/SavedRouteStore.swift` | Thin wrapper over `DocumentDirectoryStore<SavedRoute>` for one-JSON-file-per-route persistence. |
 | `fjallkartan/SavedRoutesView.swift` | `SavedRoutesModel` and `SavedRoutesList` UI (embedded in `SavedSheet`) for listing/loading/renaming/deleting saved routes. |
+| `fjallkartan/FeaturedRoutes.swift` | Read-only catalogue of bundled suggested routes, decoded once from `resources/featured-routes.json`. |
 | `fjallkartan/RouteNameSheet.swift` | Small sheet used both to name a route on save and to rename one from the saved list. |
 | `fjallkartan/Coord.swift` | Shared `Coord` (lat/lon pair) used by both `SavedRoute` and `SavedPin`, since `CLLocationCoordinate2D` isn't `Codable`. |
 | `fjallkartan/DocumentDirectoryStore.swift` | Generic one-JSON-file-per-item store; local-first with optional iCloud Documents sync (migration, `NSFileCoordinator` writes, `NSMetadataQuery` change observation). Backs both `SavedRouteStore` and `SavedPinStore`. |
@@ -125,8 +126,11 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
   - iCloud Documents requires a signed-in iCloud account, without it, `syncWithiCloudIfAvailable()` is a no-op and the store just keeps using the local directory.
   - Loading a saved route is always replace, never merge, with the sheet warning first if the current route is unsaved.
 
-- **Saved pins**
-  - A saved pin (`SavedPin`: id/createdAt/coordinate/name/subtitle/schemaVersion) is created either by long-pressing the map (name defaults to nil, so `displayName` falls back to a formatted date) or by tapping the bookmark `rightCalloutAccessoryView` on a search-result marker (named after the `PlaceResult`). Both go through `SavedPinStore`, the `DocumentDirectoryStore<SavedPin>` wrapper, under `Application Support/Pins` — its own iCloud migration `UserDefaults` key keeps pin migration independent of route migration.
+- **Featured (suggested) routes**
+  - Eight well known trails ship in the bundle as `resources/featured-routes.json` so the "Saved routes" sheet is never empty on a fresh install.
+  - They are **read-only and never enter `SavedRouteStore`** — no iCloud sync, no rename or delete, and a bad geometry is fixed by shipping a new build rather than migrating anyone's files. Selecting one goes through the same `measurement.load` / `elevation.load` path as a saved route, so it can be edited and then saved as the user's own; `SavedRoute.id` is derived deterministically from the catalogue id so saving the same one twice can't collide.
+
+- **Saved pins**  - A saved pin (`SavedPin`: id/createdAt/coordinate/name/subtitle/schemaVersion) is created either by long-pressing the map (name defaults to nil, so `displayName` falls back to a formatted date) or by tapping the bookmark `rightCalloutAccessoryView` on a search-result marker (named after the `PlaceResult`). Both go through `SavedPinStore`, the `DocumentDirectoryStore<SavedPin>` wrapper, under `Application Support/Pins` — its own iCloud migration `UserDefaults` key keeps pin migration independent of route migration.
   - `MapView.Coordinator` owns a `UILongPressGestureRecognizer` added directly to the `MKMapView` (not the measurement capture view), disabled whenever `isMeasuring` or `isRegionPreviewVisible` is true so it never competes with drawing or the offline-region picker.
   - Pins are managed entirely on the map, not in the "Saved" sheet (that sheet is routes-only): `SavedPinAnnotation` has no title/subtitle/callout at all — tapping one directly fires `mapView(_:didSelect:)`, which opens `PinDetailSheet` (a small `.presentationDetents([.height(260)])` sheet with Rename + destructive Delete) and immediately deselects, so no callout ever flashes on screen. `SavedPinsModel` (load/save/rename/delete) still backs this, it's just driven from the map instead of a list.
 
