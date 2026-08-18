@@ -20,8 +20,6 @@ struct ContentView: View {
     @State private var isElevationPresented = false
     @State private var isSlopeLayerVisible = false
     @State private var isShowingMoreControls = false
-    @AppStorage("guide.didShowOnboarding") private var didShowOnboarding = false
-    @State private var isOnboardingPresented = false
     @State private var visibleTip: GuideTip?
     @State private var didSaveRoute = false
     @State private var offlineModel = OfflineTileStore.shared.map(OfflineRegionsModel.init)
@@ -44,7 +42,6 @@ struct ContentView: View {
             && !isPickingRegion
             && !isSavedRoutesPresented
             && !isElevationPresented
-            && !isOnboardingPresented
             && pinDetail == nil
     }
 
@@ -88,7 +85,7 @@ struct ContentView: View {
         if let visibleTip, !isStillRelevant(visibleTip) {
             self.visibleTip = nil
         }
-        guard visibleTip == nil, !isOnboardingPresented else { return }
+        guard visibleTip == nil else { return }
         let candidate = [GuideTip.routeSaved, .measuringGestures, .regionPreview, .elevationReadout]
             .first { isStillRelevant($0) && !$0.hasBeenSeen }
         guard let candidate else { return }
@@ -308,22 +305,10 @@ struct ContentView: View {
                               onSave: { updated in savedPinsModel?.save(updated) },
                               onDelete: { savedPinsModel?.delete(pin) })
             }
-            .sheet(isPresented: $isOnboardingPresented) {
-                OnboardingSheet()
-            }
-            // Delayed so the guide opens over a drawn map rather than a blank one.
-            .task {
-                guard !didShowOnboarding else { return }
-                try? await Task.sleep(for: .milliseconds(600))
-                guard !Task.isCancelled else { return }
-                didShowOnboarding = true
-                isOnboardingPresented = true
-            }
             .onChange(of: TipTrigger(isMeasuring: measurement.isMeasuring,
                                      isPickingRegion: isPickingRegion,
                                      hasElevation: elevation.hasData,
                                      isElevationPresented: isElevationPresented,
-                                     isOnboardingPresented: isOnboardingPresented,
                                      didSaveRoute: didSaveRoute),
                       initial: true) { _, _ in
                 updateVisibleTip()
@@ -377,7 +362,6 @@ private struct TipTrigger: Equatable {
     let isPickingRegion: Bool
     let hasElevation: Bool
     let isElevationPresented: Bool
-    let isOnboardingPresented: Bool
     let didSaveRoute: Bool
 }
 
@@ -403,7 +387,7 @@ struct ButtonStyleModifier: ViewModifier {
     static let diameter: CGFloat = 44
     static let labelWidth: CGFloat = 64
     static let stackSpacing: CGFloat = 6
-    static let unlabelledSpacing: CGFloat = 7
+    static let unlabelledSpacing: CGFloat = 6
 
     let label: LocalizedStringResource?
     @Environment(\.mapControlsAreHorizontal) private var isHorizontal
