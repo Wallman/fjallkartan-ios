@@ -46,9 +46,7 @@ nonisolated final class RemoteSettings: @unchecked Sendable {
 
     static let builtIn = TileSettings(
         minAppVersion: "1.0",
-        lantmaterietUrl: "https://minkarta.lantmateriet.se/map/topowebbcache"
-            + "?layer=topowebb&style=default&tilematrixset=3857&Service=WMTS&Request=GetTile"
-            + "&Version=1.0.0&Format=image/png&TileMatrix={z}&TileRow={y}&TileCol={x}",
+        lantmaterietUrl: "https://tiles.wallman.dev/v1/{z}/{y}/{x}.png",
         kartverketUrl: "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png",
         norwaySlopeUrl: "https://gis3.nve.no/arcgis/rest/services/wmts/Bratthet_med_utlop_2024/MapServer/tile/{z}/{y}/{x}",
         swedenSlopeUrl: "https://tiles.wallman.dev/slope/v1/{z}/{y}/{x}.png",
