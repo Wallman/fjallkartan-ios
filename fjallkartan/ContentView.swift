@@ -19,6 +19,7 @@ struct ContentView: View {
     @State private var isSavedRoutesPresented = false
     @State private var isElevationPresented = false
     @State private var isSlopeLayerVisible = false
+    @State private var isShowingMoreControls = false
     @AppStorage("guide.didShowOnboarding") private var didShowOnboarding = false
     @State private var isOnboardingPresented = false
     @State private var visibleTip: GuideTip?
@@ -48,6 +49,8 @@ struct ContentView: View {
     }
 
     private var isCompactHeight: Bool { verticalSizeClass == .compact }
+
+    private var isAnyMoreControlActive: Bool { isSlopeLayerVisible || isPickingRegion }
 
     private var tipBottomPadding: CGFloat {
         if isPickingRegion { return 130 }
@@ -91,6 +94,117 @@ struct ContentView: View {
         guard let candidate else { return }
         candidate.markSeen()
         visibleTip = candidate
+    }
+
+    @ViewBuilder
+    private func mapControls() -> some View {
+        let layout = isCompactHeight
+            ? AnyLayout(HStackLayout(alignment: .top, spacing: ButtonStyleModifier.stackSpacing))
+            : AnyLayout(VStackLayout(spacing: ButtonStyleModifier.stackSpacing))
+        // Captions draw wider than their button but don't lay out that way, so
+        // the column keeps the plain button inset.
+        let trailingInset: CGFloat = 16
+
+        layout {
+            Button {
+                isSearchPresented = true
+            } label: {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color.primary)
+                    .buttonStyle()
+            }
+
+            MeasureControlsView(measurement: measurement,
+                                elevation: elevation,
+                                savedRoutesModel: savedRoutesModel,
+                                isHorizontal: isCompactHeight,
+                                onRouteSaved: noteRouteSaved)
+
+            if let savedRoutesModel {
+                Button {
+                    isSavedRoutesPresented = true
+                } label: {
+                    Image(systemName: "bookmark.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.primary)
+                        .buttonStyle()
+                }
+                .sheet(isPresented: $isSavedRoutesPresented) {
+                    SavedRoutesSheet(model: savedRoutesModel,
+                                    hasUnsavedRoute: !measurement.isEmpty
+                                        && measurement.hasUnsavedChanges) { route in
+                        measurement.load(route)
+                        elevation.load(route)
+                        routeFitToken += 1
+                    }
+                }
+            }
+
+            Button {
+                isShowingMoreControls.toggle()
+            } label: {
+                Image(systemName: isShowingMoreControls ? "chevron.up" : "ellipsis")
+                    .font(.system(size: 17, weight: .semibold))
+                    // Collapsed, this button is the only trace of a layer that
+                    // may well be switched on, so it carries the active tint.
+                    .foregroundStyle(!isShowingMoreControls && isAnyMoreControlActive
+                                        ? Color.orange : Color.primary)
+                    .buttonStyle()
+            }
+
+            if isShowingMoreControls {
+                Button {
+                    isSlopeLayerVisible.toggle()
+                } label: {
+                    Image(systemName: "triangle.righthalf.filled")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(isSlopeLayerVisible ? Color.orange : Color.primary)
+                        .buttonStyle(MapControlLabel.slope)
+                }
+                .transition(.scale.combined(with: .opacity))
+
+                Button {
+                    isLegendPresented = true
+                } label: {
+                    Image(systemName: "list.bullet.rectangle")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Color.primary)
+                        .buttonStyle(MapControlLabel.symbols)
+                }
+                .transition(.scale.combined(with: .opacity))
+
+                if offlineModel != nil {
+                    Button {
+                        isPickingRegion.toggle()
+                    } label: {
+                        Image(systemName: "arrow.down.circle")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(isPickingRegion ? Color.orange : Color.primary)
+                            .symbolVariant(isPickingRegion ? .fill : .none)
+                            .buttonStyle(MapControlLabel.download)
+                    }
+                    .transition(.scale.combined(with: .opacity))
+
+                    if isPickingRegion {
+                        Button {
+                            isOfflineRegionsListPresented = true
+                        } label: {
+                            Image(systemName: "tray.full")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(Color.blue)
+                                .buttonStyle(MapControlLabel.regions)
+                        }
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: isPickingRegion)
+        .environment(\.mapControlsAreHorizontal, isCompactHeight)
+        .animation(.easeInOut(duration: 0.2), value: isShowingMoreControls)
+        .padding(.top, isCompactHeight ? 16 : 125)
+        .padding(.trailing, isCompactHeight ? trailingInset + 52 : trailingInset)
     }
 
     var body: some View {
@@ -140,94 +254,7 @@ struct ContentView: View {
                     }
             }
             .overlay(alignment: .topTrailing) {
-                let layout = isCompactHeight
-                    ? AnyLayout(HStackLayout(spacing: 8))
-                    : AnyLayout(VStackLayout(spacing: 8))
-
-                layout {
-                    Button {
-                        isSearchPresented = true
-                    } label: {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(Color.primary)
-                            .buttonStyle()
-                    }
-
-                    MeasureControlsView(measurement: measurement,
-                                        elevation: elevation,
-                                        savedRoutesModel: savedRoutesModel,
-                                        isHorizontal: isCompactHeight,
-                                        onRouteSaved: noteRouteSaved)
-
-                    Button {
-                        isSlopeLayerVisible.toggle()
-                    } label: {
-                        Image(systemName: "triangle.righthalf.filled")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(isSlopeLayerVisible ? Color.orange : Color.primary)
-                            .buttonStyle()
-                    }
-                    
-                    if let savedRoutesModel {
-                        Button {
-                            isSavedRoutesPresented = true
-                        } label: {
-                            Image(systemName: "bookmark.fill")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(Color.primary)
-                                .buttonStyle()
-                        }
-                        .sheet(isPresented: $isSavedRoutesPresented) {
-                            SavedRoutesSheet(model: savedRoutesModel,
-                                            hasUnsavedRoute: !measurement.isEmpty
-                                                && measurement.hasUnsavedChanges) { route in
-                                measurement.load(route)
-                                elevation.load(route)
-                                routeFitToken += 1
-                            }
-                        }
-                    }
-
-                    Button {
-                        isLegendPresented = true
-                    } label: {
-                        Image(systemName: "list.bullet.rectangle")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(Color.primary)
-                            .buttonStyle()
-                    }
-
-                    if let offlineModel {
-                        Button {
-                            isPickingRegion.toggle()
-                        } label: {
-                            Image(systemName: "arrow.down.circle")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(isPickingRegion ? Color.orange : Color.primary)
-                                .symbolVariant(isPickingRegion ? .fill : .none)
-                                .buttonStyle()
-                        }
-                        .sheet(isPresented: $isOfflineRegionsListPresented) {
-                            OfflineRegionsSheet(model: offlineModel)
-                        }
-
-                        if isPickingRegion {
-                            Button {
-                                isOfflineRegionsListPresented = true
-                            } label: {
-                                Image(systemName: "tray.full")
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .foregroundStyle(Color.blue)
-                                    .buttonStyle()
-                            }
-                            .transition(.scale.combined(with: .opacity))
-                        }
-                    }
-                }
-                .animation(.easeInOut(duration: 0.2), value: isPickingRegion)
-                .padding(.top, isCompactHeight ? 16 : 125)
-                .padding(.trailing, isCompactHeight ? 68 : 16)
+                mapControls()
             }
             .overlay(alignment: .top) {
                 if !isCompactHeight {
@@ -269,7 +296,11 @@ struct ContentView: View {
             .sheet(isPresented: $isLegendPresented) {
                 LegendSheet()
             }
-            .sheet(isPresented: $isElevationPresented) {
+            .sheet(isPresented: $isOfflineRegionsListPresented) {
+                if let offlineModel {
+                    OfflineRegionsSheet(model: offlineModel)
+                }
+            }            .sheet(isPresented: $isElevationPresented) {
                 ElevationProfileSheet(profile: elevation)
             }
             .sheet(item: $pinDetail) { pin in
@@ -350,11 +381,54 @@ private struct TipTrigger: Equatable {
     let didSaveRoute: Bool
 }
 
+enum MapControlLabel {
+    static let slope: LocalizedStringResource = "Slope"
+    static let symbols: LocalizedStringResource = "Symbols"
+    static let download: LocalizedStringResource = "Download"
+    static let regions: LocalizedStringResource = "Regions"
+    static let undo: LocalizedStringResource = "Undo"
+    static let clear: LocalizedStringResource = "Clear"
+    static let save: LocalizedStringResource = "Save"
+
+    static let all: [LocalizedStringResource] = [
+        slope, symbols, download, regions, undo, clear, save
+    ]
+}
+
+extension EnvironmentValues {
+    @Entry var mapControlsAreHorizontal = false
+}
+
 struct ButtonStyleModifier: ViewModifier {
     static let diameter: CGFloat = 44
+    static let labelWidth: CGFloat = 64
+    static let stackSpacing: CGFloat = 6
+    static let unlabelledSpacing: CGFloat = 7
+
+    let label: LocalizedStringResource?
+    @Environment(\.mapControlsAreHorizontal) private var isHorizontal
+
+    func body(content: Content) -> some View {
+        VStack(spacing: 1) {
+            circle(content)
+            if let label {
+                Text(label)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.black)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .multilineTextAlignment(.center)
+                    .frame(width: Self.labelWidth)
+                    .frame(width: Self.diameter)
+                    .shadow(color: .white.opacity(0.9), radius: 1.5)
+            }
+        }
+        .padding(isHorizontal ? .trailing : .bottom,
+                 label == nil ? Self.unlabelledSpacing : 0)
+    }
 
     @ViewBuilder
-    func body(content: Content) -> some View {
+    private func circle(_ content: Content) -> some View {
         let sized = content.frame(width: Self.diameter, height: Self.diameter)
 
         if #available(iOS 26.0, *) {
@@ -370,7 +444,9 @@ struct ButtonStyleModifier: ViewModifier {
 }
 
 extension View {
-    func buttonStyle() -> some View { modifier(ButtonStyleModifier()) }
+    func buttonStyle(_ label: LocalizedStringResource? = nil) -> some View {
+        modifier(ButtonStyleModifier(label: label))
+    }
 }
 
 struct MeasureControlsView: View {
@@ -383,8 +459,8 @@ struct MeasureControlsView: View {
 
     var body: some View {
         let layout = isHorizontal
-            ? AnyLayout(HStackLayout(spacing: 8))
-            : AnyLayout(VStackLayout(spacing: 8))
+            ? AnyLayout(HStackLayout(alignment: .top, spacing: ButtonStyleModifier.stackSpacing))
+            : AnyLayout(VStackLayout(spacing: ButtonStyleModifier.stackSpacing))
 
         layout {
             Button {
@@ -403,7 +479,7 @@ struct MeasureControlsView: View {
                 } label: {
                     Image(systemName: "arrow.uturn.backward")
                     .font(.system(size: 15, weight: .semibold))
-                    .buttonStyle()
+                    .buttonStyle(MapControlLabel.undo)
                 }
                 .disabled(!measurement.canUndo)
 
@@ -412,7 +488,7 @@ struct MeasureControlsView: View {
                 } label: {
                     Image(systemName: "trash")
                     .font(.system(size: 15, weight: .semibold))
-                    .buttonStyle()
+                    .buttonStyle(MapControlLabel.clear)
                 }
                 .disabled(measurement.isEmpty)
 
@@ -422,7 +498,7 @@ struct MeasureControlsView: View {
                     } label: {
                         Image(systemName: "bookmark")
                             .font(.system(size: 15, weight: .semibold))
-                            .buttonStyle()
+                            .buttonStyle(MapControlLabel.save)
                     }
                     .disabled(measurement.isEmpty)
                     .sheet(isPresented: $isNamingRoute) {
@@ -438,6 +514,7 @@ struct MeasureControlsView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: measurement.isMeasuring)
+        .environment(\.mapControlsAreHorizontal, isHorizontal)
     }
 }
 

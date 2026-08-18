@@ -64,7 +64,7 @@ struct SavedRoutesSheet: View {
             List {
                 Section("Your routes") {
                     if model.routes.isEmpty {
-                        Text("Save a measurement to see it here.")
+                        Text("Save a route to see it here.")
                             .font(.system(size: 14))
                             .foregroundStyle(.secondary)
                     }
