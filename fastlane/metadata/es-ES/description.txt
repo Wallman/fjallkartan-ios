@@ -1,6 +1,6 @@
 Fjällkartan reúne en una sola app los mapas topográficos oficiales de Noruega y Suecia, unidos a través de la frontera para que tu ruta no se detenga en el límite entre países.
 
-La cartografía procede directamente de Kartverket y Lantmäteriet — los mismos mapas que llevarías en papel, con curvas de nivel, senderos señalizados, refugios, puentes y rutas de invierno.
+La cartografía procede directamente de los servicios cartográficos nacionales de ambos países — los mismos mapas que llevarías en papel, con curvas de nivel, senderos señalizados, refugios, puentes y rutas de invierno.
 
 FUNCIONA SIN CONEXIÓN
 Descarga una zona antes de salir y lleva el mapa completo en el teléfono. No hace falta cobertura.
@@ -8,9 +8,18 @@ Descarga una zona antes de salir y lleva el mapa completo en el teléfono. No ha
 MIDE UNA RUTA
 Traza una línea con el dedo y lee su longitud. Las distancias son geodésicas, así que siguen siendo exactas en estas latitudes, donde un mapa plano las exageraría.
 
+DESNIVEL Y ASCENSO
+Cada ruta medida muestra el ascenso y el descenso totales junto con un perfil de altitud, para ver la subida antes de hacerla. Las altitudes están en el teléfono y funcionan sin conexión.
+
+GUARDA TUS RUTAS
+Guarda una ruta y recupérala cuando quieras, con el nombre que prefieras y sincronizada entre tus dispositivos mediante iCloud. Algunas rutas clásicas vienen incluidas desde el principio.
+
+DETECTA EL TERRENO DE ALUDES
+Activa la capa de inclinación y las pendientes se dibujan sobre el mapa, tanto en Noruega como en Suecia, para reconocer el terreno de aludes ya durante la planificación.
+
 BUSCA ENTRE 1,6 MILLONES DE LUGARES
 Todos los topónimos suecos y noruegos, disponibles sin conexión. Encuentra una cima, un lago o un refugio por su nombre y ve directo a él.
 
 Sin cuenta, sin registro, sin rastreo. Tu ubicación nunca sale del teléfono.
 
-Datos cartográficos © Kartverket y © Lantmäteriet.
+© Kartverket © Lantmäteriet © NVE.

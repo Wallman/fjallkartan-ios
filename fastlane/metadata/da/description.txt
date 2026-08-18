@@ -8,9 +8,18 @@ Hent et område, før du tager af sted, og hav hele kortet i lommen. Der kræves
 MÅL EN RUTE
 Træk en streg med fingeren, og aflæs længden. Afstandene er geodætiske og holder derfor så langt mod nord, hvor et fladt kort ellers overdriver dem.
 
+HØJDEMETER OG STIGNING
+Hver målt rute viser samlet stigning og fald sammen med en højdeprofil, så du kan se stigningen, før du går den. Højderne ligger på telefonen og virker også uden forbindelse.
+
+GEM DINE RUTER
+Gem en rute, og hent den frem, når du vil, med dit eget navn og synkroniseret mellem dine enheder via iCloud. Et udvalg af klassiske ture følger med fra start.
+
+SPOT LAVINETERRÆNET
+Slå stejlhedslaget til, så lægges hældningen direkte oven på kortet, for både Norge og Sverige, så lavineterrænet er synligt, allerede når du planlægger.
+
 SØG I 1,6 MILLIONER STEDER
 Alle svenske og norske stednavne, søgbare uden forbindelse. Find en top, en sø eller en hytte på navn, og tag direkte derhen.
 
 Ingen konto, ingen oprettelse, ingen sporing. Din position forlader aldrig telefonen.
 
-Kortdata © Kartverket og © Lantmäteriet.
+© Kartverket © Lantmäteriet © NVE.

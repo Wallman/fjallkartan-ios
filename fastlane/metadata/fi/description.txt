@@ -8,9 +8,18 @@ Lataa alue ennen lähtöä ja kanna koko kartta puhelimessasi. Kuuluvuutta ei ta
 MITTAA REITTI
 Vedä viiva sormella ja lue sen pituus. Etäisyydet ovat geodeettisia ja pitävät siksi paikkansa näinkin pohjoisessa, missä tasokartta liioittelisi niitä.
 
+KORKEUS JA NOUSU
+Jokaisesta mitatusta reitistä näet kokonaisnousun ja -laskun sekä korkeusprofiilin, joten näet nousut ennen kuin kävelet ne. Korkeudet ovat puhelimessa ja toimivat myös ilman verkkoa.
+
+TALLENNA REITTISI
+Tallenna reitti ja ota se esiin milloin haluat, omalla nimellä ja iCloudin kautta laitteidesi välillä synkronoituna. Mukana on alusta asti joukko klassikkoreittejä.
+
+TUNNISTA LUMIVYÖRYMAASTO
+Ota jyrkkyystaso käyttöön, niin rinteiden kaltevuus piirtyy suoraan kartan päälle sekä Norjassa että Ruotsissa, jolloin lumivyörymaasto näkyy jo suunnitellessa.
+
 HAE 1,6 MILJOONASTA PAIKASTA
 Kaikki ruotsalaiset ja norjalaiset paikannimet, haettavissa ilman yhteyttä. Etsi huippu, järvi tai kämppä nimellä ja siirry suoraan sinne.
 
 Ei tiliä, ei rekisteröitymistä, ei seurantaa. Sijaintisi ei poistu puhelimestasi.
 
-Kartta-aineisto © Kartverket ja © Lantmäteriet.
+© Kartverket © Lantmäteriet © NVE.

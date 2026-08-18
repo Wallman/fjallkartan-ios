@@ -1,6 +1,6 @@
 Fjällkartan riunisce in un'unica app le mappe topografiche ufficiali di Norvegia e Svezia, unite oltre il confine perché il tuo percorso non si fermi alla frontiera.
 
-La cartografia arriva direttamente da Kartverket e Lantmäteriet — le stesse mappe che porteresti su carta, con curve di livello, sentieri segnalati, rifugi, ponti e itinerari invernali.
+La cartografia arriva direttamente dagli enti cartografici nazionali dei due paesi — le stesse mappe che porteresti su carta, con curve di livello, sentieri segnalati, rifugi, ponti e itinerari invernali.
 
 FUNZIONA OFFLINE
 Scarica un'area prima di partire e porta l'intera mappa nel telefono. Non serve copertura.
@@ -8,9 +8,18 @@ Scarica un'area prima di partire e porta l'intera mappa nel telefono. Non serve 
 MISURA UN PERCORSO
 Traccia una linea con il dito e leggine la lunghezza. Le distanze sono geodetiche e restano quindi corrette a queste latitudini, dove una mappa piana le sovrastimerebbe.
 
+DISLIVELLO E SALITA
+Ogni percorso misurato riporta salita e discesa totali con un profilo altimetrico, così vedi il dislivello prima di affrontarlo. Le quote sono sul telefono e funzionano anche offline.
+
+SALVA I TUOI PERCORSI
+Salva un percorso e riprendilo quando vuoi, con il nome che preferisci e sincronizzato tra i tuoi dispositivi tramite iCloud. Alcuni itinerari classici sono inclusi fin dall'inizio.
+
+INDIVIDUA IL TERRENO VALANGHIVO
+Attiva il livello di pendenza e l'inclinazione viene disegnata direttamente sulla mappa, sia in Norvegia sia in Svezia, così il terreno valanghivo è visibile già in fase di pianificazione.
+
 CERCA TRA 1,6 MILIONI DI LUOGHI
 Tutti i toponimi svedesi e norvegesi, consultabili senza connessione. Trova una cima, un lago o un rifugio per nome e raggiungilo subito.
 
 Nessun account, nessuna registrazione, nessun tracciamento. La tua posizione non lascia mai il telefono.
 
-Dati cartografici © Kartverket e © Lantmäteriet.
+© Kartverket © Lantmäteriet © NVE.

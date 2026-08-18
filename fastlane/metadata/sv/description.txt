@@ -8,9 +8,18 @@ Ladda ner ett område innan du åker och bär hela kartan i telefonen. Ingen tä
 MÄT EN RUTT
 Dra ett streck med fingret och läs av längden. Avstånden är geodetiska och stämmer därför så här långt norrut, där en platt karta annars överdriver dem.
 
+HÖJDMETER OCH STIGNING
+Varje uppmätt rutt visar total stigning och fall tillsammans med en höjdprofil, så att du ser klättringen innan du går den. Höjderna finns i telefonen och fungerar även utan uppkoppling.
+
+SPARA DINA RUTTER
+Spara en rutt och ta fram den när du vill, med eget namn och synkad mellan dina enheter via iCloud. Ett antal klassiska turer följer med från start.
+
+UPPTÄCK LAVINTERRÄNGEN
+Slå på lutningslagret så läggs brantheten direkt ovanpå kartan, för både Norge och Sverige, så att lavinterrängen syns redan när du planerar.
+
 SÖK BLAND 1,6 MILJONER PLATSER
 Alla svenska och norska ortnamn, sökbara utan uppkoppling. Hitta en topp, en sjö eller en stuga på namn och åk rakt dit.
 
 Inget konto, ingen registrering, ingen spårning. Din position lämnar aldrig telefonen.
 
-Kartdata © Kartverket och © Lantmäteriet.
+© Kartverket och © Lantmäteriet © NVE.

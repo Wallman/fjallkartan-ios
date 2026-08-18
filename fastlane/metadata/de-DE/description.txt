@@ -1,6 +1,6 @@
 Fjällkartan bringt die amtlichen topografischen Karten Norwegens und Schwedens in eine App und fügt sie über die Grenze hinweg zusammen, damit deine Tour nicht an der Landesgrenze endet.
 
-Die Kartografie stammt direkt von Kartverket und Lantmäteriet — dieselben Karten, die du sonst auf Papier dabeihättest, mit Höhenlinien, markierten Wegen, Hütten, Brücken und Winterrouten.
+Die Kartografie stammt direkt von den beiden staatlichen Vermessungsämtern — dieselben Karten, die du sonst auf Papier dabeihättest, mit Höhenlinien, markierten Wegen, Hütten, Brücken und Winterrouten.
 
 FUNKTIONIERT OFFLINE
 Lade ein Gebiet vor dem Aufbruch herunter und trage die ganze Karte im Telefon. Kein Empfang nötig.
@@ -8,9 +8,18 @@ Lade ein Gebiet vor dem Aufbruch herunter und trage die ganze Karte im Telefon. 
 ROUTE MESSEN
 Zieh mit dem Finger eine Linie und lies ihre Länge ab. Die Entfernungen sind geodätisch und stimmen daher auch hoch im Norden, wo eine flache Karte sie überschätzen würde.
 
+HÖHENMETER UND ANSTIEG
+Zu jeder gemessenen Route gehören Auf- und Abstieg samt Höhenprofil, sodass du den Anstieg siehst, bevor du ihn gehst. Die Höhen liegen auf dem Telefon und funktionieren auch offline.
+
+ROUTEN SICHERN
+Sichere eine Route und hol sie zurück, wann du willst — mit eigenem Namen und über iCloud zwischen deinen Geräten synchronisiert. Einige klassische Touren sind von Anfang an dabei.
+
+LAWINENGELÄNDE ERKENNEN
+Schalte die Hangneigung ein, und die Steilheit legt sich direkt über die Karte, für Norwegen wie für Schweden, damit Lawinengelände schon bei der Planung sichtbar ist.
+
 1,6 MILLIONEN ORTE SUCHEN
 Alle schwedischen und norwegischen Ortsnamen, auch ohne Verbindung durchsuchbar. Finde einen Gipfel, einen See oder eine Hütte über den Namen.
 
 Kein Konto, keine Anmeldung, kein Tracking. Dein Standort verlässt das Telefon nie.
 
-Kartendaten © Kartverket und © Lantmäteriet.
+© Kartverket © Lantmäteriet © NVE.

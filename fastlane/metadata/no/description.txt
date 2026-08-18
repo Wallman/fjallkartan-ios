@@ -8,9 +8,18 @@ Last ned et område før du drar, og ha hele kartet i lomma. Ingen dekning nødv
 MÅL EN RUTE
 Dra en strek med fingeren og les av lengden. Avstandene er geodetiske og stemmer derfor så langt nord, der et flatt kart ellers overdriver dem.
 
+HØYDEMETER OG STIGNING
+Hver målte rute viser samlet stigning og fall sammen med en høydeprofil, slik at du ser klatringen før du går den. Høydene ligger på telefonen og virker også uten dekning.
+
+LAGRE RUTENE DINE
+Lagre en rute og hent den fram når du vil, med eget navn og synkronisert mellom enhetene dine via iCloud. Noen klassiske turer følger med fra start.
+
+OPPDAG SKREDTERRENGET
+Slå på bratthetslaget, så legges brattheten rett oppå kartet, for både Norge og Sverige, slik at skredterrenget er synlig allerede når du planlegger.
+
 SØK I 1,6 MILLIONER STEDER
 Alle svenske og norske stedsnavn, søkbare uten nett. Finn en topp, et vann eller en hytte på navn og dra rett dit.
 
 Ingen konto, ingen registrering, ingen sporing. Posisjonen din forlater aldri telefonen.
 
-Kartdata © Kartverket og © Lantmäteriet.
+© Kartverket © Lantmäteriet © NVE.

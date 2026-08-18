@@ -501,7 +501,6 @@ struct MeasureReadoutView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(Text("Remove route from map"))
                 }
             }
             .frame(maxWidth: 260)

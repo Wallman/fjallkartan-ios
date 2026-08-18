@@ -1,6 +1,6 @@
 Fjällkartan puts the official topographic maps of Norway and Sweden side by side in one app, stitched together across the border so your route never stops at the national boundary.
 
-The cartography comes straight from Kartverket and Lantmäteriet — the same maps you would otherwise carry on paper, with contour lines, marked trails, cabins, bridges and winter routes.
+The cartography comes straight from the two national mapping agencies — the same maps you would otherwise carry on paper, with contour lines, marked trails, cabins, bridges and winter routes.
 
 WORKS OFFLINE
 Download an area before you leave and carry the whole map on your phone. No coverage required.
@@ -8,9 +8,18 @@ Download an area before you leave and carry the whole map on your phone. No cove
 MEASURE A ROUTE
 Trace a line with your finger and read its length. Distances are geodesic, so they stay accurate this far north, where a flat map would overstate them.
 
+ELEVATION AND CLIMB
+Every measured route comes with total ascent and descent and a terrain profile, so you can see the climb before you walk it. The heights are stored on the phone and work offline too.
+
+SAVE YOUR ROUTES
+Keep a route and bring it back whenever you like, named as you please and synced across your devices through iCloud. A handful of classic tours are included from the start.
+
+SPOT AVALANCHE TERRAIN
+Turn on the steepness layer and the slopes are shaded straight onto the map, for both Norway and Sweden, so avalanche terrain is visible while you plan.
+
 SEARCH 1.6 MILLION PLACES
 Every Swedish and Norwegian place name, searchable without a connection. Find a peak, a lake or a cabin by name and go straight to it.
 
 No account, no sign-up, no tracking. Your location never leaves your phone.
 
-Map data © Kartverket and © Lantmäteriet.
+© Kartverket © Lantmäteriet © NVE.

@@ -1,6 +1,6 @@
 Fjällkartan legt de officiële topografische kaarten van Noorwegen en Zweden naast elkaar in één app, naadloos aan elkaar gezet over de grens heen, zodat je route niet stopt bij de landsgrens.
 
-De cartografie komt rechtstreeks van Kartverket en Lantmäteriet — dezelfde kaarten die je anders op papier meeneemt, met hoogtelijnen, gemarkeerde paden, hutten, bruggen en winterroutes.
+De cartografie komt rechtstreeks van de nationale karteringsdiensten van beide landen — dezelfde kaarten die je anders op papier meeneemt, met hoogtelijnen, gemarkeerde paden, hutten, bruggen en winterroutes.
 
 WERKT OFFLINE
 Download een gebied voor vertrek en draag de hele kaart in je telefoon. Bereik is niet nodig.
@@ -8,9 +8,18 @@ Download een gebied voor vertrek en draag de hele kaart in je telefoon. Bereik i
 METEN
 Trek met je vinger een lijn en lees de lengte af. De afstanden zijn geodetisch en kloppen daardoor ook hoog in het noorden, waar een platte kaart ze zou overdrijven.
 
+HOOGTE EN KLIM
+Bij elke gemeten route horen de totale stijging en daling plus een hoogteprofiel, zodat je de klim ziet voordat je hem loopt. De hoogtes staan op de telefoon en werken ook offline.
+
+BEWAAR JE ROUTES
+Bewaar een route en haal hem terug wanneer je wilt, met je eigen naam en via iCloud gesynchroniseerd tussen je apparaten. Een aantal klassieke tochten zit er vanaf het begin bij.
+
+HERKEN LAWINETERREIN
+Zet de hellingslaag aan en de steilheid wordt direct over de kaart gelegd, voor Noorwegen én Zweden, zodat lawineterrein al tijdens het plannen zichtbaar is.
+
 ZOEK IN 1,6 MILJOEN PLAATSEN
 Alle Zweedse en Noorse plaatsnamen, ook zonder verbinding doorzoekbaar. Zoek een top, een meer of een hut op naam en ga er direct heen.
 
 Geen account, geen registratie, geen tracking. Je locatie verlaat je telefoon nooit.
 
-Kaartgegevens © Kartverket en © Lantmäteriet.
+© Kartverket © Lantmäteriet © NVE.
