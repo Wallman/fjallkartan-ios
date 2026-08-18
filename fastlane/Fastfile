@@ -176,22 +176,40 @@ def expected_screenshots
   end
 end
 
-# deliver's screenshot upload is not idempotent, so verify (and repair) what
-# actually landed.
+# [locale, file name] => { checksum:, size: } for the local tree. App Store
+# Connect reports both back per screenshot, which is what lets the repair tell
+# a current image from a stale one rather than trusting the file name.
+def local_screenshot_fingerprints
+  require "digest"
+
+  screenshots = File.expand_path("screenshots", __dir__)
+  Dir.children(screenshots).reject { |c| c.start_with?(".") }.each_with_object({}) do |locale, out|
+    Dir.children(File.join(screenshots, locale)).select { |n| n.end_with?(".png") }.each do |name|
+      path = File.join(screenshots, locale, name)
+      out[[locale, name]] = { checksum: Digest::MD5.hexdigest(File.binread(path)), size: File.size(path) }
+    end
+  end
+end
+
+# Apple fills in `sourceFileChecksum` asynchronously, some time after the asset
+# itself stops reporting as processing — and for a few screenshots per run it
+# never fills it in at all, leaving null against an image that is COMPLETE,
+# error-free and byte-for-byte the file we sent (verified by `fileSize`).
 #
-# It decides whether an upload succeeded by looking for each local file's
-# checksum in `source_file_checksum` on App Store Connect, but Apple only fills
-# that in once it has finished processing the image. Anything still processing
-# therefore looks *missing*, which makes deliver delete the incomplete uploads
-# and re-send the whole set — appending a second copy of every screenshot that
-# did finish in time. That is why a run can leave 5, 7 or 10 images in a set
-# that holds 4 locally, and why the surplus is unpredictable.
-#
-# The duplicates are always the later copies (the originals were uploaded in
-# order first), so keeping the first occurrence also preserves display order.
-def verify_screenshots!(prune: true)
+# That null is the origin of the whole duplicate problem: it is the only thing
+# deliver matches on, so it re-uploads a screenshot that is already there, five
+# times over, and then fails the lane. Wait briefly for a late checksum, then
+# fall back to the size rather than treating Apple's missing metadata as a
+# missing screenshot.
+CHECKSUM_SETTLE_ATTEMPTS = 4
+CHECKSUM_SETTLE_DELAY = 15
+
+# One pass over the remote state. Returns [problems, unsettled, removed].
+def inspect_screenshots(prune:)
+  require "naturally"
+
   expected = expected_screenshots
-  Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.from(hash: asc_api_key)
+  fingerprints = local_screenshot_fingerprints
 
   app = Spaceship::ConnectAPI::App.find(CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier))
   version = app.get_edit_app_store_version
@@ -199,32 +217,56 @@ def verify_screenshots!(prune: true)
 
   removed = 0
   problems = []
+  unsettled = []
 
   version.get_app_store_version_localizations.each do |localization|
     locale = localization.locale
     wanted = expected[locale]
     next if wanted.nil?
 
-    localization.get_app_screenshot_sets.each do |set|
+    sets = localization.get_app_screenshot_sets
+    sets.each do |set|
       display_type = set.screenshot_display_type
       shots = set.app_screenshots || []
 
+      keepers = []
       shots.group_by(&:file_name).each do |name, group|
+        local = fingerprints[[locale, name]]
+        # Prefer the copy Apple has confirmed is the local file, so pruning can
+        # never keep a stale image in preference to a good one — and so the
+        # copy that survives is the one deliver will recognise next run.
+        keeper = local && (group.find { |s| s.source_file_checksum == local[:checksum] } ||
+                           group.find { |s| s.source_file_checksum.nil? && s.file_size == local[:size] })
+        keeper ||= group.first
+        keepers << keeper
+
         next if group.size == 1
         unless prune
           problems << "#{locale} #{display_type}: #{name} appears #{group.size} times"
           next
         end
-        group.drop(1).each do |duplicate|
+        (group - [keeper]).each do |duplicate|
           duplicate.delete!
           removed += 1
         end
         UI.message("#{locale} #{display_type}: removed #{group.size - 1} duplicate #{name}")
       end
 
-      remaining = prune ? shots.group_by(&:file_name).map { |_, g| g.first } : shots
+      remaining = prune ? keepers : shots
       incomplete = remaining.reject(&:complete?).map(&:file_name)
       problems << "#{locale} #{display_type}: not finished processing — #{incomplete.join(', ')}" unless incomplete.empty?
+
+      remaining.each do |shot|
+        local = fingerprints[[locale, shot.file_name]]
+        next if local.nil?
+        checksum = shot.source_file_checksum
+        next if checksum == local[:checksum]
+        if checksum
+          problems << "#{locale} #{display_type}: #{shot.file_name} is not the local file — re-run the upload"
+        elsif shot.file_size != local[:size]
+          unsettled << "#{locale} #{display_type}: #{shot.file_name}"
+        end
+      end
 
       got = remaining.map(&:file_name).sort
       want = wanted[display_type]
@@ -233,15 +275,84 @@ def verify_screenshots!(prune: true)
       elsif got != want
         problems << "#{locale} #{display_type}: has #{got.join(', ')}; expected #{want.join(', ')}"
       end
+
+      # deliver sorts the sets as its last step, so a run that raised before
+      # then leaves them in whatever order the parallel uploads happened to
+      # land in. Redo that here rather than leaving the store page shuffled.
+      next unless prune
+      sorted = Naturally.sort(keepers, by: :file_name).map(&:id)
+      next if keepers.map(&:id) == sorted
+      set.reorder_screenshots(app_screenshot_ids: sorted)
+      UI.message("#{locale} #{display_type}: restored screenshot order")
     end
 
-    missing = wanted.keys - localization.get_app_screenshot_sets.map(&:screenshot_display_type)
+    missing = wanted.keys - sets.map(&:screenshot_display_type)
     problems << "#{locale}: no screenshots uploaded for #{missing.join(', ')}" unless missing.empty?
   end
 
-  UI.important("removed #{removed} duplicate screenshot(s)") if removed > 0
+  [problems, unsettled, removed]
+end
+
+# deliver's screenshot upload is not idempotent, so verify (and repair) what
+# actually landed.
+#
+# It decides whether an upload succeeded by looking for each local file's
+# checksum in `source_file_checksum` on App Store Connect, and Apple leaves that
+# null on a handful of images per run (see CHECKSUM_SETTLE_ATTEMPTS). Those read
+# as *missing*, so deliver deletes what it thinks are the failures and re-sends
+# the whole set — appending a second copy of every screenshot it did recognise.
+# It retries that five times before giving up, which is why one run left 71
+# surplus images and why the surplus is unpredictable.
+#
+# This pass is the authority instead: it keeps one copy of each file (preferring
+# the one Apple can vouch for), checks it really is the local image, restores the
+# display order deliver never got to sort, and fails the lane if a screenshot is
+# genuinely missing or stale.
+def verify_screenshots!(prune: true)
+  Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.from(hash: asc_api_key)
+
+  removed_total = 0
+  problems = []
+  unsettled = []
+  attempts = 0
+
+  loop do
+    problems, unsettled, removed = inspect_screenshots(prune: prune)
+    removed_total += removed
+    attempts += 1
+    break if unsettled.empty? || !problems.empty? || attempts >= CHECKSUM_SETTLE_ATTEMPTS
+
+    UI.message("App Store Connect is still ingesting #{unsettled.size} screenshot(s); waiting #{CHECKSUM_SETTLE_DELAY}s")
+    sleep(CHECKSUM_SETTLE_DELAY)
+  end
+
+  problems += unsettled.map { |shot| "#{shot}: App Store Connect reports neither a matching checksum nor a matching file size" }
+
+  UI.important("removed #{removed_total} duplicate screenshot(s)") if removed_total > 0
   UI.user_error!("screenshots on App Store Connect do not match fastlane/screenshots:\n- #{problems.join("\n- ")}") unless problems.empty?
   UI.success("ok: every screenshot set matches fastlane/screenshots")
+end
+
+# deliver decides whether its own upload worked by looking for each local file's
+# checksum on App Store Connect, and gives up while Apple is still ingesting —
+# see the comment on CHECKSUM_SETTLE_ATTEMPTS. By the time it raises it has also
+# retried the whole set five times, so what it leaves behind is duplicates
+# rather than a missing screenshot, and the failure is usually a false alarm.
+#
+# Swallowing it here is safe only because verify_screenshots! then checks the
+# same thing itself, by checksum, after the ingest has settled — and fails the
+# lane if anything really is missing or stale.
+DELIVER_SCREENSHOT_VERIFICATION_ERROR = "Failed verification of all screenshots uploaded".freeze
+
+def deliver_and_verify_screenshots!(options)
+  begin
+    deliver(options)
+  rescue FastlaneCore::Interface::FastlaneError => error
+    raise unless error.message.to_s.include?(DELIVER_SCREENSHOT_VERIFICATION_ERROR)
+    UI.important("deliver could not confirm its own screenshot upload (#{error.message.strip}); checking App Store Connect directly")
+  end
+
+  verify_screenshots!
 end
 
 # `deliver download_metadata` writes every field it knows about, including ones
@@ -297,7 +408,7 @@ platform :ios do
     require_screenshots!
     UI.important(EDITABLE_HINT)
 
-    deliver(
+    deliver_and_verify_screenshots!(
       api_key: asc_api_key,
       skip_binary_upload: true,
       skip_metadata: true,
@@ -307,8 +418,6 @@ platform :ios do
       submit_for_review: false,
       precheck_include_in_app_purchases: false
     )
-
-    verify_screenshots!
   end
 
   desc "Check App Store Connect's screenshots match fastlane/screenshots, removing duplicates deliver left behind"
@@ -323,7 +432,7 @@ platform :ios do
     require_screenshots!
     UI.important(EDITABLE_HINT)
 
-    deliver(
+    deliver_and_verify_screenshots!(
       api_key: asc_api_key,
       skip_binary_upload: true,
       overwrite_screenshots: true,
@@ -332,8 +441,6 @@ platform :ios do
       submit_for_review: false,
       precheck_include_in_app_purchases: false
     )
-
-    verify_screenshots!
   end
 
   desc "Overwrite fastlane/metadata with what App Store Connect currently holds, so `git diff` shows any drift"
