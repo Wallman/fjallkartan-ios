@@ -57,7 +57,7 @@ extension OnboardingPage {
         OnboardingPage(
             id: "offline",
             symbol: "arrow.down.circle",
-            title: "Take the map offline",
+            title: "Offline mode",
             message: "Tap download and frame the area. The dashed box is what gets saved."
         ),
         OnboardingPage(
