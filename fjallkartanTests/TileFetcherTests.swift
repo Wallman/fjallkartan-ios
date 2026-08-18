@@ -82,6 +82,7 @@ struct TileFetcherTests {
                              metrics: TileMetrics? = nil) -> TileFetcher {
         var configuration = TileFetcher.Configuration()
         configuration.initialRetryDelay = 0.01
+        configuration.connectivityRetryDelay = 0.01
         return TileFetcher(session: makeSession(cache: cache), cache: cache,
                            offlineStore: offlineStore, configuration: configuration,
                            metrics: metrics)
@@ -207,7 +208,7 @@ struct TileFetcherTests {
         #expect(TileFetcherStubURLProtocol.requestCount == 3)
     }
 
-    @Test func offlineIsNotRetried() async {
+    @Test func offlineIsRetriedOnceThenGivesUp() async {
         TileFetcherStubURLProtocol.handler = { _ in (200, Self.png, Self.imageHeaders) }
         TileFetcherStubURLProtocol.errorHandler = { _ in URLError(.notConnectedToInternet) }
 
@@ -217,8 +218,26 @@ struct TileFetcherTests {
             Issue.record("expected failure, got \(outcome)")
             return
         }
-        // There is no connection to wait for, so burning retries is pointless.
-        #expect(TileFetcherStubURLProtocol.requestCount == 1)
+        // Burning the full budget on a device that really is offline is
+        // pointless, but one retry covers a cold start that reports "offline"
+        // before the network stack is up.
+        #expect(TileFetcherStubURLProtocol.requestCount == 2)
+    }
+
+    @Test func connectivityErrorOnColdStartIsRetriedThenSucceeds() async {
+        TileFetcherStubURLProtocol.handler = { _ in (200, Self.png, Self.imageHeaders) }
+        TileFetcherStubURLProtocol.errorHandler = { _ in
+            TileFetcherStubURLProtocol.requestCount <= 1 ? URLError(.notConnectedToInternet) : nil
+        }
+
+        let outcome = await fetch(makeFetcher(), url: url)
+
+        guard case .success(let data) = outcome else {
+            Issue.record("expected success, got \(outcome)")
+            return
+        }
+        #expect(data == Self.png)
+        #expect(TileFetcherStubURLProtocol.requestCount == 2)
     }
 
     @Test func cachedTileIsServedWithoutHittingTheNetwork() async {

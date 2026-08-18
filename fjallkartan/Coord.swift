@@ -1,7 +1,10 @@
 import CoreLocation
 
 /// A plain lat/lon pair, since `CLLocationCoordinate2D` itself isn't `Codable`.
-struct Coord: Codable, Hashable {
+/// `nonisolated` because the project defaults to `MainActor` isolation, which
+/// would isolate the synthesized `Hashable`/`Equatable` conformances too — and
+/// this is a value type compared and persisted off the main thread.
+nonisolated struct Coord: Codable, Hashable {
     let latitude: Double
     let longitude: Double
 

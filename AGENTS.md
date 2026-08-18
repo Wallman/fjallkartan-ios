@@ -63,6 +63,7 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 
 - **`CustomTileOverlay`**
   - Tiles are always requested from both servers, and empty/no-data areas simply come back blank.
+  - **`noData` and `failure` must not be conflated.** `noData` is returned to MapKit as `(nil, nil)` — a legitimately empty tile it caches and never asks about again. A `failure` is returned as `(nil, error)`, because `(nil, nil)` would make MapKit cache the hole for the lifetime of the renderer, so a single failed request (typically a cold launch racing the network stack) would leave that tile blank until the overlay was rebuilt. `SlopeTileOverlay` has always drawn the same distinction. A tile that failed is then re-requested on the next redraw, i.e. as soon as the map moves.
   - Kartverket's no-data fill is transparent at low zoom but an opaque cream (~255,255,230) from ~z15; `kartverketNoDataToTransparentPNG` rewrites those pixels to transparent so Lantmäteriet shows through. Lantmäteriet tiles are passed through untouched.
 
 - **Tile metrics**
@@ -70,6 +71,10 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
   - Attribution lives entirely inside `TileFetcher`: a private `Resolution` tags each lookup as offline store / `URLCache` / network / upscaled ancestor / no-data / failure.
   - Latency is a fixed-bound histogram rather than a running mean, and percentiles are reported as the containing bucket bound (`≤ 300 ms`).
   - Recording is a lock plus a dictionary increment on the URLSession completion thread; the file is written only every 200 records and on scene-background.
+
+- **Tile retries**
+  - A "there is no connection" `URLError` gets `connectivityAttempts` (2) rather than the full `maximumAttempts` budget: a genuinely offline device has nothing to wait for, but a cold launch can report offline for a moment before the network stack is up, and writing the tile off on the first try used to leave a permanent hole. The retry uses the longer `connectivityRetryDelay`, since the point is to outlast a slow start rather than to hammer a server.
+  - Every path that ends in `noData` or `failure` logs, including a 2xx that carried no body or a non-image body — those were previously silent, which made a stuck tile impossible to tell from a working one in the logs.
 
 - **Remote settings**
   - `RemoteSettings.shared.refresh()` runs on scene activation and fetches `https://tiles.wallman.dev/settings.json` at most once per 6 h, so a provider that changes its URL can be followed without an app update.
@@ -136,6 +141,12 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 - **Saved pins**  - A saved pin (`SavedPin`: id/createdAt/coordinate/name/subtitle/schemaVersion) is created either by long-pressing the map (name defaults to nil, so `displayName` falls back to a formatted date) or by tapping the bookmark `rightCalloutAccessoryView` on a search-result marker (named after the `PlaceResult`). Both go through `SavedPinStore`, the `DocumentDirectoryStore<SavedPin>` wrapper, under `Application Support/Pins` — its own iCloud migration `UserDefaults` key keeps pin migration independent of route migration.
   - `MapView.Coordinator` owns a `UILongPressGestureRecognizer` added directly to the `MKMapView` (not the measurement capture view), disabled whenever `isMeasuring` or `isRegionPreviewVisible` is true so it never competes with drawing or the offline-region picker.
   - Pins are managed entirely on the map, not in the "Saved" sheet (that sheet is routes-only): `SavedPinAnnotation` has no title/subtitle/callout at all — tapping one directly fires `mapView(_:didSelect:)`, which opens `PinDetailSheet` (a small `.presentationDetents([.height(260)])` sheet with Rename + destructive Delete) and immediately deselects, so no callout ever flashes on screen. `SavedPinsModel` (load/save/rename/delete) still backs this, it's just driven from the map instead of a list.
+
+- **Actor isolation**
+  - The project builds with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` (and `SWIFT_APPROACHABLE_CONCURRENCY`), so **every type is implicitly `@MainActor` unless it says otherwise**. That is why `TileServer`, `TileFetcher`, `TileSettings`, `Coord` and friends are explicitly marked `nonisolated`.
+  - The trap: implicit isolation also covers a type's *synthesized conformances*. A main-actor-isolated `Hashable`/`Equatable` can't be used from a nonisolated context, and Swift Testing's `#expect` macro expands into exactly that — so comparing such a value in a test produces `main actor-isolated conformance of 'X' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode`.
+  - So: any value type that is compared in tests, persisted, or otherwise touched off the main thread must be declared `nonisolated`. Reach for that rather than annotating the test, and treat the warning as a real isolation bug — it becomes an error under Swift 6.
+  - The same applies to overridden UIKit/MapKit members: `MKTileOverlay.loadTile(at:result:)` is main-actor isolated, so a test helper that calls it needs `@MainActor`.
 
 ## Build & test
 - Xcode project: `fjallkartan.xcodeproj`, scheme `fjallkartan`.

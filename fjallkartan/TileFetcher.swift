@@ -12,6 +12,8 @@ nonisolated final class TileFetcher: @unchecked Sendable {
         var maximumAttempts = 3
         var initialRetryDelay: TimeInterval = 0.2
         var cacheTTL: TimeInterval = 182 * 24 * 60 * 60 // 6 months
+        var connectivityAttempts = 2
+        var connectivityRetryDelay: TimeInterval = 1
     }
 
     static let sharedTileCache = URLCache(
@@ -124,9 +126,7 @@ nonisolated final class TileFetcher: @unchecked Sendable {
 
             if let data, error == nil, let http, (200...299).contains(http.statusCode) {
                 guard http.mimeType?.hasPrefix("image/") ?? false else {
-                    // Some tile servers answer a failure with a 200 carrying an
-                    // XML/HTML error page; storing that would poison the cache
-                    // for a year, or the offline store until the region is deleted.
+                    Self.log.error("non-image \(http.statusCode) (\(http.mimeType ?? "no MIME type", privacy: .public)) for \(url.absoluteString, privacy: .public)")
                     completion(.noData, Resolution(source: .unexpectedNoData, attempts: attempt))
                     return
                 }
@@ -141,6 +141,8 @@ nonisolated final class TileFetcher: @unchecked Sendable {
                 }
             } else if let error {
                 Self.log.error("request failed for \(url.absoluteString, privacy: .public), attempt \(attempt): \(error.localizedDescription, privacy: .public)")
+            } else if let http {
+                Self.log.error("empty \(http.statusCode) body for \(url.absoluteString, privacy: .public), attempt \(attempt)")
             }
 
             // A client error other than throttling is a genuine no-data tile.
@@ -150,9 +152,18 @@ nonisolated final class TileFetcher: @unchecked Sendable {
                                                attempts: attempt))
                 return
             }
-            // There is no connection to wait for.
+            // Claims of "no connection" get their own small budget rather than
+            // the full one: usually there really is nothing to wait for, but a
+            // cold start can report this before the network stack is up.
             if let urlError = error as? URLError, Self.isConnectivityError(urlError) {
-                completion(.failure(urlError), Resolution(source: .failure, attempts: attempt))
+                guard attempt < configuration.connectivityAttempts else {
+                    completion(.failure(urlError), Resolution(source: .failure, attempts: attempt))
+                    return
+                }
+                DispatchQueue.global().asyncAfter(deadline: .now() + configuration.connectivityRetryDelay) {
+                    self.attempt(url: url, server: server, attempt: attempt + 1,
+                                 delay: delay, completion: completion)
+                }
                 return
             }
 

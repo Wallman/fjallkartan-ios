@@ -2,24 +2,27 @@ import MapKit
 import UIKit
 
 final class CustomTileOverlay: MKTileOverlay {
-    private static let fetcher = TileFetcher.mapTiles
-
     private let server: TileServer
+    private let fetcher: TileFetcher
 
-    init(server: TileServer) {
+    init(server: TileServer, fetcher: TileFetcher = .mapTiles) {
         self.server = server
+        self.fetcher = fetcher
         super.init(urlTemplate: nil)
         canReplaceMapContent = true
     }
 
     override func loadTile(at path: MKTileOverlayPath,
                            result: @escaping (Data?, Error?) -> Void) {
-        Self.fetcher.fetchTile(server: server, z: Int(path.z), x: Int(path.x), y: Int(path.y)) { [server] outcome in
-            guard case .success(let data) = outcome else {
+        fetcher.fetchTile(server: server, z: Int(path.z), x: Int(path.x), y: Int(path.y)) { [server] outcome in
+            switch outcome {
+            case .success(let data):
+                result(server == .kartverket ? Self.kartverketNoDataToTransparentPNG(data) : data, nil)
+            case .noData:
                 result(nil, nil)
-                return
+            case .failure(let error):
+                result(nil, error)
             }
-            result(server == .kartverket ? Self.kartverketNoDataToTransparentPNG(data) : data, nil)
         }
     }
 
