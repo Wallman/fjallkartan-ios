@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		74160A3CE65F3DF3B5F4DE9C /* MapLibre in Frameworks */ = {isa = PBXBuildFile; productRef = 83CE6A75E05DBB7637913E96 /* MapLibre */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		34CDC7633016669600CB00A8 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -39,6 +43,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				74160A3CE65F3DF3B5F4DE9C /* MapLibre in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -90,6 +95,7 @@
 			);
 			name = fjallkartan;
 			packageProductDependencies = (
+				83CE6A75E05DBB7637913E96 /* MapLibre */,
 			);
 			productName = fjallkartan;
 			productReference = 34A3ECD93012055400F6C867 /* fjallkartan.app */;
@@ -112,8 +118,6 @@
 				34CDC7603016669600CB00A8 /* fjallkartanTests */,
 			);
 			name = fjallkartanTests;
-			packageProductDependencies = (
-			);
 			productName = fjallkartanTests;
 			productReference = 34CDC75F3016669600CB00A8 /* fjallkartanTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -157,6 +161,7 @@
 			mainGroup = 34A3ECD03012055300F6C867;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				6C856AC7B4EA2F8C082BA4F3 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 34A3ECDA3012055400F6C867 /* Products */;
@@ -500,6 +505,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		6C856AC7B4EA2F8C082BA4F3 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/maplibre/maplibre-gl-native-distribution";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.28.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		83CE6A75E05DBB7637913E96 /* MapLibre */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6C856AC7B4EA2F8C082BA4F3 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */;
+			productName = MapLibre;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 34A3ECD13012055300F6C867 /* Project object */;
 }
