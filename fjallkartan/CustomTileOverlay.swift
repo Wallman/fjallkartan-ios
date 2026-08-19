@@ -67,13 +67,16 @@ final class CustomTileOverlay: MKTileOverlay {
             return data
         }
         ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        var rewroteAnyPixel = false
         var i = 0
         while i < buf.count {
             if buf[i] > 250, buf[i + 1] > 250, buf[i + 2] >= 222, buf[i + 2] <= 240 {
                 buf[i] = 0; buf[i + 1] = 0; buf[i + 2] = 0; buf[i + 3] = 0
+                rewroteAnyPixel = true
             }
             i += 4
         }
+        guard rewroteAnyPixel else { return data }
         guard let out = ctx.makeImage() else { return data }
         return UIImage(cgImage: out).pngData() ?? data
     }

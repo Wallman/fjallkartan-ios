@@ -75,6 +75,27 @@ struct CustomTileOverlayTests {
         }
     }()
 
+    /// Kartverket's opaque no-data fill (~255,255,230).
+    @MainActor private static let creamPNG: Data = solidPNG(UIColor(red: 1, green: 1, blue: 230.0 / 255.0, alpha: 1))
+
+    @MainActor private static func solidPNG(_ color: UIColor) -> Data {
+        let size = CGSize(width: 256, height: 256)
+        return UIGraphicsImageRenderer(size: size).pngData { context in
+            color.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+        }
+    }
+
+    @MainActor private static func firstPixel(of data: Data) -> (r: UInt8, g: UInt8, b: UInt8, a: UInt8)? {
+        guard let cg = UIImage(data: data)?.cgImage else { return nil }
+        var buf = [UInt8](repeating: 0, count: 4)
+        guard let ctx = CGContext(data: &buf, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        return (buf[0], buf[1], buf[2], buf[3])
+    }
+
     private func makeOverlay(server: TileServer = .lantmateriet) -> CustomTileOverlay {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [OverlayStubURLProtocol.self]
@@ -137,6 +158,29 @@ struct CustomTileOverlayTests {
 
         #expect(data == Self.png)
         #expect(error == nil)
+    }
+
+    /// A Kartverket tile carrying no cream fill must come back byte-identical:
+    /// the early-out is what skips a full decode-and-re-encode for it.
+    @MainActor
+    @Test func kartverketTileWithoutNoDataFillIsReturnedUnmodified() async {
+        OverlayStubURLProtocol.stub(status: 200, data: Self.opaquePNG, headers: Self.imageHeaders)
+
+        let (data, error) = await loadTile(makeOverlay(server: .kartverket))
+
+        #expect(error == nil)
+        #expect(data == Self.opaquePNG)
+    }
+
+    @MainActor
+    @Test func kartverketNoDataFillIsMadeTransparent() async {
+        OverlayStubURLProtocol.stub(status: 200, data: Self.creamPNG, headers: Self.imageHeaders)
+
+        let (data, error) = await loadTile(makeOverlay(server: .kartverket))
+
+        #expect(error == nil)
+        #expect(data != Self.creamPNG)
+        #expect(Self.firstPixel(of: data ?? Data())?.a == 0)
     }
 
     /// Lantmäteriet publishes to z16, so a deeper tile must be served by
