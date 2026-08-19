@@ -35,11 +35,6 @@ nonisolated enum TileServer: CaseIterable {
         }
     }
 
-    /// If 404s are expected
-    var publishesSparseTiles: Bool {
-        isSlope || isData
-    }
-
     var isSlope: Bool {
         switch self {
         case .kartverket, .lantmateriet, .elevation: return false

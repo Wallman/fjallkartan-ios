@@ -74,7 +74,7 @@ nonisolated final class TileFetcher: @unchecked Sendable {
             return
         }
 
-        resolve(url: server.url(z: z, x: x, y: y), server: server) { [self] outcome, resolution in
+        resolve(url: server.url(z: z, x: x, y: y)) { [self] outcome, resolution in
             if case .success = outcome {
                 record(resolution.source, server: server, z: z, attempts: resolution.attempts, started: started)
                 completion(outcome)
@@ -95,18 +95,17 @@ nonisolated final class TileFetcher: @unchecked Sendable {
         }
     }
 
-    /// - Parameter server: used to identify an expected sparse-tileset 
-    func fetch(url: URL, server: TileServer? = nil, completion: @escaping (TileFetchOutcome) -> Void) {
-        resolve(url: url, server: server) { outcome, _ in completion(outcome) }
+    func fetch(url: URL, completion: @escaping (TileFetchOutcome) -> Void) {
+        resolve(url: url) { outcome, _ in completion(outcome) }
     }
 
-    private func resolve(url: URL, server: TileServer?,
+    private func resolve(url: URL,
                          completion: @escaping (TileFetchOutcome, Resolution) -> Void) {
         if let data = cache?.cachedResponse(for: URLRequest(url: url))?.data {
             completion(.success(data), Resolution(source: .urlCache, attempts: 0))
             return
         }
-        attempt(url: url, server: server, attempt: 1,
+        attempt(url: url, attempt: 1,
                 delay: configuration.initialRetryDelay, completion: completion)
     }
 
@@ -118,7 +117,7 @@ nonisolated final class TileFetcher: @unchecked Sendable {
                        attempts: attempts, seconds: Double(nanoseconds) / 1_000_000_000)
     }
 
-    private func attempt(url: URL, server: TileServer?, attempt: Int, delay: TimeInterval,
+    private func attempt(url: URL, attempt: Int, delay: TimeInterval,
                          completion: @escaping (TileFetchOutcome, Resolution) -> Void) {
         let request = URLRequest(url: url)
         session.dataTask(with: request) { [self] data, response, error in
@@ -136,7 +135,7 @@ nonisolated final class TileFetcher: @unchecked Sendable {
             }
 
             if let http, !(200...299).contains(http.statusCode) {
-                if !(http.statusCode == 404 && (server?.publishesSparseTiles ?? false)) {
+                if http.statusCode != 404 {
                     Self.log.error("HTTP \(http.statusCode) for \(url.absoluteString, privacy: .public), attempt \(attempt)")
                 }
             } else if let error {
@@ -147,8 +146,7 @@ nonisolated final class TileFetcher: @unchecked Sendable {
 
             // A client error other than throttling is a genuine no-data tile.
             if let http, !Self.isRetryable(status: http.statusCode) {
-                let expected = http.statusCode == 404 && (server?.publishesSparseTiles ?? false)
-                completion(.noData, Resolution(source: expected ? .expectedNoData : .unexpectedNoData,
+                completion(.noData, Resolution(source: http.statusCode == 404 ? .expectedNoData : .unexpectedNoData,
                                                attempts: attempt))
                 return
             }
@@ -161,7 +159,7 @@ nonisolated final class TileFetcher: @unchecked Sendable {
                     return
                 }
                 DispatchQueue.global().asyncAfter(deadline: .now() + configuration.connectivityRetryDelay) {
-                    self.attempt(url: url, server: server, attempt: attempt + 1,
+                    self.attempt(url: url, attempt: attempt + 1,
                                  delay: delay, completion: completion)
                 }
                 return
@@ -176,7 +174,7 @@ nonisolated final class TileFetcher: @unchecked Sendable {
 
             let retryAfter = http?.value(forHTTPHeaderField: "Retry-After").flatMap(Double.init) ?? delay
             DispatchQueue.global().asyncAfter(deadline: .now() + retryAfter) {
-                self.attempt(url: url, server: server, attempt: attempt + 1, delay: delay * 2, completion: completion)
+                self.attempt(url: url, attempt: attempt + 1, delay: delay * 2, completion: completion)
             }
         }.resume()
     }

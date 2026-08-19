@@ -357,22 +357,26 @@ struct TileFetcherTests {
         cache.removeAllCachedResponses()
     }
 
-    /// The slope and elevation tilesets are published only where data exists,
-    /// so their 404s must not read as breakage — otherwise the fault rate is
-    /// dominated by the layers working exactly as designed.
-    @Test func sparseTilesetNotFoundIsNotCountedAsAFault() async {
+    /// Every tileset here is sparse in some direction — the slope and elevation
+    /// sets exist only where data does, and each base layer stops at its own
+    /// country's border — so a 404 must not read as breakage, otherwise the
+    /// fault rate is dominated by the layers working exactly as designed.
+    @Test(arguments: [TileServer.swedenSlope, .kartverket, .lantmateriet])
+    func notFoundIsNotCountedAsAFault(server: TileServer) async {
         TileFetcherStubURLProtocol.handler = { _ in (404, Data(), [:]) }
         let metrics = makeMetrics()
 
-        _ = await fetchTile(makeFetcher(metrics: metrics), server: .swedenSlope, z: 12, x: 3, y: 4)
+        _ = await fetchTile(makeFetcher(metrics: metrics), server: server, z: 12, x: 3, y: 4)
 
-        #expect(count(metrics, .swedenSlope, .expectedNoData) == 1)
-        #expect(count(metrics, .swedenSlope, .unexpectedNoData) == 0)
-        #expect(metrics.snapshot().layers.first { $0.server == .swedenSlope }?.faultRate == nil)
+        #expect(count(metrics, server, .expectedNoData) == 1)
+        #expect(count(metrics, server, .unexpectedNoData) == 0)
+        #expect(metrics.snapshot().layers.first { $0.server == server }?.faultRate == nil)
     }
 
-    @Test func denseLayerNotFoundIsCountedAsAFault() async {
-        TileFetcherStubURLProtocol.handler = { _ in (404, Data(), [:]) }
+    /// A 404 is the shape a missing tile takes; any other client error is the
+    /// server telling us the request itself was wrong, which is a real fault.
+    @Test func otherClientErrorIsCountedAsAFault() async {
+        TileFetcherStubURLProtocol.handler = { _ in (400, Data(), [:]) }
         let metrics = makeMetrics()
 
         _ = await fetchTile(makeFetcher(metrics: metrics), server: .kartverket, z: 10, x: 1, y: 2)
@@ -444,7 +448,7 @@ struct TileFetcherTests {
         #expect(metrics.snapshot().layers.first { $0.server == .kartverket }?.latencyPercentile(0.5) != nil)
     }
 
-    /// The bulk region downloader goes through `fetch(url:server:)`, which is
+    /// The bulk region downloader goes through `fetch(url:)`, which is
     /// never recorded: a region download is tens of thousands of fetches in a
     /// burst and would drown out what ordinary browsing looks like.
     @Test func theBulkDownloadEntryPointIsNotRecorded() async {
@@ -452,7 +456,7 @@ struct TileFetcherTests {
         let metrics = makeMetrics()
 
         _ = await withCheckedContinuation { continuation in
-            makeFetcher(metrics: metrics).fetch(url: url, server: .kartverket) {
+            makeFetcher(metrics: metrics).fetch(url: url) {
                 continuation.resume(returning: $0)
             }
         }

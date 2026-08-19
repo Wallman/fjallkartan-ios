@@ -183,7 +183,7 @@ final class OfflineRegionDownloader {
     private static func fetchTile(fetcher: TileFetcher, server: TileServer, path: MKTileOverlayPath) async -> OfflineTileStore.PendingTile? {
         let url = server.url(z: Int(path.z), x: Int(path.x), y: Int(path.y))
         let outcome = await withCheckedContinuation { continuation in
-            fetcher.fetch(url: url, server: server) { continuation.resume(returning: $0) }
+            fetcher.fetch(url: url) { continuation.resume(returning: $0) }
         }
         guard case .success(let data) = outcome else { return nil }
         return OfflineTileStore.PendingTile(server: server.storeCode, z: Int(path.z), x: Int(path.x), y: Int(path.y), data: data)
