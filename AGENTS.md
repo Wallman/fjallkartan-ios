@@ -73,7 +73,7 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 - **Tile metrics**
   - Counters are **aggregate-only and coordinate-free**: the key is `(layer, zoom)`, never `(x, y)`. Nothing leaves the device.
   - Attribution lives entirely inside `TileFetcher`: a private `Resolution` tags each lookup as offline store / `URLCache` / network / upscaled ancestor / no-data / failure.
-  - Latency is a fixed-bound histogram rather than a running mean, and percentiles are reported as the containing bucket bound (`≤ 300 ms`).
+  - Latency is a fixed-bound histogram rather than a running mean, and percentiles are reported as the containing bucket bound (`≤ 300 ms`). Histograms are kept **per `(layer, zoom, source)`** as well as blended per `(layer, zoom)`: a blended p50 mixes ~0 ms offline-store hits with multi-second network fetches and so cannot answer whether a given cache tier is actually cheap. The blended array is still stored rather than derived, because it predates the per-source split and is all an older `tile-metrics.json` contains — `Entry.init(from:)` decodes every field optionally, so such a file keeps its counts and blended latency and simply starts with no per-source data. `DebugSheet` suppresses a per-source percentile below 10 samples for that reason.
   - Recording is a lock plus a dictionary increment on the URLSession completion thread; the file is written only every 200 records and on scene-background.
 
 - **Tile retries**

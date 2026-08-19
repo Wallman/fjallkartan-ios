@@ -69,25 +69,78 @@ nonisolated final class TileMetrics: @unchecked Sendable {
         return latencyBoundsMS.count
     }
 
+    /// Upper bound in ms of the bucket holding the p-th sample, or nil if
+    /// there are no samples. A sample past the last bound is reported as that
+    /// bound with `isOverflow`.
+    static func percentile(_ percentile: Double, in histogram: [Int]) -> (milliseconds: Int, isOverflow: Bool)? {
+        let samples = histogram.reduce(0, +)
+        guard samples > 0 else { return nil }
+        let target = Int((Double(samples) * percentile).rounded(.up))
+        var seen = 0
+        for (index, count) in histogram.enumerated() {
+            seen += count
+            guard seen >= max(target, 1) else { continue }
+            if index < latencyBoundsMS.count {
+                return (latencyBoundsMS[index], false)
+            }
+            return (latencyBoundsMS[latencyBoundsMS.count - 1], true)
+        }
+        return nil
+    }
+
+    private static func emptyHistogram() -> [Int] {
+        Array(repeating: 0, count: latencyBucketCount)
+    }
+
     // MARK: - Stored shape
 
     private struct Entry: Codable {
         var counts: [String: Int] = [:]
-        var latency: [Int] = Array(repeating: 0, count: TileMetrics.latencyBucketCount)
+        /// Aggregate latency over every source. Kept alongside
+        /// `latencyBySource` rather than derived from it because it predates
+        /// it: a file written by an earlier build has only this, and dropping
+        /// it would silently discard that history on upgrade.
+        var latency: [Int] = TileMetrics.emptyHistogram()
+        /// One histogram per `Source.rawValue`. A blended p95 can't answer
+        /// whether a cache hit is fast — it mixes ~0 ms store hits with
+        /// multi-second network fetches.
+        var latencyBySource: [String: [Int]] = [:]
         /// Requests that needed more than one network attempt.
         var retriedRequests = 0
         /// Total retry attempts beyond the first, across those requests.
         var retryAttempts = 0
 
+        init() {}
+
+        /// Every field is optional on the way in: `latencyBySource` is absent
+        /// from files written before it existed.
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            counts = try container.decodeIfPresent([String: Int].self, forKey: .counts) ?? [:]
+            latency = try container.decodeIfPresent([Int].self, forKey: .latency) ?? []
+            latencyBySource = try container.decodeIfPresent([String: [Int]].self, forKey: .latencyBySource) ?? [:]
+            retriedRequests = try container.decodeIfPresent(Int.self, forKey: .retriedRequests) ?? 0
+            retryAttempts = try container.decodeIfPresent(Int.self, forKey: .retryAttempts) ?? 0
+        }
+
         /// Tolerates a histogram written by a build with different bounds
-        /// rather than crashing on an index that no longer exists.
+        /// rather than crashing on an index that no longer exists, and drops
+        /// any source name this build no longer knows.
         mutating func normalize() {
-            let expected = TileMetrics.latencyBucketCount
-            if latency.count < expected {
-                latency.append(contentsOf: Array(repeating: 0, count: expected - latency.count))
-            } else if latency.count > expected {
-                latency = Array(latency.prefix(expected))
+            latency = Self.normalized(latency)
+            var normalizedBySource: [String: [Int]] = [:]
+            for (raw, histogram) in latencyBySource where Source(rawValue: raw) != nil {
+                normalizedBySource[raw] = Self.normalized(histogram)
             }
+            latencyBySource = normalizedBySource
+        }
+
+        private static func normalized(_ histogram: [Int]) -> [Int] {
+            let expected = TileMetrics.latencyBucketCount
+            if histogram.count < expected {
+                return histogram + Array(repeating: 0, count: expected - histogram.count)
+            }
+            return histogram.count > expected ? Array(histogram.prefix(expected)) : histogram
         }
     }
 
@@ -125,18 +178,21 @@ nonisolated final class TileMetrics: @unchecked Sendable {
         let retriedRequests: Int
         let retryAttempts: Int
         private let latency: [Int]
+        private let latencyBySource: [Source: [Int]]
 
         var id: Int { server.storeCode }
         var total: Int { counts.values.reduce(0, +) }
 
         init(server: TileServer, counts: [Source: Int], byZoom: [ZoomStats],
-             retriedRequests: Int, retryAttempts: Int, latency: [Int]) {
+             retriedRequests: Int, retryAttempts: Int, latency: [Int],
+             latencyBySource: [Source: [Int]] = [:]) {
             self.server = server
             self.counts = counts
             self.byZoom = byZoom
             self.retriedRequests = retriedRequests
             self.retryAttempts = retryAttempts
             self.latency = latency
+            self.latencyBySource = latencyBySource
         }
 
         func count(_ source: Source) -> Int { counts[source] ?? 0 }
@@ -159,23 +215,26 @@ nonisolated final class TileMetrics: @unchecked Sendable {
             return Double(faults) / Double(considered)
         }
 
-        /// Upper bound in ms of the bucket holding the p-th sample, or nil if
-        /// there are no samples. `nil` inside `.some` overflow is reported by
-        /// returning the last bound with `isOverflow`.
+        /// Upper bound in ms of the bucket holding the p-th sample across every
+        /// source, or nil if there are no samples.
         func latencyPercentile(_ percentile: Double) -> (milliseconds: Int, isOverflow: Bool)? {
-            let samples = latency.reduce(0, +)
-            guard samples > 0 else { return nil }
-            let target = Int((Double(samples) * percentile).rounded(.up))
-            var seen = 0
-            for (index, count) in latency.enumerated() {
-                seen += count
-                guard seen >= max(target, 1) else { continue }
-                if index < TileMetrics.latencyBoundsMS.count {
-                    return (TileMetrics.latencyBoundsMS[index], false)
-                }
-                return (TileMetrics.latencyBoundsMS[TileMetrics.latencyBoundsMS.count - 1], true)
-            }
-            return nil
+            TileMetrics.percentile(percentile, in: latency)
+        }
+
+        /// The same figure for one source alone. This is the one that can say
+        /// whether a cache hit is actually cheap; the blended figure above
+        /// mixes it with network fetches and cannot.
+        func latencyPercentile(_ percentile: Double, for source: Source) -> (milliseconds: Int, isOverflow: Bool)? {
+            guard let histogram = latencyBySource[source] else { return nil }
+            return TileMetrics.percentile(percentile, in: histogram)
+        }
+
+        /// Samples recorded for one source. Lower than `count(source)` for
+        /// counters carried over from a build that only kept the blended
+        /// histogram, so the UI can avoid quoting a percentile from a handful
+        /// of samples.
+        func latencySamples(for source: Source) -> Int {
+            latencyBySource[source]?.reduce(0, +) ?? 0
         }
     }
 
@@ -224,6 +283,9 @@ nonisolated final class TileMetrics: @unchecked Sendable {
         var entry = entries[key] ?? Entry()
         entry.counts[source.rawValue, default: 0] += 1
         entry.latency[bucket] += 1
+        var perSource = entry.latencyBySource[source.rawValue] ?? Self.emptyHistogram()
+        perSource[bucket] += 1
+        entry.latencyBySource[source.rawValue] = perSource
         if attempts > 1 {
             entry.retriedRequests += 1
             entry.retryAttempts += attempts - 1
@@ -248,7 +310,8 @@ nonisolated final class TileMetrics: @unchecked Sendable {
             let forServer = entries.filter { $0.key.server == server.storeCode }
 
             var counts: [Source: Int] = [:]
-            var latency = [Int](repeating: 0, count: Self.latencyBucketCount)
+            var latency = Self.emptyHistogram()
+            var latencyBySource: [Source: [Int]] = [:]
             var retriedRequests = 0
             var retryAttempts = 0
 
@@ -259,6 +322,14 @@ nonisolated final class TileMetrics: @unchecked Sendable {
                 }
                 for (index, count) in entry.latency.enumerated() where index < latency.count {
                     latency[index] += count
+                }
+                for (raw, histogram) in entry.latencyBySource {
+                    guard let source = Source(rawValue: raw) else { continue }
+                    var merged = latencyBySource[source] ?? Self.emptyHistogram()
+                    for (index, count) in histogram.enumerated() where index < merged.count {
+                        merged[index] += count
+                    }
+                    latencyBySource[source] = merged
                 }
                 retriedRequests += entry.retriedRequests
                 retryAttempts += entry.retryAttempts
@@ -275,7 +346,7 @@ nonisolated final class TileMetrics: @unchecked Sendable {
 
             return LayerStats(server: server, counts: counts, byZoom: byZoom,
                               retriedRequests: retriedRequests, retryAttempts: retryAttempts,
-                              latency: latency)
+                              latency: latency, latencyBySource: latencyBySource)
         }
 
         return Snapshot(since: since, layers: layers)

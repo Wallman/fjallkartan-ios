@@ -89,6 +89,96 @@ struct TileMetricsTests {
         #expect(layer(metrics, .kartverket)?.latencyPercentile(0.5) == nil)
     }
 
+    // MARK: - Per-source latency
+
+    /// The whole point of the per-source split: a blended histogram cannot
+    /// distinguish a cheap cache hit from an expensive network fetch, which is
+    /// exactly the comparison that decides whether a memory tier is worth it.
+    @Test func eachSourceKeepsItsOwnHistogram() {
+        let metrics = TileMetrics(url: nil)
+        record(metrics, .urlCache, times: 50, seconds: 0.002)   // ≤ 3 ms
+        record(metrics, .network, times: 50, seconds: 0.5)      // ≤ 1 s
+
+        let stats = layer(metrics, .kartverket)
+        #expect(stats?.latencyPercentile(0.5, for: .urlCache)?.milliseconds == 3)
+        #expect(stats?.latencyPercentile(0.5, for: .network)?.milliseconds == 1_000)
+        // The blended p50 reads 3 ms — identical to the cache-only figure, so
+        // the half of the requests that took ~1 s is invisible in it.
+        #expect(stats?.latencyPercentile(0.5)?.milliseconds == 3)
+    }
+
+    @Test func aSourceWithNoSamplesHasNoPercentile() {
+        let metrics = TileMetrics(url: nil)
+        record(metrics, .network, times: 5)
+
+        let stats = layer(metrics, .kartverket)
+        #expect(stats?.latencyPercentile(0.5, for: .urlCache) == nil)
+        #expect(stats?.latencySamples(for: .urlCache) == 0)
+        #expect(stats?.latencySamples(for: .network) == 5)
+    }
+
+    @Test func perSourceLatencySumsAcrossZooms() {
+        let metrics = TileMetrics(url: nil)
+        record(metrics, .urlCache, times: 3, z: 10, seconds: 0.002)
+        record(metrics, .urlCache, times: 4, z: 14, seconds: 0.002)
+
+        #expect(layer(metrics, .kartverket)?.latencySamples(for: .urlCache) == 7)
+    }
+
+    @Test func perSourceLatencySurvivesAReload() async throws {
+        let url = makeURL()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let metrics = TileMetrics(url: url)
+        record(metrics, .urlCache, times: 6, server: .lantmateriet, seconds: 0.002)
+        metrics.flush()
+
+        try await waitForFile(at: url)
+        let reloaded = TileMetrics(url: url)
+
+        #expect(layer(reloaded, .lantmateriet)?.latencySamples(for: .urlCache) == 6)
+        #expect(layer(reloaded, .lantmateriet)?.latencyPercentile(0.5, for: .urlCache)?.milliseconds == 3)
+    }
+
+    /// A file written before per-source histograms existed keeps its counts
+    /// and its blended latency; only the per-source view starts empty.
+    @Test func aFileWithoutPerSourceLatencyStillLoads() {
+        let url = makeURL()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let json = """
+        {"since":0,"records":[{"server":0,"z":12,"entry":{"counts":{"urlCache":3},\
+        "latency":[0,0,0,3,0,0,0,0,0,0],"retriedRequests":0,"retryAttempts":0}}]}
+        """
+        try? Data(json.utf8).write(to: url)
+
+        let metrics = TileMetrics(url: url)
+        let stats = layer(metrics, .kartverket)
+        #expect(stats?.count(.urlCache) == 3)
+        #expect(stats?.latencyPercentile(0.5) != nil)
+        #expect(stats?.latencySamples(for: .urlCache) == 0)
+        #expect(stats?.latencyPercentile(0.5, for: .urlCache) == nil)
+    }
+
+    /// A per-source histogram written by a build with different bounds must be
+    /// widened like the blended one, not indexed out of range.
+    @Test func aPerSourceHistogramOfTheWrongWidthIsAccepted() {
+        let url = makeURL()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let json = """
+        {"since":0,"records":[{"server":0,"z":12,"entry":{"counts":{"urlCache":3},\
+        "latency":[1,2],"latencyBySource":{"urlCache":[1,2],"gone":[9]},\
+        "retriedRequests":0,"retryAttempts":0}}]}
+        """
+        try? Data(json.utf8).write(to: url)
+
+        let metrics = TileMetrics(url: url)
+        let stats = layer(metrics, .kartverket)
+        #expect(stats?.latencySamples(for: .urlCache) == 3)
+        #expect(stats?.latencyPercentile(0.5, for: .urlCache) != nil)
+    }
+
     // MARK: - Aggregation
 
     @Test func layersAndZoomsAreKeptApart() {

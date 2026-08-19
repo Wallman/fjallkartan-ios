@@ -59,14 +59,6 @@ struct DebugSheet: View {
             .navigationTitle(Text(verbatim: "Tile Metrics"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        metrics.flush()
-                        snapshot = metrics.snapshot()
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button { dismiss() } label: { Text(verbatim: "Done") }
                 }
@@ -97,8 +89,22 @@ struct DebugSheet: View {
     @ViewBuilder
     private func breakdown(for layer: TileMetrics.LayerStats) -> some View {
         ForEach(TileMetrics.Source.allCases.filter { layer.count($0) > 0 }, id: \.rawValue) { source in
-            row(source.label, "\(layer.count(source))  ·  \(Self.share(layer.count(source), of: layer.total))")
+            row(source.label,
+                "\(layer.count(source))  ·  \(Self.share(layer.count(source), of: layer.total))",
+                detail: Self.sourceLatency(layer, source))
         }
+    }
+
+    /// p50/p95 for this source alone — the figure that says whether a hit from
+    /// it is actually cheap. Suppressed below a handful of samples, and for
+    /// counters carried over from a build that only kept a blended histogram.
+    private static func sourceLatency(_ layer: TileMetrics.LayerStats,
+                                      _ source: TileMetrics.Source) -> String? {
+        let samples = layer.latencySamples(for: source)
+        guard samples >= 10 else { return nil }
+        let p50 = latency(layer.latencyPercentile(0.5, for: source))
+        let p95 = latency(layer.latencyPercentile(0.95, for: source))
+        return "p50 \(p50)  ·  p95 \(p95)"
     }
 
     private func zoomDetail(for layer: TileMetrics.LayerStats) -> some View {
@@ -117,13 +123,21 @@ struct DebugSheet: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func row(_ title: String, _ value: String) -> some View {
+    private func row(_ title: String, _ value: String, detail: String? = nil) -> some View {
         LabeledContent {
             Text(verbatim: value)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
         } label: {
-            Text(verbatim: title)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: title)
+                if let detail {
+                    Text(verbatim: detail)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .monospacedDigit()
+                }
+            }
         }
     }
 
