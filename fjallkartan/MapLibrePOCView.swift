@@ -9,9 +9,43 @@ import MapLibre
 // instead of showing through. No offline store, no measurement/elevation.
 // Delete once the comparison is done.
 struct MapLibrePOCView: View {
+    @State private var trackingMode: MLNUserTrackingMode = .none
+
     var body: some View {
-        MapLibreRasterMap()
-            .ignoresSafeArea()
+        ZStack(alignment: .bottomTrailing) {
+            MapLibreRasterMap(trackingMode: $trackingMode)
+                .ignoresSafeArea()
+            userLocationButton
+                .padding()
+        }
+    }
+
+    private var userLocationButton: some View {
+        Button {
+            trackingMode = nextTrackingMode(after: trackingMode)
+        } label: {
+            Image(systemName: trackingButtonSymbol(for: trackingMode))
+                .font(.system(size: 18, weight: .medium))
+                .frame(width: 44, height: 44)
+                .background(.thinMaterial, in: Circle())
+        }
+    }
+
+    // .none -> .follow -> .followWithHeading -> .none.
+    private func nextTrackingMode(after mode: MLNUserTrackingMode) -> MLNUserTrackingMode {
+        switch mode {
+        case .none: return .follow
+        case .follow: return .followWithHeading
+        default: return .none
+        }
+    }
+
+    private func trackingButtonSymbol(for mode: MLNUserTrackingMode) -> String {
+        switch mode {
+        case .none: return "location"
+        case .followWithHeading: return "location.north.line.fill"
+        default: return "location.fill"
+        }
     }
 }
 
@@ -23,7 +57,9 @@ private struct MapLibreRasterMap: UIViewRepresentable {
     // only our raster layers get drawn.
     private static let blankStyleJSON = #"{"version":8,"sources":{},"layers":[]}"#
 
-    func makeCoordinator() -> Coordinator { Coordinator() }
+    @Binding var trackingMode: MLNUserTrackingMode
+
+    func makeCoordinator() -> Coordinator { Coordinator(trackingMode: $trackingMode) }
 
     func makeUIView(context: Context) -> MLNMapView {
         let mapView = MLNMapView(frame: .zero)
@@ -35,6 +71,7 @@ private struct MapLibreRasterMap: UIViewRepresentable {
         mapView.styleJSON = Self.blankStyleJSON
         mapView.logoView.isHidden = true
         mapView.attributionButton.isHidden = true
+        mapView.showsUserLocation = true
         mapView.setCenter(
             CLLocationCoordinate2D(latitude: 62.0, longitude: 15.0),
             zoomLevel: 5,
@@ -43,15 +80,34 @@ private struct MapLibreRasterMap: UIViewRepresentable {
         return mapView
     }
 
-    func updateUIView(_ uiView: MLNMapView, context: Context) {}
+    func updateUIView(_ uiView: MLNMapView, context: Context) {
+        // Only push down when the button (not the map itself, e.g. via a
+        // user pan) caused the change, to avoid fighting MapLibre's own
+        // reset-to-.none-on-pan behaviour.
+        if uiView.userTrackingMode != trackingMode {
+            uiView.setUserTrackingMode(trackingMode, animated: true, completionHandler: nil)
+        }
+    }
 
     final class Coordinator: NSObject, MLNMapViewDelegate {
+        @Binding var trackingMode: MLNUserTrackingMode
+
+        init(trackingMode: Binding<MLNUserTrackingMode>) {
+            _trackingMode = trackingMode
+        }
+
+        func mapView(_ mapView: MLNMapView, didChange mode: MLNUserTrackingMode, animated: Bool) {
+            // Keeps the button in sync when MapLibre resets tracking to
+            // .none on its own, e.g. the user panning the map away.
+            trackingMode = mode
+        }
+
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             let lantmaterietSource = MLNRasterTileSource(
                 identifier: "lantmateriet",
                 tileURLTemplates: [MapLibreRasterMap.lantmaterietTileURL],
                 options: [
-                    .tileSize: 256,
+                    .tileSize: 128,
                     .minimumZoomLevel: 0,
                     .maximumZoomLevel: 18,
                 ]
@@ -63,7 +119,7 @@ private struct MapLibreRasterMap: UIViewRepresentable {
                 identifier: "kartverket",
                 tileURLTemplates: [MapLibreRasterMap.kartverketTileURL],
                 options: [
-                    .tileSize: 256,
+                    .tileSize: 128,
                     .minimumZoomLevel: 0,
                     .maximumZoomLevel: 18,
                 ]
