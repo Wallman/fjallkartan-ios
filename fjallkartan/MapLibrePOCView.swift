@@ -8,18 +8,84 @@ import MapLibre
 // Kartverket's opaque cream fill (from ~z15) will cover Lantmäteriet there
 // instead of showing through. No measurement/elevation.
 // Delete once the comparison is done.
+
+private final class RouteDistanceMarker: NSObject, MLNAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    let meters: Double
+    var title: String? { nil }
+    var subtitle: String? { nil }
+
+    var label: String { DistanceMeasurement.markerLabel(meters: meters) }
+
+    init(coordinate: CLLocationCoordinate2D, meters: Double) {
+        self.coordinate = coordinate
+        self.meters = meters
+    }
+}
+
+private final class RouteDistanceMarkerView: MLNAnnotationView {
+    static let reuseIdentifier = "RouteDistanceMarker"
+
+    private let label = UILabel()
+
+    override init(reuseIdentifier: String?) {
+        super.init(reuseIdentifier: reuseIdentifier)
+        isUserInteractionEnabled = false
+        scalesWithViewingDistance = false
+        backgroundColor = MeasurementStyle.casingColor
+        layer.borderWidth = 2
+        layer.borderColor = MeasurementStyle.strokeColor.cgColor
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.2
+        layer.shadowRadius = 2
+        layer.shadowOffset = CGSize(width: 0, height: 1)
+
+        label.font = .systemFont(ofSize: 11, weight: .bold)
+        label.textColor = .label
+        label.textAlignment = .center
+        addSubview(label)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override var annotation: MLNAnnotation? {
+        didSet { applyAnnotation() }
+    }
+
+    private func applyAnnotation() {
+        guard let marker = annotation as? RouteDistanceMarker else { return }
+        label.text = marker.label
+        accessibilityLabel = marker.label
+
+        let height: CGFloat = 20
+        let width = max(height, (label.intrinsicContentSize.width + 14).rounded())
+        bounds = CGRect(x: 0, y: 0, width: width, height: height)
+        label.frame = bounds
+        layer.cornerRadius = height / 2
+    }
+}
+
 struct MapLibrePOCView: View {
     @State private var trackingMode: MLNUserTrackingMode = .none
     @State private var slopeVisible = false
     @State private var download = OfflineDownloadState()
+    @State private var routeCoordinates: [CLLocationCoordinate2D] = []
+    @State private var showSavedRoutes = false
+    @State private var savedRoutesModel: SavedRoutesModel? = {
+        guard let store = try? SavedRouteStore() else { return nil }
+        return SavedRoutesModel(store: store)
+    }()
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            MapLibreRasterMap(trackingMode: $trackingMode, slopeVisible: $slopeVisible, download: download)
+            MapLibreRasterMap(trackingMode: $trackingMode, slopeVisible: $slopeVisible,
+                              routeCoordinates: routeCoordinates, download: download)
                 .ignoresSafeArea()
             VStack(spacing: 12) {
                 slopeToggleButton
                 userLocationButton
+                savedRoutesButton
                 downloadButton
             }
             .padding()
@@ -29,6 +95,25 @@ struct MapLibrePOCView: View {
         } message: {
             Text(download.errorMessage ?? "")
         }
+        .sheet(isPresented: $showSavedRoutes) {
+            if let savedRoutesModel {
+                SavedRoutesSheet(model: savedRoutesModel, hasUnsavedRoute: false) { route in
+                    routeCoordinates = route.coordinates.map(\.coordinate)
+                }
+            }
+        }
+    }
+
+    private var savedRoutesButton: some View {
+        Button {
+            showSavedRoutes = true
+        } label: {
+            Image(systemName: "list.bullet")
+                .font(.system(size: 18, weight: .medium))
+                .frame(width: 44, height: 44)
+                .background(.thinMaterial, in: Circle())
+        }
+        .disabled(savedRoutesModel == nil)
     }
 
     private var userLocationButton: some View {
@@ -233,6 +318,7 @@ private struct MapLibreRasterMap: UIViewRepresentable {
 
     @Binding var trackingMode: MLNUserTrackingMode
     @Binding var slopeVisible: Bool
+    let routeCoordinates: [CLLocationCoordinate2D]
     let download: OfflineDownloadState
 
     func makeCoordinator() -> Coordinator { Coordinator(trackingMode: $trackingMode, slopeVisible: $slopeVisible) }
@@ -262,12 +348,18 @@ private struct MapLibreRasterMap: UIViewRepresentable {
             uiView.setUserTrackingMode(trackingMode, animated: true, completionHandler: nil)
         }
         context.coordinator.setSlopeVisible(slopeVisible)
+        context.coordinator.setRoute(routeCoordinates, on: uiView)
     }
 
     final class Coordinator: NSObject, MLNMapViewDelegate {
         @Binding var trackingMode: MLNUserTrackingMode
         @Binding var slopeVisible: Bool
         private var slopeLayers: [MLNRasterStyleLayer] = []
+        private var routeSource: MLNShapeSource?
+        private var renderedRouteCoordinates: [CLLocationCoordinate2D] = []
+        /// Coordinates requested before the source existed (e.g. a route
+        /// selected while the style was still loading), applied once ready.
+        private var pendingRouteCoordinates: [CLLocationCoordinate2D] = []
 
         init(trackingMode: Binding<MLNUserTrackingMode>, slopeVisible: Binding<Bool>) {
             _trackingMode = trackingMode
@@ -278,6 +370,89 @@ private struct MapLibreRasterMap: UIViewRepresentable {
             for layer in slopeLayers where layer.isVisible != visible {
                 layer.isVisible = visible
             }
+        }
+
+        func setRoute(_ coordinates: [CLLocationCoordinate2D], on mapView: MLNMapView) {
+            pendingRouteCoordinates = coordinates
+            guard routeSource != nil else { return }
+            applyPendingRoute(on: mapView)
+        }
+
+        private func applyPendingRoute(on mapView: MLNMapView) {
+            guard let routeSource else { return }
+            let coordinates = pendingRouteCoordinates
+            guard !Self.coordinatesEqual(coordinates, renderedRouteCoordinates) else { return }
+            renderedRouteCoordinates = coordinates
+
+            guard coordinates.count >= 2 else {
+                routeSource.shape = nil
+                syncDistanceMarkers(on: mapView, force: true)
+                return
+            }
+
+            var mutableCoordinates = coordinates
+            routeSource.shape = MLNPolylineFeature(coordinates: &mutableCoordinates, count: UInt(mutableCoordinates.count))
+
+            var bounds = MLNCoordinateBounds(sw: coordinates[0], ne: coordinates[0])
+            for coordinate in coordinates {
+                bounds.sw.longitude = min(bounds.sw.longitude, coordinate.longitude)
+                bounds.sw.latitude = min(bounds.sw.latitude, coordinate.latitude)
+                bounds.ne.longitude = max(bounds.ne.longitude, coordinate.longitude)
+                bounds.ne.latitude = max(bounds.ne.latitude, coordinate.latitude)
+            }
+            mapView.setVisibleCoordinateBounds(bounds,
+                                               edgePadding: UIEdgeInsets(top: 60, left: 40, bottom: 60, right: 40),
+                                               animated: true)
+            syncDistanceMarkers(on: mapView, force: true)
+        }
+
+        // MARK: - Distance markers
+
+        private var markerAnnotations: [RouteDistanceMarker] = []
+        private var renderedMarkerSpacing: Double = 0
+
+        /// Mirrors MapView's `syncDistanceMarkers`: spacing widens as the map
+        /// zooms out so km markers stay legible instead of piling up.
+        func syncDistanceMarkers(on mapView: MLNMapView, force: Bool = false) {
+            let spacing = renderedRouteCoordinates.count >= 2
+                ? DistanceMeasurement.markerSpacing(forZoomLevel: mapView.zoomLevel,
+                                                    routeLength: DistanceMeasurement.length(of: renderedRouteCoordinates))
+                : 0
+            guard force || spacing != renderedMarkerSpacing else { return }
+            renderedMarkerSpacing = spacing
+
+            mapView.removeAnnotations(markerAnnotations)
+            markerAnnotations = []
+            guard spacing > 0 else { return }
+
+            markerAnnotations = DistanceMeasurement.distanceMarkers(along: renderedRouteCoordinates, spacing: spacing).map {
+                RouteDistanceMarker(coordinate: $0.coordinate, meters: $0.meters)
+            }
+            mapView.addAnnotations(markerAnnotations)
+        }
+
+        // CLLocationCoordinate2D isn't Equatable, so routes are compared
+        // element-wise rather than relying on a version token like MapView does.
+        private static func coordinatesEqual(_ a: [CLLocationCoordinate2D], _ b: [CLLocationCoordinate2D]) -> Bool {
+            guard a.count == b.count else { return false }
+            return zip(a, b).allSatisfy { $0.latitude == $1.latitude && $0.longitude == $1.longitude }
+        }
+
+        func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
+            syncDistanceMarkers(on: mapView)
+        }
+
+        func mapView(_ mapView: MLNMapView, viewFor annotation: MLNAnnotation) -> MLNAnnotationView? {
+            guard annotation is RouteDistanceMarker else { return nil }
+            let view = mapView.dequeueReusableAnnotationView(withIdentifier: RouteDistanceMarkerView.reuseIdentifier)
+                as? RouteDistanceMarkerView
+                ?? RouteDistanceMarkerView(reuseIdentifier: RouteDistanceMarkerView.reuseIdentifier)
+            view.annotation = annotation
+            return view
+        }
+
+        func mapView(_ mapView: MLNMapView, annotationCanShowCallout annotation: MLNAnnotation) -> Bool {
+            !(annotation is RouteDistanceMarker)
         }
 
         func mapView(_ mapView: MLNMapView, didChange mode: MLNUserTrackingMode, animated: Bool) {
@@ -291,6 +466,26 @@ private struct MapLibreRasterMap: UIViewRepresentable {
                 style.layer(withIdentifier: $0) as? MLNRasterStyleLayer
             }
             setSlopeVisible(slopeVisible)
+
+            let source = MLNShapeSource(identifier: "route", shape: nil, options: nil)
+            style.addSource(source)
+            routeSource = source
+
+            let casingLayer = MLNLineStyleLayer(identifier: "route-casing", source: source)
+            casingLayer.lineColor = NSExpression(forConstantValue: MeasurementStyle.casingColor)
+            casingLayer.lineWidth = NSExpression(forConstantValue: MeasurementStyle.casingWidth)
+            casingLayer.lineCap = NSExpression(forConstantValue: "round")
+            casingLayer.lineJoin = NSExpression(forConstantValue: "round")
+            style.addLayer(casingLayer)
+
+            let lineLayer = MLNLineStyleLayer(identifier: "route-line", source: source)
+            lineLayer.lineColor = NSExpression(forConstantValue: MeasurementStyle.strokeColor)
+            lineLayer.lineWidth = NSExpression(forConstantValue: MeasurementStyle.lineWidth)
+            lineLayer.lineCap = NSExpression(forConstantValue: "round")
+            lineLayer.lineJoin = NSExpression(forConstantValue: "round")
+            style.addLayer(lineLayer)
+
+            applyPendingRoute(on: mapView)
         }
     }
 }
