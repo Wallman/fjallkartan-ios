@@ -10,13 +10,17 @@ import MapLibre
 // Delete once the comparison is done.
 struct MapLibrePOCView: View {
     @State private var trackingMode: MLNUserTrackingMode = .none
+    @State private var slopeVisible = true
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            MapLibreRasterMap(trackingMode: $trackingMode)
+            MapLibreRasterMap(trackingMode: $trackingMode, slopeVisible: $slopeVisible)
                 .ignoresSafeArea()
-            userLocationButton
-                .padding()
+            VStack(spacing: 12) {
+                slopeToggleButton
+                userLocationButton
+            }
+            .padding()
         }
     }
 
@@ -26,6 +30,18 @@ struct MapLibrePOCView: View {
         } label: {
             Image(systemName: trackingButtonSymbol(for: trackingMode))
                 .font(.system(size: 18, weight: .medium))
+                .frame(width: 44, height: 44)
+                .background(.thinMaterial, in: Circle())
+        }
+    }
+
+    private var slopeToggleButton: some View {
+        Button {
+            slopeVisible.toggle()
+        } label: {
+            Image(systemName: "triangle.fill")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(slopeVisible ? Color.accentColor : Color.primary)
                 .frame(width: 44, height: 44)
                 .background(.thinMaterial, in: Circle())
         }
@@ -53,11 +69,12 @@ private struct MapLibreRasterMap: UIViewRepresentable {
     private static let lantmaterietTileURL = "https://tiles.wallman.dev/v1/{z}/{y}/{x}.png"
     private static let kartverketTileURL =
         "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
-    // Empty style so we don't depend on (or pay for) any vector basemap;
-    // only our raster layers get drawn.
+    private static let norwaySlopeTileURL = "https://gis3.nve.no/arcgis/rest/services/wmts/Bratthet_med_utlop_2024/MapServer/tile/{z}/{y}/{x}"
+    private static let swedenSlopeTileURL = "https://tiles.wallman.dev/slope/v1/{z}/{y}/{x}.png"
     private static let blankStyleJSON = #"{"version":8,"sources":{},"layers":[]}"#
 
     @Binding var trackingMode: MLNUserTrackingMode
+    @Binding var slopeVisible: Bool
 
     func makeCoordinator() -> Coordinator { Coordinator(trackingMode: $trackingMode) }
 
@@ -87,13 +104,21 @@ private struct MapLibreRasterMap: UIViewRepresentable {
         if uiView.userTrackingMode != trackingMode {
             uiView.setUserTrackingMode(trackingMode, animated: true, completionHandler: nil)
         }
+        context.coordinator.setSlopeVisible(slopeVisible)
     }
 
     final class Coordinator: NSObject, MLNMapViewDelegate {
         @Binding var trackingMode: MLNUserTrackingMode
+        private var slopeLayers: [MLNRasterStyleLayer] = []
 
         init(trackingMode: Binding<MLNUserTrackingMode>) {
             _trackingMode = trackingMode
+        }
+
+        func setSlopeVisible(_ visible: Bool) {
+            for layer in slopeLayers where layer.isVisible != visible {
+                layer.isVisible = visible
+            }
         }
 
         func mapView(_ mapView: MLNMapView, didChange mode: MLNUserTrackingMode, animated: Bool) {
@@ -109,7 +134,7 @@ private struct MapLibreRasterMap: UIViewRepresentable {
                 options: [
                     .tileSize: 128,
                     .minimumZoomLevel: 0,
-                    .maximumZoomLevel: 18,
+                    .maximumZoomLevel: 16,
                 ]
             )
             style.addSource(lantmaterietSource)
@@ -128,6 +153,38 @@ private struct MapLibreRasterMap: UIViewRepresentable {
             // Added after Lantmäteriet so it composites on top, same as the
             // production MapView's overlay order.
             style.addLayer(MLNRasterStyleLayer(identifier: "kartverket-layer", source: kartverketSource))
+
+            let norwaySlopeSource = MLNRasterTileSource(
+                identifier: "norway-slope",
+                tileURLTemplates: [MapLibreRasterMap.norwaySlopeTileURL],
+                options: [
+                    .tileSize: 128,
+                    .minimumZoomLevel: 6,
+                    .maximumZoomLevel: 18,
+                ]
+            )
+            style.addSource(norwaySlopeSource)
+            let norwaySlopeLayer = MLNRasterStyleLayer(identifier: "norway-slope-layer", source: norwaySlopeSource)
+            norwaySlopeLayer.rasterOpacity = NSExpression(forConstantValue: 0.6)
+            style.addLayer(norwaySlopeLayer)
+
+            let swedenSlopeSource = MLNRasterTileSource(
+                identifier: "sweden-slope",
+                tileURLTemplates: [MapLibreRasterMap.swedenSlopeTileURL],
+                options: [
+                    .tileSize: 128,
+                    .minimumZoomLevel: 6,
+                    .maximumZoomLevel: 13,
+                ]
+            )
+            style.addSource(swedenSlopeSource)
+            let swedenSlopeLayer = MLNRasterStyleLayer(identifier: "sweden-slope-layer", source: swedenSlopeSource)
+            swedenSlopeLayer.rasterOpacity = NSExpression(forConstantValue: 0.6)
+            // Added last so both slope layers sit on top of the base maps,
+            // same alpha as the two `SlopeTileOverlay` instances in `MapView`.
+            style.addLayer(swedenSlopeLayer)
+
+            slopeLayers = [norwaySlopeLayer, swedenSlopeLayer]
         }
     }
 }
