@@ -9,7 +9,6 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 | `fjallkartan/fjallkartanApp.swift` | App entry point |
 | `fjallkartan/ContentView.swift` | Root SwiftUI view; hosts `MapLibreMapView` plus the scale bar, copyright notice and measurement overlays. |
 | `fjallkartan/MapLibreMapView.swift` | `UIViewRepresentable` wrapping `MLNMapView`: builds the raster style (base layers + slope), owns the measurement-capture view (`MapLibreMeasureCaptureView`), route/endpoint/distance-marker `MLNShapeSource`s, search/pin annotations, offline-region preview border, and user-location tracking. |
-| `fjallkartan/TileFetcher.swift` | Elevation-only tile client: `URLCache` → network, retry with backoff and a connectivity-loss budget. Map tiles are fetched by MapLibre itself, not this file. |
 | `fjallkartan/DebugView.swift` | `DebugSheet`: just the "Show zoom level" toggle that drives `ZoomLevelBadge`, opened by long-pressing the version row in `AboutSheet`. |
 | `fjallkartan/DistanceMeasurement.swift` | `@Observable` model holding the traced route and its geodesic length, plus `LineSimplifier` (Ramer–Douglas–Peucker). |
 | `fjallkartan/PlaceSearch.swift` | SQLite-backed FTS5 lookup of place names (`PlaceSearch`, `PlaceResult`, `PlaceKind`) against the bundled `places.sqlite`. |
@@ -88,7 +87,7 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
   - Known limitations: the proxy has no background execution entitlement, so it's suspended along with the rest of the app when backgrounded.
 
 - **Elevation**
-  - Elevation comes from prebaked XYZ tiles (`https://tiles.wallman.dev/elevation/v1/{z}/{y}/{x}.png`), fetched through `TileFetcher.elevationTiles`.
+  - Elevation comes from prebaked XYZ tiles (`https://tiles.wallman.dev/elevation/v1/{z}/{y}/{x}.png`).
   - The tiles are **data, not pictures**, and are never added to the map: each pixel carries `metres + 32768` as `R = value >> 8`, `G = value & 0xFF`, `B = 0`, with a fully transparent pixel meaning no data. The offset puts every Nordic height in the R ≈ 128–137 band, which is why an elevation tile looks like flat dark red with fine noise when opened in an image viewer.
   - 1 m precision is deliberate: decimetres would put noise in the low byte and roughly triple the PNG size for no gain.
   - Published at **z12 only** (~18 m per pixel at 62°N), which matches the 25 m spacing routes are sampled at. z13 was built and measured: it is ~60% better per point but changes ascent totals by well under 1%.
@@ -156,7 +155,7 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
   - Pins are managed entirely on the map, not in the "Saved" sheet (that sheet is routes-only): `SavedPinMapAnnotation` has no title/subtitle/callout at all — tapping one directly fires `mapView(_:didSelect:)`, which opens `PinDetailSheet` (a small `.presentationDetents([.height(260)])` sheet with Rename + destructive Delete) and immediately deselects, so no callout ever flashes on screen. `SavedPinsModel` (load/save/rename/delete) still backs this, it's just driven from the map instead of a list.
 
 - **Actor isolation**
-  - The project builds with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` (and `SWIFT_APPROACHABLE_CONCURRENCY`), so **every type is implicitly `@MainActor` unless it says otherwise**. That is why `TileServer`, `TileFetcher`, `TileSettings`, `Coord` and friends are explicitly marked `nonisolated`.
+  - The project builds with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` (and `SWIFT_APPROACHABLE_CONCURRENCY`), so **every type is implicitly `@MainActor` unless it says otherwise**. That is why `TileServer`, `ElevationService`, `TileSettings`, `Coord` and friends are explicitly marked `nonisolated`.
   - The trap: implicit isolation also covers a type's *synthesized conformances*. A main-actor-isolated `Hashable`/`Equatable` can't be used from a nonisolated context, and Swift Testing's `#expect` macro expands into exactly that — so comparing such a value in a test produces `main actor-isolated conformance of 'X' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode`.
   - So: any value type that is compared in tests, persisted, or otherwise touched off the main thread must be declared `nonisolated`. Reach for that rather than annotating the test, and treat the warning as a real isolation bug — it becomes an error under Swift 6.
   - The same applies to overridden UIKit/MapLibre members: any main-actor-isolated method a test overrides or calls directly (e.g. `MLNMapViewDelegate` callbacks) needs its test helper marked `@MainActor` too.

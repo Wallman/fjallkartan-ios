@@ -38,13 +38,13 @@ nonisolated final class ElevationService: @unchecked Sendable {
         }
     }
 
-    private let fetcher: TileFetcher
+    private let session: URLSession
     private let cache = NSCache<NSString, HeightTile>()
     private let lock = NSLock()
     private var inFlight: [TileKey: [(HeightTile?) -> Void]] = [:]
 
-    init(fetcher: TileFetcher = .elevationTiles, cachedTiles: Int = 64) {
-        self.fetcher = fetcher
+    init(session: URLSession = .shared, cachedTiles: Int = 64) {
+        self.session = session
         cache.countLimit = cachedTiles
     }
 
@@ -97,20 +97,33 @@ nonisolated final class ElevationService: @unchecked Sendable {
             inFlight[key] = [resume]
             lock.unlock()
 
-            fetcher.fetchTile(server: .elevation, z: Self.zoom, x: key.x, y: key.y) { [self] outcome in
-                var tile: HeightTile?
-                if case .success(let data) = outcome {
-                    tile = Self.decode(data)
-                }
+            Task {
+                let tile = await fetchTile(key)
                 if let tile {
                     cache.setObject(tile, forKey: Self.cacheKey(key))
                 }
-                lock.lock()
-                let waiting = inFlight.removeValue(forKey: key) ?? []
-                lock.unlock()
+                let waiting = removeWaiters(for: key)
                 for waiter in waiting { waiter(tile) }
             }
         }
+    }
+
+    /// Synchronous, so the lock is taken and released outside of an `async`
+    /// context, which Swift 6 concurrency checking otherwise flags.
+    private func removeWaiters(for key: TileKey) -> [(HeightTile?) -> Void] {
+        lock.lock()
+        defer { lock.unlock() }
+        return inFlight.removeValue(forKey: key) ?? []
+    }
+
+    private func fetchTile(_ key: TileKey) async -> HeightTile? {
+        let url = TileServer.elevation.url(z: Self.zoom, x: key.x, y: key.y)
+        guard let (data, response) = try? await session.data(from: url),
+              let http = response as? HTTPURLResponse,
+              (200...299).contains(http.statusCode) else {
+            return nil
+        }
+        return Self.decode(data)
     }
 
     private static func cacheKey(_ key: TileKey) -> NSString {
