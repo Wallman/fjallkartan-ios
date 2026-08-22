@@ -5,6 +5,10 @@ struct fjallkartanApp: App {
     @Environment(\.scenePhase) private var scenePhase
     private let reviewPrompter = ReviewPrompter.shared
 
+    init() {
+        MetricKitReporter.shared.start()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
