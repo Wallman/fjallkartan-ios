@@ -234,10 +234,7 @@ struct ElevationProfileModelTests {
 
 struct ElevationTileServerTests {
 
-    /// Blending a packed 16-bit height would interpolate the high byte on its
-    /// own, turning a one-step change in red into a 256 m error.
-    @Test func elevationTilesAreNeverInterpolated() {
-        #expect(TileServer.elevation.upscaleInterpolation == .none)
+    @Test func elevationTilesAreDataNotPicture() {
         #expect(TileServer.elevation.isData)
         #expect(!TileServer.elevation.isSlope)
     }
@@ -255,12 +252,6 @@ struct ElevationTileServerTests {
         for server in TileServer.allCases where !server.isData {
             #expect(server.offlineMinimumZ == TilePyramid.minZoom)
         }
-    }
-
-    @Test func storeCodesAreStableAndUnique() {
-        // Persisted in OfflineTileStore, so these must never be renumbered.
-        #expect(TileServer.elevation.storeCode == 4)
-        #expect(Set(TileServer.allCases.map(\.storeCode)).count == TileServer.allCases.count)
     }
 }
 

@@ -1,19 +1,17 @@
 # AGENTS.md
 
 ## Project overview
-iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (Norway) and Lantmäteriet (Sweden).
+iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket (Norway) and Lantmäteriet (Sweden).
 
 ## Key files
 | File | Purpose |
 |---|---|
 | `fjallkartan/fjallkartanApp.swift` | App entry point |
-| `fjallkartan/ContentView.swift` | Root SwiftUI view; hosts `MapView` plus the scale bar, copyright notice and measurement overlays. |
-| `fjallkartan/MapView.swift` | `UIViewRepresentable` wrapping `MKMapView`; adds the tile overlays, sets camera limits, reports scale, and renders the measured route. |
-| `fjallkartan/TileFetcher.swift` | Shared tile layer: does offline store → `URLCache` → network → ancestor upscale (fixed-TTL cache, retry with backoff, `success`/`noData`/`failure`). |
-| `fjallkartan/TileMetrics.swift` | On-device aggregate counters for tile requests (source breakdown, fault rate, latency histogram), persisted to `Application Support/tile-metrics.json`. |
-| `fjallkartan/DebugView.swift` | DebugSheet  reading `TileMetrics`, opened by long-pressing the version row in `AboutSheet`. |
+| `fjallkartan/ContentView.swift` | Root SwiftUI view; hosts `MapLibreMapView` plus the scale bar, copyright notice and measurement overlays. |
+| `fjallkartan/MapLibreMapView.swift` | `UIViewRepresentable` wrapping `MLNMapView`: builds the raster style (base layers + slope), owns the measurement-capture view (`MapLibreMeasureCaptureView`), route/endpoint/distance-marker `MLNShapeSource`s, search/pin annotations, offline-region preview border, and user-location tracking. |
+| `fjallkartan/TileFetcher.swift` | Elevation-only tile client: `URLCache` → network, retry with backoff and a connectivity-loss budget. Map tiles are fetched by MapLibre itself, not this file. |
+| `fjallkartan/DebugView.swift` | `DebugSheet`: just the "Show zoom level" toggle that drives `ZoomLevelBadge`, opened by long-pressing the version row in `AboutSheet`. |
 | `fjallkartan/DistanceMeasurement.swift` | `@Observable` model holding the traced route and its geodesic length, plus `LineSimplifier` (Ramer–Douglas–Peucker). |
-| `fjallkartan/MeasureCaptureView.swift` | Transparent `UIView` over the map that captures freehand strokes and draws live preview. |
 | `fjallkartan/PlaceSearch.swift` | SQLite-backed FTS5 lookup of place names (`PlaceSearch`, `PlaceResult`, `PlaceKind`) against the bundled `places.sqlite`. |
 | `fjallkartan/PlaceSearchView.swift` | `PlaceSearchModel` (debounced async search) and `PlaceSearchSheet` UI presenting results. |
 | `fjallkartan/SavedRoute.swift` | Codable model for one saved measurement (id, createdAt, coordinates, strokeSizes, optional name, schemaVersion, displayName). |
@@ -28,22 +26,20 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 | `fjallkartan/SavedPinsView.swift` | `SavedPinsModel` (load/save/rename/delete for saved pins) and `SavedSheet` (the "Saved" toolbar sheet, routes-only). |
 | `fjallkartan/PinDetailSheet.swift` | Low bottom sheet (Rename + destructive Delete) opened when a pin annotation is tapped on the map. |
 | `fjallkartan/ElevationService.swift` | Samples terrain height from the prebaked z12 elevation tiles: fetch via `TileFetcher`, RGBA→metres decode, per-tile cache and in-flight dedupe. |
-| `fjallkartan/ElevationProfile.swift` | `@Observable` profile of the measured route — fixed-spacing resampling, ascent/descent with hysteresis, coverage. |
+| `fjallkartan/ElevationProfile.swift` | `@Observable` profile of the measured route — fixed-spacing resampling, ascent/descent with hysteresis, coverage, and a `needsConnection` flag for the offline case. |
 | `fjallkartan/ElevationProfileView.swift` | `ElevationProfileSheet`: Swift Charts terrain profile opened from the distance readout. |
-| `fjallkartan/TilePyramid.swift` | Pure functions enumerating the fixed z7–z14 offline tile pyramid — positions, per-layer `Job`s and download size estimate. |
-| `fjallkartan/RemoteSettings.swift` | Remotely configurable tile URL templates (`TileSettings`: Lantmäteriet, Kartverket, Norwegian slope, Swedish slope), fetched from `settings.json` with built-in fallbacks. |
-| `fjallkartan/SlopeTileOverlay.swift` | `MKTileOverlay` for the steepness layer; one instance per `Country`, each with its own zoom limits. |
-| `fjallkartan/TileUpscaler.swift` | Shared helper that builds a deep-zoom tile by cropping and magnifying the ancestor containing it; used by both tile layers. |
+| `fjallkartan/TilePyramid.swift` | Pure functions sizing the offline download estimate for the fixed z7–z14 `MLNTilePyramidOfflineRegion` range. |
+| `fjallkartan/RemoteSettings.swift` | Remotely configurable tile URL templates (`TileSettings`: Lantmäteriet, Kartverket, Norwegian slope, Swedish slope, elevation), fetched from `settings.json` with built-in fallbacks. |
+| `fjallkartan/TileServer.swift` | One case per tile source; zoom limits, offline min/max zoom and URL construction shared by the style builder, the offline size estimate and `ElevationService`. |
+| `fjallkartan/KartverketNoDataFill.swift` | Unused CPU pixel-rewrite kept only as a reference for a possible server-side fix (§ below) — not called from anywhere. |
 | `fjallkartan/LegendCatalog.swift` | All legend entries — grouped into sections. |
 | `fjallkartan/LegendView.swift` | `LegendCountry` and `LegendSheet`; renders the bundled per-country legend PDFs (`legend_no` / `legend_se`) via PDFKit. |
 | `fjallkartan/AboutView.swift` | `AboutButton` and `AboutSheet`: data-source attribution (Kartverket, Lantmäteriet, NVE) plus privacy-policy and support links, and the row that reopens the get-started guide. |
 | `fjallkartan/OnboardingView.swift` | `OnboardingPage`/`OnboardingNote` content plus `OnboardingSheet`, the paged get-started guide shown on first launch. |
 | `fjallkartan/GuideTipView.swift` | `GuideTip` (one-time contextual hints, one `UserDefaults` key each) and the `GuideTipBadge` that renders them over the map. |
 | `fjallkartan/ReviewPrompter.swift` | Throttling logic deciding when to ask for an App Store review. |
-| `fjallkartan/NetworkCheck.swift` | One-shot `NWPathMonitor` connectivity check (no persistent monitor); used to postpone the review prompt while offline. |
-| `fjallkartan/OfflineTileStore.swift` | SQLite blob store for downloaded tiles (`tiles`, `region_tiles`, `regions` tables), with refcounted region deletion and ancestor lookup for upscaling. |
-| `fjallkartan/OfflineRegionDownloader.swift` | `@Observable` downloader: bounded-concurrency fetch of a region's tiles into `OfflineTileStore`, with pause/resume/cancel and retry/backoff. |
-| `fjallkartan/OfflineRegionsView.swift` | `OfflineRegionsModel` (region list + active downloaders) and `OfflineRegionsSheet` UI for starting/managing offline regions. |
+| `fjallkartan/NetworkCheck.swift` | One-shot `NWPathMonitor` connectivity check (no persistent monitor); used to postpone the review prompt while offline, and to tell "no connection" apart from "outside coverage" in the elevation profile. |
+| `fjallkartan/OfflineRegionsView.swift` | `OfflineRegionsModel` (thin wrapper over `MLNOfflineStorage`/`MLNOfflinePack`) and `OfflineRegionsSheet` UI for starting/managing offline regions. |
 | `fjallkartan/InfoPlist.xcstrings` | Localized `Info.plist` values: `CFBundleDisplayName` (home-screen name, translated for nb/da/fi) and `NSLocationWhenInUseUsageDescription`. |
 | `fjallkartan/Localizable.xcstrings` | All in-app UI strings. |
 | `fjallkartan/PrivacyInfo.xcprivacy` | Privacy manifest: no tracking, no collected data, and the required-reason API declarations. |
@@ -62,39 +58,34 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
 
 ## Architecture notes
 
-- **`MapView`**
-  - Two `CustomTileOverlay` instances are added in `makeUIView`: Lantmäteriet first (opaque base), Kartverket second (composited on top). Order matters for the border to render correctly.
+- **`MapLibreMapView`**
+  - `tileSize: 128` (half of MapLibre's 256 default) roughly doubles the tile request rate per view versus a naive estimate — this is why the offline-download byte tables in `TilePyramid` are measured, not computed from tile count.
+  - Route/endpoint/distance-marker rendering uses `MLNShapeSource` + `MLNLineStyleLayer`/`MLNCircleStyleLayer`, added once in `mapView(_:didFinishLoading:)` and updated by replacing the source's `shape` — not `MKOverlayRenderer`.
+  - `MapLibreMeasureCaptureView` is a same-size subview added on top of the map. MapLibre's own pan/pinch/rotate gesture recognizers live on the map view itself, an *ancestor* of the capture view, so they still see every touch unless explicitly disabled — `setMeasuring(_:on:)` toggles `map.isScrollEnabled`/`isZoomEnabled`/`isRotateEnabled` off and the capture view's `isUserInteractionEnabled` on, together, whenever measuring starts or stops. The capture view brings in its own two-finger pinch/pan recognizers so panning and zooming still work one-handed while drawing.
+  - `mapViewRegionIsChanging`/`regionDidChangeAnimated` both funnel into one `updateRegion(for:)` that recomputes `metersPerPoint`/`visibleMapRect`/`zoomLevel` and only writes back to the `@Binding`s that actually changed — MapLibre's region-changing delegate callback fires far more often than MapKit's did, so an unconditional write would re-render the scale bar every frame.
+  - Search results, saved pins and route-distance markers are all `MLNAnnotation`s with their own `MLNAnnotationView` subclasses (`SearchResultMarkerView`, `SavedPinMarkerView`, `RouteDistanceMarkerView`) rather than `MKAnnotationView`; only `SearchResultAnnotation` gets a callout (`annotationCanShowCallout`), with the bookmark/✗ accessories reproduced via `leftCalloutAccessoryViewFor`/`rightCalloutAccessoryViewFor`.
+  - Tapping a saved pin goes through `mapView(_:didSelect:)`, which immediately deselects and opens `PinDetailSheet` — same behaviour as the MapKit version, just on the MapLibre delegate.
+  - Location tracking calls `locationManager.requestWhenInUseAuthorization()` lazily, only when the user first taps the tracking button (`setTrackingMode`), and defers actually engaging `.follow` until `locationManagerDidChangeAuthorization` reports authorized.
 
-- **`CustomTileOverlay`**
-  - Tiles are always requested from both servers, and empty/no-data areas simply come back blank.
-  - **`noData` and `failure` must not be conflated.** `noData` is returned to MapKit as `(nil, nil)` — a legitimately empty tile it caches and never asks about again. A `failure` is returned as `(nil, error)`, because `(nil, nil)` would make MapKit cache the hole for the lifetime of the renderer, so a single failed request (typically a cold launch racing the network stack) would leave that tile blank until the overlay was rebuilt. `SlopeTileOverlay` has always drawn the same distinction. A tile that failed is then re-requested on the next redraw, i.e. as soon as the map moves.
-  - Kartverket's no-data fill is transparent at low zoom but an opaque cream (~255,255,230) from ~z15; `kartverketNoDataToTransparentPNG` rewrites those pixels to transparent so Lantmäteriet shows through. Lantmäteriet tiles are passed through untouched.
-
-- **Tile metrics**
-  - Counters are **aggregate-only and coordinate-free**: the key is `(layer, zoom)`, never `(x, y)`. Nothing leaves the device.
-  - Attribution lives entirely inside `TileFetcher`: a private `Resolution` tags each lookup as offline store / `URLCache` / network / upscaled ancestor / no-data / failure.
-  - Latency is a fixed-bound histogram rather than a running mean, and percentiles are reported as the containing bucket bound (`≤ 300 ms`). Histograms are kept **per `(layer, zoom, source)`** as well as blended per `(layer, zoom)`: a blended p50 mixes ~0 ms offline-store hits with multi-second network fetches and so cannot answer whether a given cache tier is actually cheap. The blended array is still stored rather than derived, because it predates the per-source split and is all an older `tile-metrics.json` contains — `Entry.init(from:)` decodes every field optionally, so such a file keeps its counts and blended latency and simply starts with no per-source data. `DebugSheet` suppresses a per-source percentile below 10 samples for that reason.
-  - Recording is a lock plus a dictionary increment on the URLSession completion thread; the file is written only every 200 records and on scene-background.
-
-- **Tile retries**
-  - A "there is no connection" `URLError` gets `connectivityAttempts` (2) rather than the full `maximumAttempts` budget: a genuinely offline device has nothing to wait for, but a cold launch can report offline for a moment before the network stack is up, and writing the tile off on the first try used to leave a permanent hole. The retry uses the longer `connectivityRetryDelay`, since the point is to outlast a slow start rather than to hammer a server.
-  - Every path that ends in `noData` or `failure` logs, including a 2xx that carried no body or a non-image body — those were previously silent, which made a stuck tile impossible to tell from a working one in the logs.
 
 - **Remote settings**
   - `RemoteSettings.shared.refresh()` runs on scene activation and fetches `https://tiles.wallman.dev/settings.json` at most once per 6 h, so a provider that changes its URL can be followed without an app update.
   - `RemoteSettings.builtIn` holds the original hardcoded templates and is always a working configuration. An accepted payload is persisted as raw JSON in `UserDefaults`, so later launches start from the last known-good value.
-  - A changed URL only affects online fetches: `URLCache` is keyed on the real URL (so it self-invalidates), but `OfflineTileStore` is keyed by `(server, z, x, y)` and is consulted first, so already-downloaded regions keep serving the old provider's tiles until the region is re-downloaded.
 
 - **Slope layer**
-  - Two `SlopeTileOverlay` instances, one per country, both drawn at `alpha = 0.6`. Norway serves NVE's finished `Bratthet_med_utlop_2024` pictures (z5–16); Sweden has no such service, so we render our own (z5–13) — hence the per-country zoom limits. Above `sourceMaximumZ` the overlay itself fetches the deepest published ancestor and magnifies it.
-  - Both tilesets are sparse, so 404s is the normal case. `TileFetcher` therefore caches a no-data marker for a 4xx in the same `URLCache`.
+  - Two raster sources/layers (`norway-slope`, `sweden-slope`) in the same style document, both painted at `raster-opacity: 0.6`, replacing the old per-country `SlopeTileOverlay` (`MKTileOverlay`) instances. `MapLibreMapView.Coordinator.setSlopeVisible(_:)` toggles `MLNRasterStyleLayer.isVisible` on both rather than adding/removing overlays. Norway serves NVE's finished `Bratthet_med_utlop_2024` pictures (z5–16); Sweden has no such service, so we render our own (z5–13) — each source still carries its own `TileServer.sourceMaximumZ` as `maxzoom`, so MapLibre's own overzoom handles anything deeper.
+  - Both tilesets are sparse, so 404s are the normal case there.
   - The Swedish tiles are built offline by `tools/build_sweden_slope_tiles.py` and match NVE's palette exactly, minus the runout blues (Sweden publishes no runout model) and minus the green <30° band.
   - Slope is computed with Horn 3×3 in EPSG:3006 **before** warping to Web Mercator — Mercator inflates distances by 1/cos(lat) (~2.2× at 63°N), which would flatten every slope. The warp is nearest-neighbour because the pixel values are class labels, not quantities. Only z13 is computed from elevation; lower zooms are max-pooled from their four children so a steep face stays visible as it shrinks below a pixel.
   - Agreement with NVE across the border is 96.6 % exact / 99.5 % within one class over 1,395,357 pixels sampled from 60 border tiles.
   - The tiles are hosted on Cloudflare R2 (bucket `tiles`, prefix `slope/v1`), fronted by `tiles.wallman.dev`.
 
+- **Kartverket cream fill at the border — known regression, deliberately skipped**
+  - From ~z15, Kartverket's opaque cream no-data fill (~255,255,230) covers Lantmäteriet on the Swedish side of the border instead of letting it show through, so the map goes cream above z15 near the border in Sweden. The old `CustomTileOverlay` fixed this with a CPU pixel rewrite per tile (`kartverketNoDataToTransparentPNG`); there is no MapLibre-native equivalent of "rewrite this raster source's pixels" without going back to a custom tile-loading path, which would give up the ambient cache and offline-pack support that come from using a plain raster source.
+  - The original pixel-rewrite logic is kept, unused, in `KartverketNoDataFill.swift` (a standalone `enum` with the same `rewritten(_:)` function) purely as a reference for whoever picks this up — options considered: bounding the Kartverket source to Norway (clips too coarsely, the border is diagonal), swapping layer order and relying on Lantmäteriet being transparent outside Sweden (unverified), or serving a pre-cleaned Kartverket layer from `tiles.wallman.dev` so the rewrite happens server-side once instead of on every device (fits the existing R2/`RemoteSettings` tooling). Delete `KartverketNoDataFill.swift` once one of these ships.
+
 - **Elevation**
-  - Elevation come from prebaked XYZ tiles (`https://tiles.wallman.dev/elevation/v1/{z}/{y}/{x}.png`). This makes it work offline. 
+  - Elevation comes from prebaked XYZ tiles (`https://tiles.wallman.dev/elevation/v1/{z}/{y}/{x}.png`), fetched through `TileFetcher.elevationTiles`.
   - The tiles are **data, not pictures**, and are never added to the map: each pixel carries `metres + 32768` as `R = value >> 8`, `G = value & 0xFF`, `B = 0`, with a fully transparent pixel meaning no data. The offset puts every Nordic height in the R ≈ 128–137 band, which is why an elevation tile looks like flat dark red with fine noise when opened in an image viewer.
   - 1 m precision is deliberate: decimetres would put noise in the low byte and roughly triple the PNG size for no gain.
   - Published at **z12 only** (~18 m per pixel at 62°N), which matches the 25 m spacing routes are sampled at. z13 was built and measured: it is ~60% better per point but changes ascent totals by well under 1%.
@@ -102,17 +93,17 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
   - `ElevationProfile` resamples at a fixed 25 m so totals don't depend on how fast the route was traced, and applies 4 m hysteresis so metre-level model noise doesn't accumulate into phantom climb (measured: ~2.5% of the total). A no-data gap **breaks** the run rather than being bridged, so the unknown step across it is never invented.
 
 - **Offline map regions**
-  - Downloads are capped to a fixed **z7–z14** pyramid (`TilePyramid`) — enough for route/terrain reading, still smaller than the online z18 ceiling, with a hard refusal above ~1.5 GB (purely a guard against selecting the whole of Scandinavia) or when `OfflineTileStore.availableCapacityBytes` shows the device doesn't have enough free space for the estimate.
-  - All layers are downloaded, each within its own `offlineMinimumZ...offlineMaximumZ`, so the Swedish slope tiles (published only to z13) are never requested at z14. `TilePyramid.jobs(in:)` is the single enumeration both the downloader and the size estimate use, so a progress bar can't disagree with what is actually fetched.
-  - `OfflineTileStore` persists raw (pre-`CustomTileOverlay`-processing) tile bytes in `Application Support/offline-tiles.sqlite` (excluded from backup). Tiles are deduped and refcounted across regions via `region_tiles`; `deleteRegion` only removes tiles with no remaining owner.
-  - `OfflineRegionDownloader` fetches both servers for every tile position (borders need both). It reads the shared browse cache (`TileFetcher.sharedTileCache`) before going to the network, so tiles the user already panned over are copied straight into the offline store; that lookup is read-only (`storesResponses: false`) since the downloader keeps its own copy anyway and a bulk region download would otherwise evict the map's cached tiles. Progress is written to SQLite in ~50-tile batches, so `resume` (or a fresh app launch) just re-enumerates and skips tiles already present. A SQLite write failure (e.g. disk full) aborts the download and surfaces as `.failed(message)`, shown in the region row instead of silently reporting success.
-  - `OfflineRegionsSheet`'s "current view" download area is an inset of `MapView`'s `visibleMapRect`; the same rect is drawn as a dashed `RegionPreviewOverlay` on the map while the sheet is open.
+  - Built on `MLNOfflinePack`/`MLNOfflineStorage` via `MLNTilePyramidOfflineRegion`. `OfflineRegionsModel.startDownload(name:rect:)` creates a region for the fixed `TilePyramid.minZoom...maxZoom` (z7–z14) range using the same style URL the map uses, JSON-encodes a small `RegionContext` (id/name/createdAt) into the pack's opaque `context` since a pack has no name/date of its own, and calls `resume()` immediately.
+  - Progress/completion/error come from `NotificationCenter` (`.MLNOfflinePackProgressChanged`, `.MLNOfflinePackError`), not a custom downloader; `OfflineRegionsModel` decodes each pack's `context` back into a `RegionSummary` for the list. `pause`/`resume`/`delete` map straight onto `MLNOfflinePack.suspend()`/`resume()`/`MLNOfflineStorage.removePack(_:)`.
+  - `TilePyramid` is now just the download-size *estimate*: `estimate(rect:)` still uses `TileServer.covers(zoom:)` and per-zoom measured-bytes tables (base map, slope, elevation-at-its-single-zoom) to size the region before it's downloaded, plus `availableCapacityBytes` for the disk-space guard and `maxDownloadBytes` (~1.5 GB) as a hard refusal. This estimate is **known to be inaccurate**. Revisiting it means empirically-measured multipliers per zoom range.
+  - `OfflineRegionsSheet`'s "current view" download area is an inset of `MapLibreMapView`'s `visibleMapRect`; the same rect is drawn as a dashed `RegionPreviewBorderView` on the map while the sheet is open.
 
 - **Distance measurement**
-  - While measuring, `MeasureCaptureView` becomes interactive and swallows every touch, which is what stops MapKit's pan/zoom recognisers from competing with drawing. Live feedback is drawn in screen space (`CAShapeLayer`) so the map is not re-rendered mid-drag.
+  - While measuring, `MapLibreMeasureCaptureView` becomes interactive and swallows every touch (see `MapLibreMapView` above), which is what stops MapLibre's own pan/zoom recognisers from competing with drawing. Live feedback is drawn in screen space (`CAShapeLayer`) so the map is not re-rendered mid-drag.
   - On touch-up the stroke is simplified in screen space, converted to coordinates and appended to `DistanceMeasurement`; consecutive strokes are joined by a straight connector so the user can pan between them.
   - Distances are geodesic (`CLLocation.distance(from:)`). A Mercator-space measurement would overstate by ~2.7x at 68°N.
-  - `MapView` rebuilds the route overlay only when `DistanceMeasurement.version` changes. `ContentView` passes `isMeasuring` / `routeVersion` as plain values so Observation triggers `updateUIView`.
+  - `MapLibreMapView` rebuilds the route `MLNShapeSource`'s shape only when `DistanceMeasurement.version` changes. `ContentView` passes `isMeasuring` / `routeVersion` as plain values so Observation triggers `updateUIView`.
+
 
 - **Get started guide**
   - Two layers. `OnboardingSheet` is the paged tour, opened on demand from `AboutSheet`. `GuideTip` is the contextual layer: a hint shown the first time a mode is actually entered, which is the only moment a gesture can be acted on.
@@ -156,15 +147,16 @@ iOS app (SwiftUI + MapKit) that displays topographic map tiles from Kartverket (
   - Eight well known trails ship in the bundle as `resources/featured-routes.json` so the "Saved routes" sheet is never empty on a fresh install.
   - They are **read-only and never enter `SavedRouteStore`** — no iCloud sync, no rename or delete, and a bad geometry is fixed by shipping a new build rather than migrating anyone's files. Selecting one goes through the same `measurement.load` / `elevation.load` path as a saved route, so it can be edited and then saved as the user's own; `SavedRoute.id` is derived deterministically from the catalogue id so saving the same one twice can't collide.
 
-- **Saved pins**  - A saved pin (`SavedPin`: id/createdAt/coordinate/name/subtitle/schemaVersion) is created either by long-pressing the map (name defaults to nil, so `displayName` falls back to a formatted date) or by tapping the bookmark `rightCalloutAccessoryView` on a search-result marker (named after the `PlaceResult`). Both go through `SavedPinStore`, the `DocumentDirectoryStore<SavedPin>` wrapper, under `Application Support/Pins` — its own iCloud migration `UserDefaults` key keeps pin migration independent of route migration.
-  - `MapView.Coordinator` owns a `UILongPressGestureRecognizer` added directly to the `MKMapView` (not the measurement capture view), disabled whenever `isMeasuring` or `isRegionPreviewVisible` is true so it never competes with drawing or the offline-region picker.
-  - Pins are managed entirely on the map, not in the "Saved" sheet (that sheet is routes-only): `SavedPinAnnotation` has no title/subtitle/callout at all — tapping one directly fires `mapView(_:didSelect:)`, which opens `PinDetailSheet` (a small `.presentationDetents([.height(260)])` sheet with Rename + destructive Delete) and immediately deselects, so no callout ever flashes on screen. `SavedPinsModel` (load/save/rename/delete) still backs this, it's just driven from the map instead of a list.
+- **Saved pins**
+  - A saved pin (`SavedPin`: id/createdAt/coordinate/name/subtitle/schemaVersion) is created either by long-pressing the map (name defaults to nil, so `displayName` falls back to a formatted date) or by tapping the bookmark `rightCalloutAccessoryViewFor` on a search-result marker (named after the `PlaceResult`). Both go through `SavedPinStore`, the `DocumentDirectoryStore<SavedPin>` wrapper, under `Application Support/Pins` — its own iCloud migration `UserDefaults` key keeps pin migration independent of route migration.
+  - `MapLibreMapView.Coordinator` owns a `UILongPressGestureRecognizer` added directly to the `MLNMapView` (not the measurement capture view), disabled whenever `isMeasuring` or `isRegionPreviewVisible` is true (`setLongPressEnabled(_:)`) so it never competes with drawing or the offline-region picker.
+  - Pins are managed entirely on the map, not in the "Saved" sheet (that sheet is routes-only): `SavedPinMapAnnotation` has no title/subtitle/callout at all — tapping one directly fires `mapView(_:didSelect:)`, which opens `PinDetailSheet` (a small `.presentationDetents([.height(260)])` sheet with Rename + destructive Delete) and immediately deselects, so no callout ever flashes on screen. `SavedPinsModel` (load/save/rename/delete) still backs this, it's just driven from the map instead of a list.
 
 - **Actor isolation**
   - The project builds with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` (and `SWIFT_APPROACHABLE_CONCURRENCY`), so **every type is implicitly `@MainActor` unless it says otherwise**. That is why `TileServer`, `TileFetcher`, `TileSettings`, `Coord` and friends are explicitly marked `nonisolated`.
   - The trap: implicit isolation also covers a type's *synthesized conformances*. A main-actor-isolated `Hashable`/`Equatable` can't be used from a nonisolated context, and Swift Testing's `#expect` macro expands into exactly that — so comparing such a value in a test produces `main actor-isolated conformance of 'X' to 'Equatable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode`.
   - So: any value type that is compared in tests, persisted, or otherwise touched off the main thread must be declared `nonisolated`. Reach for that rather than annotating the test, and treat the warning as a real isolation bug — it becomes an error under Swift 6.
-  - The same applies to overridden UIKit/MapKit members: `MKTileOverlay.loadTile(at:result:)` is main-actor isolated, so a test helper that calls it needs `@MainActor`.
+  - The same applies to overridden UIKit/MapLibre members: any main-actor-isolated method a test overrides or calls directly (e.g. `MLNMapViewDelegate` callbacks) needs its test helper marked `@MainActor` too.
 
 ## Build & test
 - Xcode project: `fjallkartan.xcodeproj`, scheme `fjallkartan`.

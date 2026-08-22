@@ -1,28 +1,10 @@
-import CoreGraphics
 import Foundation
 
 /// One tile source. Both the base map layers and the two slope layers are
-/// modelled here so every one of them can be cached, downloaded offline and
-/// looked up in `OfflineTileStore` through the same code path.
+/// modelled here so every one of them can be located, sized for the offline
+/// download estimate, and sampled the same way.
 nonisolated enum TileServer: CaseIterable {
     case kartverket, lantmateriet, norwaySlope, swedenSlope, elevation
-
-    /// Encoding used as the `server` column in `OfflineTileStore`.
-    /// Persisted, so existing values must never be renumbered.
-    var storeCode: Int {
-        switch self {
-        case .kartverket: return 0
-        case .lantmateriet: return 1
-        case .norwaySlope: return 2
-        case .swedenSlope: return 3
-        case .elevation: return 4
-        }
-    }
-
-    init?(storeCode: Int) {
-        guard let match = TileServer.allCases.first(where: { $0.storeCode == storeCode }) else { return nil }
-        self = match
-    }
 
     /// Unlocalized, for logs and the tile metrics screen.
     var debugName: String {
@@ -75,13 +57,6 @@ nonisolated enum TileServer: CaseIterable {
     /// Whether this layer is downloaded for offline use at `zoom`.
     func covers(zoom: Int) -> Bool {
         zoom >= offlineMinimumZ && zoom <= offlineMaximumZ
-    }
-
-    /// Slope pixels are class labels, so a magnified tile must not blend them.
-    /// Elevation pixels are worse: the height is a 16-bit value split across R
-    /// and G, so interpolating the high byte on its own invents 256 m steps.
-    var upscaleInterpolation: CGInterpolationQuality {
-        (isSlope || isData) ? .none : .medium
     }
 
     func url(z: Int, x: Int, y: Int) -> URL {
