@@ -3779,7 +3779,7 @@
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inga offlineregioner"
+            "value" : "Inga offlineområden"
           }
         },
         "zh-Hans" : {
@@ -4229,7 +4229,7 @@
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Offlineregioner"
+            "value" : "Offlineområden"
           }
         },
         "zh-Hans" : {
@@ -6918,7 +6918,7 @@
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Branthet"
+            "value" : "Lutning"
           }
         },
         "zh-Hans" : {
