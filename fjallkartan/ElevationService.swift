@@ -2,6 +2,7 @@ import CoreGraphics
 import CoreLocation
 import Foundation
 import ImageIO
+import MapKit
 
 /// Samples terrain height from the prebaked elevation tiles.
 ///
@@ -46,6 +47,86 @@ nonisolated final class ElevationService: @unchecked Sendable {
     init(session: URLSession = .shared, cachedTiles: Int = 64) {
         self.session = session
         cache.countLimit = cachedTiles
+    }
+
+    // MARK: - Offline cache
+
+    private static let offlineCacheDirectory: URL = {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let directory = base.appendingPathComponent("ElevationTiles", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
+    }()
+
+    private static func offlineCacheURL(for key: TileKey) -> URL {
+        offlineCacheDirectory.appendingPathComponent("\(key.x)_\(key.y).png")
+    }
+
+    static func isTileCached(_ key: TileKey) -> Bool {
+        FileManager.default.fileExists(atPath: offlineCacheURL(for: key).path)
+    }
+
+    private static func cachedFileSize(_ key: TileKey) -> Int {
+        let values = try? offlineCacheURL(for: key).resourceValues(forKeys: [.fileSizeKey])
+        return values?.fileSize ?? 0
+    }
+
+    static func deleteTiles(_ keys: some Sequence<TileKey>) {
+        for key in keys {
+            try? FileManager.default.removeItem(at: offlineCacheURL(for: key))
+        }
+    }
+
+    static func tileKeys(coveringRect rect: MKMapRect) -> [TileKey] {
+        let region = MKCoordinateRegion(rect)
+        return TilePyramid.tileIndices(for: region, z: zoom).map { TileKey(x: $0.x, y: $0.y) }
+    }
+
+    func prefetchTiles(
+        _ keys: [TileKey],
+        onProgress: @MainActor @escaping (_ tilesDone: Int, _ tilesTotal: Int, _ bytesDone: Int) -> Void
+    ) async {
+        let total = keys.count
+        var done = 0
+        var bytes = keys.reduce(0) { $0 + (Self.isTileCached($1) ? Self.cachedFileSize($1) : 0) }
+        await onProgress(keys.filter(Self.isTileCached).count, total, bytes)
+
+        let concurrency = 6
+        var index = 0
+        await withTaskGroup(of: (Bool, Int).self) { group in
+            func addNext() {
+                guard index < keys.count else { return }
+                let key = keys[index]
+                index += 1
+                group.addTask { [weak self] in
+                    guard let self else { return (false, 0) }
+                    if Self.isTileCached(key) { return (true, 0) }
+                    return await self.fetchAndCacheTile(key)
+                }
+            }
+            for _ in 0..<min(concurrency, keys.count) { addNext() }
+            while let (succeeded, addedBytes) = await group.next() {
+                if succeeded {
+                    done += 1
+                    bytes += addedBytes
+                }
+                await onProgress(done, total, bytes)
+                addNext()
+            }
+        }
+    }
+
+    private func fetchAndCacheTile(_ key: TileKey) async -> (succeeded: Bool, bytes: Int) {
+        guard Task.isCancelled == false else { return (false, 0) }
+        let url = TileServer.elevation.url(z: Self.zoom, x: key.x, y: key.y)
+        guard let (data, response) = try? await session.data(from: url),
+              let http = response as? HTTPURLResponse,
+              (200...299).contains(http.statusCode),
+              Self.decode(data) != nil else {
+            return (false, 0)
+        }
+        try? data.write(to: Self.offlineCacheURL(for: key), options: .atomic)
+        return (true, data.count)
     }
 
     // MARK: - Sampling
@@ -117,6 +198,11 @@ nonisolated final class ElevationService: @unchecked Sendable {
     }
 
     private func fetchTile(_ key: TileKey) async -> HeightTile? {
+        if let data = try? Data(contentsOf: Self.offlineCacheURL(for: key)),
+           let tile = Self.decode(data) {
+            return tile
+        }
+
         let url = TileServer.elevation.url(z: Self.zoom, x: key.x, y: key.y)
         guard let (data, response) = try? await session.data(from: url),
               let http = response as? HTTPURLResponse,

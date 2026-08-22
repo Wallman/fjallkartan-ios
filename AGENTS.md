@@ -24,7 +24,7 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 | `fjallkartan/SavedPinStore.swift` | Thin wrapper over `DocumentDirectoryStore<SavedPin>`, adding `rename(_:to:)`. |
 | `fjallkartan/SavedPinsView.swift` | `SavedPinsModel` (load/save/rename/delete for saved pins) and `SavedSheet` (the "Saved" toolbar sheet, routes-only). |
 | `fjallkartan/PinDetailSheet.swift` | Low bottom sheet (Rename + destructive Delete) opened when a pin annotation is tapped on the map. |
-| `fjallkartan/ElevationService.swift` | Samples terrain height from the prebaked z12 elevation tiles: fetch via `TileFetcher`, RGBA→metres decode, per-tile cache and in-flight dedupe. |
+| `fjallkartan/ElevationService.swift` | Samples terrain height from the prebaked z12 elevation tiles: network fetch, RGBA→metres decode, in-memory per-tile cache and in-flight dedupe, plus an offline disk cache. |
 | `fjallkartan/ElevationProfile.swift` | `@Observable` profile of the measured route — fixed-spacing resampling, ascent/descent with hysteresis, coverage, and a `needsConnection` flag for the offline case. |
 | `fjallkartan/ElevationProfileView.swift` | `ElevationProfileSheet`: Swift Charts terrain profile opened from the distance readout. |
 | `fjallkartan/TilePyramid.swift` | Pure functions sizing the offline download estimate for the fixed z7–z14 `MLNTilePyramidOfflineRegion` range. |
@@ -38,7 +38,7 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 | `fjallkartan/GuideTipView.swift` | `GuideTip` (one-time contextual hints, one `UserDefaults` key each) and the `GuideTipBadge` that renders them over the map. |
 | `fjallkartan/ReviewPrompter.swift` | Throttling logic deciding when to ask for an App Store review. |
 | `fjallkartan/NetworkCheck.swift` | One-shot `NWPathMonitor` connectivity check (no persistent monitor); used to postpone the review prompt while offline, and to tell "no connection" apart from "outside coverage" in the elevation profile. |
-| `fjallkartan/OfflineRegionsView.swift` | `OfflineRegionsModel` (thin wrapper over `MLNOfflineStorage`/`MLNOfflinePack`) and `OfflineRegionsSheet` UI for starting/managing offline regions. |
+| `fjallkartan/OfflineRegionsView.swift` | `OfflineRegionsModel` (thin wrapper over `MLNOfflineStorage`/`MLNOfflinePack`, plus elevation-tile download) and `OfflineRegionsSheet` UI for starting/managing offline regions. |
 | `fjallkartan/InfoPlist.xcstrings` | Localized `Info.plist` values: `CFBundleDisplayName` (home-screen name, translated for nb/da/fi) and `NSLocationWhenInUseUsageDescription`. |
 | `fjallkartan/Localizable.xcstrings` | All in-app UI strings. |
 | `fjallkartan/PrivacyInfo.xcprivacy` | Privacy manifest: no tracking, no collected data, and the required-reason API declarations. |
@@ -97,6 +97,7 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 - **Offline map regions**
   - Built on `MLNOfflinePack`/`MLNOfflineStorage` via `MLNTilePyramidOfflineRegion`. `OfflineRegionsModel.startDownload(name:rect:)` creates a region for the fixed `TilePyramid.minZoom...maxZoom` (z7–z14) range using the same style URL the map uses, JSON-encodes a small `RegionContext` (id/name/createdAt) into the pack's opaque `context` since a pack has no name/date of its own, and calls `resume()` immediately.
   - Progress/completion/error come from `NotificationCenter` (`.MLNOfflinePackProgressChanged`, `.MLNOfflinePackError`), not a custom downloader; `OfflineRegionsModel` decodes each pack's `context` back into a `RegionSummary` for the list. `pause`/`resume`/`delete` map straight onto `MLNOfflinePack.suspend()`/`resume()`/`MLNOfflineStorage.removePack(_:)`.
+  - Elevation tiles are never part of the style, so the pack never downloads them; `OfflineRegionsModel` runs its own `ElevationService.prefetchTiles(_:onProgress:)` in parallel for the same rect, and merges its `(tilesDone, tilesTotal, bytesDone)` into the pack's own progress for one combined `RegionSummary`. Since the download `Task` doesn't survive a relaunch, `refresh()` recomputes each pack's elevation tile keys from its stored bounds and resumes any that are incomplete and not paused.
   - `TilePyramid` is now just the download-size *estimate*: `estimate(rect:)` still uses `TileServer.covers(zoom:)` and per-zoom measured-bytes tables (base map, slope, elevation-at-its-single-zoom) to size the region before it's downloaded, plus `availableCapacityBytes` for the disk-space guard and `maxDownloadBytes` (~1.5 GB) as a hard refusal. This estimate is **known to be inaccurate**. Revisiting it means empirically-measured multipliers per zoom range.
   - `OfflineRegionsSheet`'s "current view" download area is an inset of `MapLibreMapView`'s `visibleMapRect`; the same rect is drawn as a dashed `RegionPreviewBorderView` on the map while the sheet is open.
 
