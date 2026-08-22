@@ -1,5 +1,6 @@
 import CoreLocation
 import MapKit
+import MapLibre
 import StoreKit
 import SwiftUI
 
@@ -29,6 +30,7 @@ struct ContentView: View {
     @State private var savedPinsModel = (try? SavedPinStore()).map(SavedPinsModel.init)
     @State private var routeFitToken = 0 // Needed to avoid re-centering when drawing
     @State private var pinDetail: SavedPin?
+    @State private var trackingMode: MLNUserTrackingMode = .none
 
     @State private var measuringStartVersion = 0
     private let reviewPrompter = ReviewPrompter.shared
@@ -111,6 +113,15 @@ struct ContentView: View {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Color.primary)
+                    .buttonStyle()
+            }
+
+            Button {
+                toggleTrackingMode()
+            } label: {
+                Image(systemName: trackingButtonSymbol(for: trackingMode))
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(trackingMode == .none ? Color.primary : Color.accentColor)
                     .buttonStyle()
             }
 
@@ -206,10 +217,36 @@ struct ContentView: View {
         .padding(.trailing, isCompactHeight ? trailingInset + 52 : trailingInset)
     }
 
+    private func toggleTrackingMode() {
+        let status = CLLocationManager().authorizationStatus
+        if status == .notDetermined {
+            trackingMode = .follow
+        } else {
+            trackingMode = nextTrackingMode(after: trackingMode)
+        }
+    }
+
+    private func nextTrackingMode(after mode: MLNUserTrackingMode) -> MLNUserTrackingMode {
+        switch mode {
+        case .none: return .follow
+        case .follow: return .followWithHeading
+        default: return .none
+        }
+    }
+
+    private func trackingButtonSymbol(for mode: MLNUserTrackingMode) -> String {
+        switch mode {
+        case .none: return "location"
+        case .followWithHeading: return "location.north.line.fill"
+        default: return "location.fill"
+        }
+    }
+
     var body: some View {
-        MapView(metersPerPoint: $metersPerPoint,
+        MapLibreMapView(metersPerPoint: $metersPerPoint,
                 visibleMapRect: $visibleMapRect,
                 zoomLevel: $zoomLevel,
+                trackingMode: $trackingMode,
                 measurement: measurement,
                 isMeasuring: measurement.isMeasuring,
                 routeVersion: measurement.version,

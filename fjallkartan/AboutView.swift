@@ -19,7 +19,6 @@ struct AboutSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isShowingTileMetrics = false
     @State private var isShowingGuide = false
-    @State private var isShowingMapLibrePOC = false
 
     private static let privacyPolicyURL = URL(string: "https://wallman.github.io/fjallkartan-ios/privacy.html")!
     private static let supportURL = URL(string: "https://wallman.github.io/fjallkartan-ios/support.html")!
@@ -78,11 +77,6 @@ struct AboutSheet: View {
                         // Undiscoverable on purpose
                         .onLongPressGesture { isShowingTileMetrics = true }
                 }
-
-                // POC only — remove once the MapLibre comparison is done.
-                Section {
-                    Button("MapLibre POC") { isShowingMapLibrePOC = true }
-                }
             }
             .navigationTitle("About")
             .navigationBarTitleDisplayMode(.inline)
@@ -96,9 +90,6 @@ struct AboutSheet: View {
             }
             .sheet(isPresented: $isShowingGuide) {
                 OnboardingSheet()
-            }
-            .fullScreenCover(isPresented: $isShowingMapLibrePOC) {
-                MapLibrePOCView()
             }
         }
         .presentationDetents([.large])
