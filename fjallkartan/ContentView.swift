@@ -165,26 +165,6 @@ struct ContentView: View {
 
             if isShowingMoreControls {
                 Button {
-                    isSlopeLayerVisible.toggle()
-                } label: {
-                    Image(systemName: "triangle.righthalf.filled")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(isSlopeLayerVisible ? Color.orange : Color.primary)
-                        .buttonStyle(MapControlLabel.slope)
-                }
-                .transition(.scale.combined(with: .opacity))
-
-                Button {
-                    isLegendPresented = true
-                } label: {
-                    Image(systemName: "list.bullet.rectangle")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Color.primary)
-                        .buttonStyle(MapControlLabel.symbols)
-                }
-                .transition(.scale.combined(with: .opacity))
-
-                Button {
                     isPickingRegion.toggle()
                 } label: {
                     Image(systemName: "arrow.down.circle")
@@ -206,6 +186,26 @@ struct ContentView: View {
                     }
                     .transition(.scale.combined(with: .opacity))
                 }
+
+                Button {
+                    isLegendPresented = true
+                } label: {
+                    Image(systemName: "list.bullet.rectangle")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Color.primary)
+                        .buttonStyle(MapControlLabel.symbols)
+                }
+                .transition(.scale.combined(with: .opacity))
+
+                Button {
+                    isSlopeLayerVisible.toggle()
+                } label: {
+                    Image(systemName: "triangle.righthalf.filled")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(isSlopeLayerVisible ? Color.orange : Color.primary)
+                        .buttonStyle(MapControlLabel.slope)
+                }
+                .transition(.scale.combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.2), value: isPickingRegion)
