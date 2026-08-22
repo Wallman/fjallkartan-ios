@@ -154,7 +154,7 @@ struct ContentView: View {
             Button {
                 isShowingMoreControls.toggle()
             } label: {
-                Image(systemName: isShowingMoreControls ? "chevron.up" : "ellipsis")
+                Image(systemName: isShowingMoreControls ? (isCompactHeight ? "chevron.left" : "chevron.up") : "ellipsis")
                     .font(.system(size: 17, weight: .semibold))
                     // Collapsed, this button is the only trace of a layer that
                     // may well be switched on, so it carries the active tint.
