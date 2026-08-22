@@ -25,6 +25,7 @@ struct AboutSheet: View {
     private static let kartverketURL = URL(string: "https://www.kartverket.no/")!
     private static let lantmaterietURL = URL(string: "https://www.lantmateriet.se/")!
     private static let nveURL = URL(string: "https://www.nve.no/")!
+    private static let maplibreURL = URL(string: "https://maplibre.org/")!
 
     private var appVersion: String {
         let info = Bundle.main.infoDictionary
@@ -40,6 +41,7 @@ struct AboutSheet: View {
                     ExternalLink(title: "©Kartverket", url: Self.kartverketURL)
                     ExternalLink(title: "©Lantmäteriet", url: Self.lantmaterietURL)
                     ExternalLink(title: "©NVE", url: Self.nveURL)
+                    ExternalLink(title: "©MapLibre", url: Self.maplibreURL)
                 }
 
                 Section {
