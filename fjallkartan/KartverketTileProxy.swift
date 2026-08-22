@@ -50,25 +50,23 @@ nonisolated final class KartverketTileProxy: @unchecked Sendable {
         return URLSession(configuration: config)
     }()
 
+    private static let port: NWEndpoint.Port = 58355
+
     private let listener: NWListener
-    private var port: UInt16 = 0
 
     private init?() {
         let params = NWParameters.tcp
         params.requiredInterfaceType = .loopback
-        guard let listener = try? NWListener(using: params) else {
+        guard let listener = try? NWListener(using: params, on: Self.port) else {
             Self.log.error("could not create Kartverket tile proxy listener")
             return nil
         }
         self.listener = listener
 
         let semaphore = DispatchSemaphore(value: 0)
-        listener.stateUpdateHandler = { [weak self] state in
+        listener.stateUpdateHandler = { state in
             switch state {
-            case .ready:
-                self?.port = listener.port?.rawValue ?? 0
-                semaphore.signal()
-            case .failed, .cancelled:
+            case .ready, .failed, .cancelled:
                 semaphore.signal()
             default:
                 break
@@ -80,16 +78,16 @@ nonisolated final class KartverketTileProxy: @unchecked Sendable {
         listener.start(queue: .global(qos: .userInitiated))
         _ = semaphore.wait(timeout: .now() + 5)
 
-        guard port != 0 else {
+        guard listener.state == .ready else {
             Self.log.error("Kartverket tile proxy listener never became ready")
             listener.cancel()
             return nil
         }
-        Self.log.debug("Kartverket tile proxy listening on 127.0.0.1:\(self.port)")
+        Self.log.debug("Kartverket tile proxy listening on 127.0.0.1:\(Self.port.rawValue)")
     }
 
     var tileURLTemplate: String {
-        "http://127.0.0.1:\(port)/{z}/{x}/{y}.png"
+        "http://127.0.0.1:\(Self.port.rawValue)/{z}/{x}/{y}.png"
     }
 
     // MARK: - Connection handling
