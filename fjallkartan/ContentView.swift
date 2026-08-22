@@ -241,7 +241,7 @@ struct ContentView: View {
     }
 
     var body: some View {
-        MapLibreMapView(metersPerPoint: $metersPerPoint,
+        MapView(metersPerPoint: $metersPerPoint,
                 visibleMapRect: $visibleMapRect,
                 zoomLevel: $zoomLevel,
                 trackingMode: $trackingMode,

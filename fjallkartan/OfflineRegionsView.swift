@@ -176,7 +176,7 @@ final class OfflineRegionsModel {
         guard let contextData = try? JSONEncoder().encode(context) else { return }
 
         let region = MLNTilePyramidOfflineRegion(
-            styleURL: MapLibreMapView.buildStyleURL(),
+            styleURL: MapView.buildStyleURL(),
             bounds: MLNCoordinateBounds(mapRect: rect),
             fromZoomLevel: Double(TilePyramid.minZoom),
             toZoomLevel: Double(TilePyramid.maxZoom)

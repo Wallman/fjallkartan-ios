@@ -7,8 +7,8 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 | File | Purpose |
 |---|---|
 | `fjallkartan/fjallkartanApp.swift` | App entry point |
-| `fjallkartan/ContentView.swift` | Root SwiftUI view; hosts `MapLibreMapView` plus the scale bar, copyright notice and measurement overlays. |
-| `fjallkartan/MapLibreMapView.swift` | `UIViewRepresentable` wrapping `MLNMapView`: builds the raster style (base layers + slope), owns the measurement-capture view (`MapLibreMeasureCaptureView`), route/endpoint/distance-marker `MLNShapeSource`s, search/pin annotations, offline-region preview border, and user-location tracking. |
+| `fjallkartan/ContentView.swift` | Root SwiftUI view; hosts `MapView` plus the scale bar, copyright notice and measurement overlays. |
+| `fjallkartan/MapView.swift` | `UIViewRepresentable` wrapping `MLNMapView`: builds the raster style (base layers + slope), owns the measurement-capture view (`MapLibreMeasureCaptureView`), route/endpoint/distance-marker `MLNShapeSource`s, search/pin annotations, offline-region preview border, and user-location tracking. |
 | `fjallkartan/DebugView.swift` | `DebugSheet`: just the "Show zoom level" toggle that drives `ZoomLevelBadge`, opened by long-pressing the version row in `AboutSheet`. |
 | `fjallkartan/DistanceMeasurement.swift` | `@Observable` model holding the traced route and its geodesic length, plus `LineSimplifier` (Ramer–Douglas–Peucker). |
 | `fjallkartan/PlaceSearch.swift` | SQLite-backed FTS5 lookup of place names (`PlaceSearch`, `PlaceResult`, `PlaceKind`) against the bundled `places.sqlite`. |
@@ -57,7 +57,7 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 
 ## Architecture notes
 
-- **`MapLibreMapView`**
+- **`MapView`**
   - `tileSize: 128` (half of MapLibre's 256 default) roughly doubles the tile request rate per view versus a naive estimate — this is why the offline-download byte tables in `TilePyramid` are measured, not computed from tile count.
   - Route/endpoint/distance-marker rendering uses `MLNShapeSource` + `MLNLineStyleLayer`/`MLNCircleStyleLayer`, added once in `mapView(_:didFinishLoading:)` and updated by replacing the source's `shape` — not `MKOverlayRenderer`.
   - `MapLibreMeasureCaptureView` is a same-size subview added on top of the map. MapLibre's own pan/pinch/rotate gesture recognizers live on the map view itself, an *ancestor* of the capture view, so they still see every touch unless explicitly disabled — `setMeasuring(_:on:)` toggles `map.isScrollEnabled`/`isZoomEnabled`/`isRotateEnabled` off and the capture view's `isUserInteractionEnabled` on, together, whenever measuring starts or stops. The capture view brings in its own two-finger pinch/pan recognizers so panning and zooming still work one-handed while drawing.
@@ -72,7 +72,7 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
   - `RemoteSettings.builtIn` holds the original hardcoded templates and is always a working configuration. An accepted payload is persisted as raw JSON in `UserDefaults`, so later launches start from the last known-good value.
 
 - **Slope layer**
-  - Two raster sources/layers (`norway-slope`, `sweden-slope`) in the same style document, both painted at `raster-opacity: 0.6`, replacing the old per-country `SlopeTileOverlay` (`MKTileOverlay`) instances. `MapLibreMapView.Coordinator.setSlopeVisible(_:)` toggles `MLNRasterStyleLayer.isVisible` on both rather than adding/removing overlays. Norway serves NVE's finished `Bratthet_med_utlop_2024` pictures (z5–16); Sweden has no such service, so we render our own (z5–13) — each source still carries its own `TileServer.sourceMaximumZ` as `maxzoom`, so MapLibre's own overzoom handles anything deeper.
+  - Two raster sources/layers (`norway-slope`, `sweden-slope`) in the same style document, both painted at `raster-opacity: 0.6`, replacing the old per-country `SlopeTileOverlay` (`MKTileOverlay`) instances. `MapView.Coordinator.setSlopeVisible(_:)` toggles `MLNRasterStyleLayer.isVisible` on both rather than adding/removing overlays. Norway serves NVE's finished `Bratthet_med_utlop_2024` pictures (z5–16); Sweden has no such service, so we render our own (z5–13) — each source still carries its own `TileServer.sourceMaximumZ` as `maxzoom`, so MapLibre's own overzoom handles anything deeper.
   - Both tilesets are sparse, so 404s are the normal case there.
   - The Swedish tiles are built offline by `tools/build_sweden_slope_tiles.py` and match NVE's palette exactly, minus the runout blues (Sweden publishes no runout model) and minus the green <30° band.
   - Slope is computed with Horn 3×3 in EPSG:3006 **before** warping to Web Mercator — Mercator inflates distances by 1/cos(lat) (~2.2× at 63°N), which would flatten every slope. The warp is nearest-neighbour because the pixel values are class labels, not quantities. Only z13 is computed from elevation; lower zooms are max-pooled from their four children so a steep face stays visible as it shrinks below a pixel.
@@ -99,13 +99,13 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
   - Progress/completion/error come from `NotificationCenter` (`.MLNOfflinePackProgressChanged`, `.MLNOfflinePackError`), not a custom downloader; `OfflineRegionsModel` decodes each pack's `context` back into a `RegionSummary` for the list. `pause`/`resume`/`delete` map straight onto `MLNOfflinePack.suspend()`/`resume()`/`MLNOfflineStorage.removePack(_:)`.
   - Elevation tiles are never part of the style, so the pack never downloads them; `OfflineRegionsModel` runs its own `ElevationService.prefetchTiles(_:onProgress:)` in parallel for the same rect, and merges its `(tilesDone, tilesTotal, bytesDone)` into the pack's own progress for one combined `RegionSummary`. Since the download `Task` doesn't survive a relaunch, `refresh()` recomputes each pack's elevation tile keys from its stored bounds and resumes any that are incomplete and not paused.
   - `TilePyramid` is now just the download-size *estimate*: `estimate(rect:)` still uses `TileServer.covers(zoom:)` and per-zoom measured-bytes tables (base map, slope, elevation-at-its-single-zoom) to size the region before it's downloaded, plus `availableCapacityBytes` for the disk-space guard and `maxDownloadBytes` (~1.5 GB) as a hard refusal. This estimate is **known to be inaccurate**. Revisiting it means empirically-measured multipliers per zoom range.
-  - `OfflineRegionsSheet`'s "current view" download area is an inset of `MapLibreMapView`'s `visibleMapRect`; the same rect is drawn as a dashed `RegionPreviewBorderView` on the map while the sheet is open.
+  - `OfflineRegionsSheet`'s "current view" download area is an inset of `MapView`'s `visibleMapRect`; the same rect is drawn as a dashed `RegionPreviewBorderView` on the map while the sheet is open.
 
 - **Distance measurement**
-  - While measuring, `MapLibreMeasureCaptureView` becomes interactive and swallows every touch (see `MapLibreMapView` above), which is what stops MapLibre's own pan/zoom recognisers from competing with drawing. Live feedback is drawn in screen space (`CAShapeLayer`) so the map is not re-rendered mid-drag.
+  - While measuring, `MapLibreMeasureCaptureView` becomes interactive and swallows every touch (see `MapView` above), which is what stops MapLibre's own pan/zoom recognisers from competing with drawing. Live feedback is drawn in screen space (`CAShapeLayer`) so the map is not re-rendered mid-drag.
   - On touch-up the stroke is simplified in screen space, converted to coordinates and appended to `DistanceMeasurement`; consecutive strokes are joined by a straight connector so the user can pan between them.
   - Distances are geodesic (`CLLocation.distance(from:)`). A Mercator-space measurement would overstate by ~2.7x at 68°N.
-  - `MapLibreMapView` rebuilds the route `MLNShapeSource`'s shape only when `DistanceMeasurement.version` changes. `ContentView` passes `isMeasuring` / `routeVersion` as plain values so Observation triggers `updateUIView`.
+  - `MapView` rebuilds the route `MLNShapeSource`'s shape only when `DistanceMeasurement.version` changes. `ContentView` passes `isMeasuring` / `routeVersion` as plain values so Observation triggers `updateUIView`.
 
 
 - **Get started guide**
@@ -152,7 +152,7 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 
 - **Saved pins**
   - A saved pin (`SavedPin`: id/createdAt/coordinate/name/subtitle/schemaVersion) is created either by long-pressing the map (name defaults to nil, so `displayName` falls back to a formatted date) or by tapping the bookmark `rightCalloutAccessoryViewFor` on a search-result marker (named after the `PlaceResult`). Both go through `SavedPinStore`, the `DocumentDirectoryStore<SavedPin>` wrapper, under `Application Support/Pins` — its own iCloud migration `UserDefaults` key keeps pin migration independent of route migration.
-  - `MapLibreMapView.Coordinator` owns a `UILongPressGestureRecognizer` added directly to the `MLNMapView` (not the measurement capture view), disabled whenever `isMeasuring` or `isRegionPreviewVisible` is true (`setLongPressEnabled(_:)`) so it never competes with drawing or the offline-region picker.
+  - `MapView.Coordinator` owns a `UILongPressGestureRecognizer` added directly to the `MLNMapView` (not the measurement capture view), disabled whenever `isMeasuring` or `isRegionPreviewVisible` is true (`setLongPressEnabled(_:)`) so it never competes with drawing or the offline-region picker.
   - Pins are managed entirely on the map, not in the "Saved" sheet (that sheet is routes-only): `SavedPinMapAnnotation` has no title/subtitle/callout at all — tapping one directly fires `mapView(_:didSelect:)`, which opens `PinDetailSheet` (a small `.presentationDetents([.height(260)])` sheet with Rename + destructive Delete) and immediately deselects, so no callout ever flashes on screen. `SavedPinsModel` (load/save/rename/delete) still backs this, it's just driven from the map instead of a list.
 
 - **Actor isolation**

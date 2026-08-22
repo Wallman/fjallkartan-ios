@@ -386,7 +386,7 @@ private final class MapLibreMeasureCaptureView: UIView, UIGestureRecognizerDeleg
     }
 }
 
-struct MapLibreMapView: UIViewRepresentable {
+struct MapView: UIViewRepresentable {
     @Binding var metersPerPoint: Double
     @Binding var visibleMapRect: MKMapRect
     @Binding var zoomLevel: Double
