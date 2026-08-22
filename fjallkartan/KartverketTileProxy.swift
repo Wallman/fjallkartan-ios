@@ -148,17 +148,30 @@ nonisolated final class KartverketTileProxy: @unchecked Sendable {
                 return
             }
             let rewritten = shouldRewrite ? (NoDataFill.rewritten(data) ?? data) : data
-            self.respond(status: "200 OK", body: rewritten, contentType: "image/png", on: connection)
+            self.respond(status: "200 OK", body: rewritten, contentType: "image/png",
+                         cacheHeaders: Self.cacheHeaders(from: http), on: connection)
         }.resume()
     }
 
-    private func respond(status: String, body: Data?, contentType: String?, on connection: NWConnection) {
+    private static let forwardedCacheHeaderNames = ["Date", "Cache-Control", "ETag", "Last-Modified", "Expires"]
+
+    private static func cacheHeaders(from response: HTTPURLResponse) -> [(String, String)] {
+        forwardedCacheHeaderNames.compactMap { name in
+            response.value(forHTTPHeaderField: name).map { (name, $0) }
+        }
+    }
+
+    private func respond(status: String, body: Data?, contentType: String?,
+                          cacheHeaders: [(String, String)] = [], on connection: NWConnection) {
         var head = "HTTP/1.1 \(status)\r\n"
         if let contentType, let body {
             head += "Content-Type: \(contentType)\r\n"
             head += "Content-Length: \(body.count)\r\n"
         } else {
             head += "Content-Length: 0\r\n"
+        }
+        for (name, value) in cacheHeaders {
+            head += "\(name): \(value)\r\n"
         }
         head += "Connection: close\r\n\r\n"
 
