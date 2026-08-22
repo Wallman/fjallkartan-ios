@@ -31,7 +31,7 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 | `fjallkartan/TilePyramid.swift` | Pure functions sizing the offline download estimate for the fixed z7–z14 `MLNTilePyramidOfflineRegion` range. |
 | `fjallkartan/RemoteSettings.swift` | Remotely configurable tile URL templates (`TileSettings`: Lantmäteriet, Kartverket, Norwegian slope, Swedish slope, elevation), fetched from `settings.json` with built-in fallbacks. |
 | `fjallkartan/TileServer.swift` | One case per tile source; zoom limits, offline min/max zoom and URL construction shared by the style builder, the offline size estimate and `ElevationService`. |
-| `fjallkartan/KartverketNoDataFill.swift` | Unused CPU pixel-rewrite kept only as a reference for a possible server-side fix (§ below) — not called from anywhere. |
+| `fjallkartan/KartverketTileProxy.swift` | Loopback-only HTTP server (`Network.framework`) that fronts Kartverket tiles for MapLibre, rewriting the cream no-data fill (nested `NoDataFill` enum) for tiles at z≥15 before MapLibre's ambient cache stores the response. |
 | `fjallkartan/LegendCatalog.swift` | All legend entries — grouped into sections. |
 | `fjallkartan/LegendView.swift` | `LegendCountry` and `LegendSheet`; renders the bundled per-country legend PDFs (`legend_no` / `legend_se`) via PDFKit. |
 | `fjallkartan/AboutView.swift` | `AboutButton` and `AboutSheet`: data-source attribution (Kartverket, Lantmäteriet, NVE) plus privacy-policy and support links, and the row that reopens the get-started guide. |
@@ -80,9 +80,12 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
   - Agreement with NVE across the border is 96.6 % exact / 99.5 % within one class over 1,395,357 pixels sampled from 60 border tiles.
   - The tiles are hosted on Cloudflare R2 (bucket `tiles`, prefix `slope/v1`), fronted by `tiles.wallman.dev`.
 
-- **Kartverket cream fill at the border — known regression, deliberately skipped**
-  - From ~z15, Kartverket's opaque cream no-data fill (~255,255,230) covers Lantmäteriet on the Swedish side of the border instead of letting it show through, so the map goes cream above z15 near the border in Sweden. The old `CustomTileOverlay` fixed this with a CPU pixel rewrite per tile (`kartverketNoDataToTransparentPNG`); there is no MapLibre-native equivalent of "rewrite this raster source's pixels" without going back to a custom tile-loading path, which would give up the ambient cache and offline-pack support that come from using a plain raster source.
-  - The original pixel-rewrite logic is kept, unused, in `KartverketNoDataFill.swift` (a standalone `enum` with the same `rewritten(_:)` function) purely as a reference for whoever picks this up — options considered: bounding the Kartverket source to Norway (clips too coarsely, the border is diagonal), swapping layer order and relying on Lantmäteriet being transparent outside Sweden (unverified), or serving a pre-cleaned Kartverket layer from `tiles.wallman.dev` so the rewrite happens server-side once instead of on every device (fits the existing R2/`RemoteSettings` tooling). Delete `KartverketNoDataFill.swift` once one of these ships.
+- **Kartverket cream fill at the border**
+  - From ~z15, Kartverket's opaque cream no-data fill (~255,255,230) covers Lantmäteriet on the Swedish side of the border instead of letting it show through, so the map used to go cream above z15 near the border in Sweden.
+  - Fixed by `KartverketTileProxy`: a loopback-only `NWListener` HTTP server that the "kartverket" raster source's tile URL points at instead of the real host. Rewritten before MapLibre sees it, and MapLibre caches the rewritten tile.
+  - `KartverketTileProxy.NoDataFill.rewritten(_:)` does the actual rewrite. Only applied for `z >= 15` (`KartverketTileProxy.rewriteMinimumZoom`) since the fill never appears below that — tiles below z15 are proxied unmodified, skipping the decode/pixel-scan pass for the vast majority of requests.
+  - Kartverket 429/5xx responses (and connection failures) are forwarded to MapLibre as their real status rather than a 404, so they read as transient and retryable.
+  - Known limitations: the proxy has no background execution entitlement, so it's suspended along with the rest of the app when backgrounded.
 
 - **Elevation**
   - Elevation comes from prebaked XYZ tiles (`https://tiles.wallman.dev/elevation/v1/{z}/{y}/{x}.png`), fetched through `TileFetcher.elevationTiles`.

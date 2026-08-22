@@ -410,6 +410,7 @@ struct MapLibreMapView: UIViewRepresentable {
 
     static func buildStyleURL() -> URL {
         let settings = RemoteSettings.shared.settings
+        let kartverketUrl = KartverketTileProxy.shared?.tileURLTemplate ?? settings.kartverketUrl
         let json = """
         {
           "version": 8,
@@ -423,7 +424,7 @@ struct MapLibreMapView: UIViewRepresentable {
             },
             "kartverket": {
               "type": "raster",
-              "tiles": ["\(settings.kartverketUrl)"],
+              "tiles": ["\(kartverketUrl)"],
               "tileSize": 128,
               "minzoom": 0,
               "maxzoom": \(TileServer.kartverket.sourceMaximumZ)
