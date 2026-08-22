@@ -418,28 +418,28 @@ struct MapLibreMapView: UIViewRepresentable {
             "lantmateriet": {
               "type": "raster",
               "tiles": ["\(settings.lantmaterietUrl)"],
-              "tileSize": 128,
+              "tileSize": 256,
               "minzoom": 0,
               "maxzoom": \(TileServer.lantmateriet.sourceMaximumZ)
             },
             "kartverket": {
               "type": "raster",
               "tiles": ["\(kartverketUrl)"],
-              "tileSize": 128,
+              "tileSize": 256,
               "minzoom": 0,
               "maxzoom": \(TileServer.kartverket.sourceMaximumZ)
             },
             "norway-slope": {
               "type": "raster",
               "tiles": ["\(settings.norwaySlopeUrl)"],
-              "tileSize": 128,
+              "tileSize": 256,
               "minzoom": 5,
               "maxzoom": \(TileServer.norwaySlope.sourceMaximumZ)
             },
             "sweden-slope": {
               "type": "raster",
               "tiles": ["\(settings.swedenSlopeUrl)"],
-              "tileSize": 128,
+              "tileSize": 256,
               "minzoom": 5,
               "maxzoom": \(TileServer.swedenSlope.sourceMaximumZ)
             }
