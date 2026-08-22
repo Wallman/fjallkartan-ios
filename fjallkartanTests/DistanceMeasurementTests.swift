@@ -321,15 +321,15 @@ struct DistanceMarkerTests {
     /// Spacing widens with route length so a very long route can't produce
     /// hundreds of labels.
     @Test func markerSpacingWidensForLongRoutes() {
-        #expect(DistanceMeasurement.markerSpacing(forRouteLength: 12_000) == 1_000)
+        #expect(DistanceMeasurement.markerSpacing(forRouteLength: 12_000) == 500)
         #expect(DistanceMeasurement.markerSpacing(forRouteLength: 200_000) == 5_000)
         #expect(DistanceMeasurement.markerSpacing(forRouteLength: 2_000_000) == 50_000)
 
-        // Zoom decides too: the same 20 km route gets 1 km markers up close and
+        // Zoom decides too: the same 20 km route gets sub-km markers up close and
         // far coarser ones when zoomed out to a regional view.
-        #expect(DistanceMeasurement.markerSpacing(forZoomLevel: 14, routeLength: 20_000) == 1_000)
-        #expect(DistanceMeasurement.markerSpacing(forZoomLevel: 12, routeLength: 20_000) == 2_000)
-        #expect(DistanceMeasurement.markerSpacing(forZoomLevel: 8, routeLength: 20_000) == 25_000)
+        #expect(DistanceMeasurement.markerSpacing(forZoomLevel: 14, routeLength: 20_000) == 500)
+        #expect(DistanceMeasurement.markerSpacing(forZoomLevel: 12, routeLength: 20_000) == 1_000)
+        #expect(DistanceMeasurement.markerSpacing(forZoomLevel: 8, routeLength: 20_000) == 10_000)
         // The length cap still wins when it is the stricter of the two.
         #expect(DistanceMeasurement.markerSpacing(forZoomLevel: 14, routeLength: 2_000_000) == 50_000)
 
@@ -342,5 +342,14 @@ struct DistanceMarkerTests {
     @Test func markerLabelIsWholeKilometres() {
         #expect(DistanceMeasurement.markerLabel(meters: 5_000).contains("5"))
         #expect(DistanceMeasurement.markerLabel(meters: 5_000).contains("km"))
+    }
+
+    /// The 500 m spacing tier would otherwise round to a whole (and
+    /// duplicate/zero) kilometre label.
+    @Test func markerLabelShowsFractionalKilometres() {
+        #expect(DistanceMeasurement.markerLabel(meters: 500).contains("0.5"))
+        #expect(DistanceMeasurement.markerLabel(meters: 1_500).contains("1.5"))
+        #expect(DistanceMeasurement.markerLabel(meters: 1_000).contains("1"))
+        #expect(!DistanceMeasurement.markerLabel(meters: 1_000).contains("."))
     }
 }

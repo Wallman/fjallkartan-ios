@@ -120,7 +120,7 @@ final class DistanceMeasurement {
         let meters: Double
     }
 
-    private nonisolated static let markerSpacings: [Double] = [1_000, 2_000, 5_000, 10_000, 25_000, 50_000, 100_000]
+    private nonisolated static let markerSpacings: [Double] = [500, 1_000, 2_000, 5_000, 10_000, 25_000, 50_000, 100_000]
     private nonisolated static let maximumMarkers = 60
 
     nonisolated static func markerSpacing(forRouteLength meters: Double) -> Double {
@@ -131,14 +131,14 @@ final class DistanceMeasurement {
         let byZoom: Double
         switch zoom {
         case ..<6: byZoom = 100_000
-        case ..<7: byZoom = 100_000
-        case ..<8: byZoom = 50_000
-        case ..<9: byZoom = 25_000
-        case ..<10: byZoom = 25_000
-        case ..<11: byZoom = 10_000
-        case ..<12: byZoom = 5_000
-        case ..<13: byZoom = 2_000
-        default: byZoom = 1_000
+        case ..<7: byZoom = 50_000
+        case ..<8: byZoom = 25_000
+        case ..<9: byZoom = 10_000
+        case ..<10: byZoom = 10_000
+        case ..<11: byZoom = 5_000
+        case ..<12: byZoom = 2_000
+        case ..<13: byZoom = 1_000
+        default: byZoom = 500
         }
         let byLength = markerSpacing(forRouteLength: meters)
         return max(byZoom, byLength)
@@ -224,9 +224,25 @@ final class DistanceMeasurement {
         return f
     }()
 
+    private static let fractionalMarkerFormatter: MeasurementFormatter = {
+        let f = MeasurementFormatter()
+        f.unitOptions = .providedUnit
+        f.unitStyle = .medium
+        f.numberFormatter.minimumFractionDigits = 1
+        f.numberFormatter.maximumFractionDigits = 1
+        return f
+    }()
+
+    /// Sub-kilometre spacings (e.g. the 500 m tier) round to whole kilometres
+    /// otherwise, so they'd collapse to duplicate/zero labels; those get one
+    /// decimal place instead.
     static func markerLabel(meters: Double) -> String {
-        markerFormatter.string(from: Measurement(value: (meters / 1000).rounded(),
-                                                 unit: UnitLength.kilometers))
+        let km = meters / 1000
+        let rounded = (km * 10).rounded() / 10
+        if rounded == rounded.rounded() {
+            return markerFormatter.string(from: Measurement(value: rounded, unit: UnitLength.kilometers))
+        }
+        return fractionalMarkerFormatter.string(from: Measurement(value: rounded, unit: UnitLength.kilometers))
     }
 }
 
