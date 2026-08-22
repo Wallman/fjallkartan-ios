@@ -6,7 +6,9 @@ import MapLibre
 // MapView (Lantmäteriet first as the opaque base, Kartverket second on top
 // for the border) — but with no no-data-to-transparent pixel rewrite, so
 // Kartverket's opaque cream fill (from ~z15) will cover Lantmäteriet there
-// instead of showing through. No measurement/elevation.
+// instead of showing through. Freehand distance measurement, long-press pin
+// dropping, and the elevation profile (via `ElevationProfile`/`ElevationService`)
+// are wired up, mirroring MapView/MeasureCaptureView/ContentView.
 // Delete once the comparison is done.
 
 private final class RouteDistanceMarker: NSObject, MLNAnnotation {
@@ -66,29 +68,307 @@ private final class RouteDistanceMarkerView: MLNAnnotationView {
     }
 }
 
+private final class SavedPinMapAnnotation: NSObject, MLNAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    let pin: SavedPin
+
+    var title: String? { pin.displayName.isEmpty ? nil : pin.displayName }
+    var subtitle: String? { nil }
+
+    init(pin: SavedPin) {
+        coordinate = pin.coordinate.coordinate
+        self.pin = pin
+    }
+}
+
+private final class SavedPinMarkerView: MLNAnnotationView {
+    static let reuseIdentifier = "SavedPinMarker"
+
+    private let iconView = UIImageView()
+
+    override init(reuseIdentifier: String?) {
+        super.init(reuseIdentifier: reuseIdentifier)
+        scalesWithViewingDistance = false
+        let diameter: CGFloat = 28
+        bounds = CGRect(x: 0, y: 0, width: diameter, height: diameter)
+        backgroundColor = .systemIndigo
+        layer.cornerRadius = diameter / 2
+        layer.borderWidth = 2
+        layer.borderColor = UIColor.white.cgColor
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.25
+        layer.shadowRadius = 2
+        layer.shadowOffset = CGSize(width: 0, height: 1)
+
+        iconView.image = UIImage(systemName: "bookmark.fill")
+        iconView.tintColor = .white
+        iconView.contentMode = .scaleAspectFit
+        iconView.frame = bounds.insetBy(dx: 6, dy: 6)
+        addSubview(iconView)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+}
+
+private final class MapLibreMeasureCaptureView: UIView, UIGestureRecognizerDelegate {
+    var anchorProvider: (() -> CLLocationCoordinate2D?)?
+    var onStrokeProgress: ((Double) -> Void)?
+    var onStrokeFinished: (([CLLocationCoordinate2D]) -> Void)?
+
+    private weak var mapView: MLNMapView?
+
+    private let casingLayer = CAShapeLayer()
+    private let strokeLayer = CAShapeLayer()
+
+    private var activeTouch: UITouch?
+    private var screenPoints: [CGPoint] = []
+    private var lastCoordinate: CLLocationCoordinate2D?
+    private var runningMeters: Double = 0
+    private var anchorScreenPoint: CGPoint?
+
+    private let minSampleSpacing: CGFloat = 3
+    private let simplifyTolerance: CGFloat = 2
+
+    init(mapView: MLNMapView) {
+        self.mapView = mapView
+        super.init(frame: .zero)
+        backgroundColor = .clear
+        isUserInteractionEnabled = false
+        isMultipleTouchEnabled = true
+
+        for (layer, color, width) in [
+            (casingLayer, MeasurementStyle.casingColor, MeasurementStyle.casingWidth),
+            (strokeLayer, MeasurementStyle.strokeColor, MeasurementStyle.lineWidth),
+        ] {
+            layer.fillColor = UIColor.clear.cgColor
+            layer.strokeColor = color.cgColor
+            layer.lineWidth = width
+            layer.lineCap = .round
+            layer.lineJoin = .round
+            self.layer.addSublayer(layer)
+        }
+
+        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
+        pinch.delegate = self
+        addGestureRecognizer(pinch)
+
+        let twoFingerPan = UIPanGestureRecognizer(target: self, action: #selector(handleTwoFingerPan(_:)))
+        twoFingerPan.minimumNumberOfTouches = 2
+        twoFingerPan.maximumNumberOfTouches = 2
+        twoFingerPan.delegate = self
+        addGestureRecognizer(twoFingerPan)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
+    ) -> Bool { true }
+
+    // MARK: - Map gesture handlers
+
+    @objc private func handlePinch(_ recognizer: UIPinchGestureRecognizer) {
+        guard let mapView else { return }
+        switch recognizer.state {
+        case .began:
+            cancelStroke()
+        case .changed:
+            let scale = recognizer.scale
+            guard scale > 0 else { return }
+            mapView.zoomLevel += log2(scale)
+            recognizer.scale = 1.0
+        default:
+            break
+        }
+    }
+
+    @objc private func handleTwoFingerPan(_ recognizer: UIPanGestureRecognizer) {
+        guard let mapView else { return }
+        switch recognizer.state {
+        case .began:
+            cancelStroke()
+        case .changed:
+            let translation = recognizer.translation(in: mapView)
+            let centerPt = mapView.convert(mapView.centerCoordinate, toPointTo: mapView)
+            let newCenterPt = CGPoint(x: centerPt.x - translation.x, y: centerPt.y - translation.y)
+            mapView.centerCoordinate = mapView.convert(newCenterPt, toCoordinateFrom: mapView)
+            recognizer.setTranslation(.zero, in: mapView)
+        default:
+            break
+        }
+    }
+
+    // MARK: - Touch handling
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if (event?.allTouches?.count ?? touches.count) > 1 {
+            cancelStroke()
+            return
+        }
+        guard activeTouch == nil, let touch = touches.first else { return }
+        activeTouch = touch
+
+        let point = touch.location(in: self)
+        let coordinate = coordinate(for: point)
+
+        screenPoints = [point]
+        lastCoordinate = coordinate
+        runningMeters = 0
+        anchorScreenPoint = nil
+
+        if let anchor = anchorProvider?() {
+            runningMeters = DistanceMeasurement.meters(from: anchor, to: coordinate)
+            anchorScreenPoint = screenPoint(for: anchor)
+        }
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if (event?.allTouches?.count ?? touches.count) > 1 {
+            cancelStroke()
+            return
+        }
+        guard let active = activeTouch, touches.contains(active),
+              let previousPoint = screenPoints.last else { return }
+
+        let point = active.location(in: self)
+        guard hypot(point.x - previousPoint.x, point.y - previousPoint.y) >= minSampleSpacing else { return }
+
+        let coordinate = coordinate(for: point)
+        if let last = lastCoordinate {
+            runningMeters += DistanceMeasurement.meters(from: last, to: coordinate)
+        }
+        screenPoints.append(point)
+        lastCoordinate = coordinate
+
+        onStrokeProgress?(runningMeters)
+        redrawPreview()
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let active = activeTouch, touches.contains(active) else { return }
+
+        let simplified = LineSimplifier.simplify(screenPoints, tolerance: simplifyTolerance)
+        let coordinates = simplified.map(coordinate(for:))
+        resetStroke()
+        onStrokeFinished?(coordinates.count >= 2 ? coordinates : [])
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let active = activeTouch, touches.contains(active) else { return }
+        cancelStroke()
+    }
+
+    private func cancelStroke() {
+        guard activeTouch != nil else { return }
+        resetStroke()
+        onStrokeFinished?([])
+    }
+
+    private func resetStroke() {
+        activeTouch = nil
+        screenPoints.removeAll()
+        lastCoordinate = nil
+        anchorScreenPoint = nil
+        runningMeters = 0
+        casingLayer.path = nil
+        strokeLayer.path = nil
+    }
+
+    // MARK: - Drawing
+
+    private func redrawPreview() {
+        guard !screenPoints.isEmpty else {
+            casingLayer.path = nil
+            strokeLayer.path = nil
+            return
+        }
+
+        let path = UIBezierPath()
+        if let anchorScreenPoint {
+            path.move(to: anchorScreenPoint)
+            path.addLine(to: screenPoints[0])
+        } else {
+            path.move(to: screenPoints[0])
+        }
+        for point in screenPoints.dropFirst() {
+            path.addLine(to: point)
+        }
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        casingLayer.frame = bounds
+        strokeLayer.frame = bounds
+        casingLayer.path = path.cgPath
+        strokeLayer.path = path.cgPath
+        CATransaction.commit()
+    }
+
+    // MARK: - Conversion
+
+    private func coordinate(for point: CGPoint) -> CLLocationCoordinate2D {
+        mapView?.convert(point, toCoordinateFrom: self) ?? kCLLocationCoordinate2DInvalid
+    }
+
+    private func screenPoint(for coordinate: CLLocationCoordinate2D) -> CGPoint? {
+        mapView.map { $0.convert(coordinate, toPointTo: self) }
+    }
+}
+
 struct MapLibrePOCView: View {
     @State private var trackingMode: MLNUserTrackingMode = .none
     @State private var slopeVisible = false
     @State private var download = OfflineDownloadState()
-    @State private var routeCoordinates: [CLLocationCoordinate2D] = []
     @State private var showSavedRoutes = false
     @State private var savedRoutesModel: SavedRoutesModel? = {
         guard let store = try? SavedRouteStore() else { return nil }
         return SavedRoutesModel(store: store)
     }()
 
+    @State private var measurement = DistanceMeasurement()
+    @State private var elevation = ElevationProfile()
+    @State private var isElevationPresented = false
+    @State private var routeFitToken = 0
+    @State private var savedPinsModel: SavedPinsModel? = {
+        guard let store = try? SavedPinStore() else { return nil }
+        return SavedPinsModel(store: store)
+    }()
+    @State private var pinDetail: SavedPin?
+
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             MapLibreRasterMap(trackingMode: $trackingMode, slopeVisible: $slopeVisible,
-                              routeCoordinates: routeCoordinates, download: download)
+                              measurement: measurement,
+                              routeCoordinates: measurement.coordinates,
+                              routeFitToken: routeFitToken,
+                              pins: savedPinsModel?.pins ?? [],
+                              download: download,
+                              onDropPin: { coordinate in
+                                  savedPinsModel?.save(SavedPin(coordinate: Coord(coordinate)))
+                              },
+                              onOpenPinDetail: { pin in
+                                  pinDetail = pin
+                              })
                 .ignoresSafeArea()
             VStack(spacing: 12) {
+                measureToggleButton
                 slopeToggleButton
                 userLocationButton
                 savedRoutesButton
                 downloadButton
             }
             .padding()
+        }
+        .overlay(alignment: .top) {
+            MeasureReadoutView(measurement: measurement, elevation: elevation) {
+                isElevationPresented = true
+            } onClose: {
+                measurement.clear()
+                elevation.clear()
+            }
+            .padding(.top, 16)
         }
         .alert("Offline download failed", isPresented: download.errorBinding) {
             Button("OK", role: .cancel) {}
@@ -98,9 +378,44 @@ struct MapLibrePOCView: View {
         .sheet(isPresented: $showSavedRoutes) {
             if let savedRoutesModel {
                 SavedRoutesSheet(model: savedRoutesModel, hasUnsavedRoute: false) { route in
-                    routeCoordinates = route.coordinates.map(\.coordinate)
+                    measurement.load(route)
+                    elevation.load(route)
+                    routeFitToken += 1
                 }
             }
+        }
+        .sheet(item: $pinDetail) { pin in
+            PinDetailSheet(pin: pin,
+                          onSave: { updated in savedPinsModel?.save(updated) },
+                          onDelete: { savedPinsModel?.delete(pin) })
+        }
+        .sheet(isPresented: $isElevationPresented) {
+            ElevationProfileSheet(profile: elevation)
+        }
+        // Debounced so tracing a long route in several strokes does not start
+        // an elevation tile fetch per stroke; `task(id:)` cancels the previous run
+        // whenever the route changes again.
+        .task(id: measurement.version) {
+            guard !measurement.isEmpty else {
+                elevation.clear()
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            await elevation.update(for: measurement.coordinates)
+        }
+    }
+
+    private var measureToggleButton: some View {
+        Button {
+            measurement.isMeasuring.toggle()
+        } label: {
+            Image(systemName: "ruler")
+                .font(.system(size: 18, weight: .medium))
+                .symbolVariant(measurement.isMeasuring ? .fill : .none)
+                .foregroundStyle(measurement.isMeasuring ? Color.accentColor : Color.primary)
+                .frame(width: 44, height: 44)
+                .background(.thinMaterial, in: Circle())
         }
     }
 
@@ -318,8 +633,13 @@ private struct MapLibreRasterMap: UIViewRepresentable {
 
     @Binding var trackingMode: MLNUserTrackingMode
     @Binding var slopeVisible: Bool
+    let measurement: DistanceMeasurement
     let routeCoordinates: [CLLocationCoordinate2D]
+    var routeFitToken: Int = 0
+    let pins: [SavedPin]
     let download: OfflineDownloadState
+    var onDropPin: ((CLLocationCoordinate2D) -> Void)?
+    var onOpenPinDetail: ((SavedPin) -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator(trackingMode: $trackingMode, slopeVisible: $slopeVisible) }
 
@@ -331,12 +651,15 @@ private struct MapLibreRasterMap: UIViewRepresentable {
         mapView.logoView.isHidden = true
         mapView.attributionButton.isHidden = true
         mapView.showsUserLocation = true
+        mapView.isPitchEnabled = false
         mapView.setCenter(
             CLLocationCoordinate2D(latitude: 62.0, longitude: 15.0),
             zoomLevel: 5,
             animated: false
         )
         download.attach(mapView: mapView)
+        context.coordinator.installCaptureView(on: mapView, measurement: measurement)
+        context.coordinator.installLongPressRecognizer(on: mapView)
         return mapView
     }
 
@@ -347,8 +670,14 @@ private struct MapLibreRasterMap: UIViewRepresentable {
         if uiView.userTrackingMode != trackingMode {
             uiView.setUserTrackingMode(trackingMode, animated: true, completionHandler: nil)
         }
+        context.coordinator.onDropPin = onDropPin
+        context.coordinator.onOpenPinDetail = onOpenPinDetail
         context.coordinator.setSlopeVisible(slopeVisible)
         context.coordinator.setRoute(routeCoordinates, on: uiView)
+        context.coordinator.fitRouteIfNeeded(on: uiView, fitToken: routeFitToken)
+        context.coordinator.setMeasuring(measurement.isMeasuring, on: uiView)
+        context.coordinator.syncPins(on: uiView, pins: pins)
+        context.coordinator.setLongPressEnabled(!measurement.isMeasuring)
     }
 
     final class Coordinator: NSObject, MLNMapViewDelegate {
@@ -357,13 +686,91 @@ private struct MapLibreRasterMap: UIViewRepresentable {
         private var slopeLayers: [MLNRasterStyleLayer] = []
         private var routeSource: MLNShapeSource?
         private var renderedRouteCoordinates: [CLLocationCoordinate2D] = []
+        private var renderedFitToken = 0
         /// Coordinates requested before the source existed (e.g. a route
         /// selected while the style was still loading), applied once ready.
         private var pendingRouteCoordinates: [CLLocationCoordinate2D] = []
 
+        private weak var mapView: MLNMapView?
+        private var captureView: MapLibreMeasureCaptureView?
+        private weak var longPressRecognizer: UILongPressGestureRecognizer?
+        private var renderedPins: [SavedPin] = []
+        var onDropPin: ((CLLocationCoordinate2D) -> Void)?
+        var onOpenPinDetail: ((SavedPin) -> Void)?
+
         init(trackingMode: Binding<MLNUserTrackingMode>, slopeVisible: Binding<Bool>) {
             _trackingMode = trackingMode
             _slopeVisible = slopeVisible
+        }
+
+        // MARK: - Measuring
+
+        func installCaptureView(on map: MLNMapView, measurement: DistanceMeasurement) {
+            mapView = map
+            let capture = MapLibreMeasureCaptureView(mapView: map)
+            capture.translatesAutoresizingMaskIntoConstraints = false
+            capture.anchorProvider = { [weak measurement] in measurement?.anchor }
+            capture.onStrokeProgress = { [weak measurement] meters in
+                measurement?.previewMeters = meters
+            }
+            capture.onStrokeFinished = { [weak measurement] coordinates in
+                measurement?.appendStroke(coordinates)
+            }
+
+            map.addSubview(capture)
+            NSLayoutConstraint.activate([
+                capture.topAnchor.constraint(equalTo: map.topAnchor),
+                capture.bottomAnchor.constraint(equalTo: map.bottomAnchor),
+                capture.leadingAnchor.constraint(equalTo: map.leadingAnchor),
+                capture.trailingAnchor.constraint(equalTo: map.trailingAnchor),
+            ])
+            captureView = capture
+        }
+
+        /// MapLibre's gesture recognizers are attached directly to the map view itself —
+        /// an ancestor of the capture view — so they still receive the same
+        /// touches even once the capture view is on top. They must be
+        /// disabled explicitly, or a single-finger drag both draws *and*
+        /// pans the map underneath it.
+        func setMeasuring(_ isMeasuring: Bool, on map: MLNMapView) {
+            guard let captureView, captureView.isUserInteractionEnabled != isMeasuring else { return }
+            captureView.isUserInteractionEnabled = isMeasuring
+            map.isScrollEnabled = !isMeasuring
+            map.isZoomEnabled = !isMeasuring
+            map.isRotateEnabled = !isMeasuring
+            if isMeasuring {
+                map.bringSubviewToFront(captureView)
+            }
+        }
+
+        // MARK: - Saved pins
+
+        func syncPins(on map: MLNMapView, pins: [SavedPin]) {
+            guard pins != renderedPins else { return }
+            renderedPins = pins
+
+            let existing = map.annotations?.compactMap { $0 as? SavedPinMapAnnotation } ?? []
+            map.removeAnnotations(existing)
+            map.addAnnotations(pins.map { SavedPinMapAnnotation(pin: $0) })
+        }
+
+        func installLongPressRecognizer(on map: MLNMapView) {
+            let recognizer = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+            recognizer.minimumPressDuration = 0.5
+            map.addGestureRecognizer(recognizer)
+            longPressRecognizer = recognizer
+        }
+
+        func setLongPressEnabled(_ isEnabled: Bool) {
+            longPressRecognizer?.isEnabled = isEnabled
+        }
+
+        @objc private func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
+            guard recognizer.state == .began, let mapView else { return }
+            let point = recognizer.location(in: mapView)
+            let coordinate = mapView.convert(point, toCoordinateFrom: mapView)
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            onDropPin?(coordinate)
         }
 
         func setSlopeVisible(_ visible: Bool) {
@@ -392,6 +799,17 @@ private struct MapLibreRasterMap: UIViewRepresentable {
 
             var mutableCoordinates = coordinates
             routeSource.shape = MLNPolylineFeature(coordinates: &mutableCoordinates, count: UInt(mutableCoordinates.count))
+            syncDistanceMarkers(on: mapView, force: true)
+        }
+
+        /// Recenters on the route, gated by `fitToken` so this only fires when
+        /// a saved route is loaded, never on every freehand stroke.
+        func fitRouteIfNeeded(on mapView: MLNMapView, fitToken: Int) {
+            guard fitToken != renderedFitToken else { return }
+            renderedFitToken = fitToken
+
+            let coordinates = pendingRouteCoordinates
+            guard coordinates.count >= 2 else { return }
 
             var bounds = MLNCoordinateBounds(sw: coordinates[0], ne: coordinates[0])
             for coordinate in coordinates {
@@ -402,8 +820,8 @@ private struct MapLibreRasterMap: UIViewRepresentable {
             }
             mapView.setVisibleCoordinateBounds(bounds,
                                                edgePadding: UIEdgeInsets(top: 60, left: 40, bottom: 60, right: 40),
-                                               animated: true)
-            syncDistanceMarkers(on: mapView, force: true)
+                                               animated: true,
+                                               completionHandler: nil)
         }
 
         // MARK: - Distance markers
@@ -443,16 +861,28 @@ private struct MapLibreRasterMap: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MLNMapView, viewFor annotation: MLNAnnotation) -> MLNAnnotationView? {
-            guard annotation is RouteDistanceMarker else { return nil }
-            let view = mapView.dequeueReusableAnnotationView(withIdentifier: RouteDistanceMarkerView.reuseIdentifier)
-                as? RouteDistanceMarkerView
-                ?? RouteDistanceMarkerView(reuseIdentifier: RouteDistanceMarkerView.reuseIdentifier)
-            view.annotation = annotation
-            return view
+            if let routeMarker = annotation as? RouteDistanceMarker {
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: RouteDistanceMarkerView.reuseIdentifier)
+                    as? RouteDistanceMarkerView
+                    ?? RouteDistanceMarkerView(reuseIdentifier: RouteDistanceMarkerView.reuseIdentifier)
+                view.annotation = routeMarker
+                return view
+            }
+            if annotation is SavedPinMapAnnotation {
+                return mapView.dequeueReusableAnnotationView(withIdentifier: SavedPinMarkerView.reuseIdentifier)
+                    ?? SavedPinMarkerView(reuseIdentifier: SavedPinMarkerView.reuseIdentifier)
+            }
+            return nil
         }
 
         func mapView(_ mapView: MLNMapView, annotationCanShowCallout annotation: MLNAnnotation) -> Bool {
-            !(annotation is RouteDistanceMarker)
+            !(annotation is RouteDistanceMarker) && !(annotation is SavedPinMapAnnotation)
+        }
+
+        func mapView(_ mapView: MLNMapView, didSelect annotation: MLNAnnotation) {
+            guard let pinAnnotation = annotation as? SavedPinMapAnnotation else { return }
+            onOpenPinDetail?(pinAnnotation.pin)
+            mapView.deselectAnnotation(pinAnnotation, animated: false)
         }
 
         func mapView(_ mapView: MLNMapView, didChange mode: MLNUserTrackingMode, animated: Bool) {
