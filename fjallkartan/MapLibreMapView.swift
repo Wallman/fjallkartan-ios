@@ -471,6 +471,7 @@ struct MapLibreMapView: UIViewRepresentable {
         mapView.delegate = context.coordinator
         mapView.logoView.isHidden = true
         mapView.attributionButton.isHidden = true
+        mapView.compassViewMargins = CGPoint(x: 12, y: 12)
         mapView.showsUserLocation = false
         mapView.isPitchEnabled = false
         mapView.overrideUserInterfaceStyle = .light

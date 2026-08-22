@@ -104,7 +104,7 @@ struct ContentView: View {
             : AnyLayout(VStackLayout(spacing: ButtonStyleModifier.stackSpacing))
         // Captions draw wider than their button but don't lay out that way, so
         // the column keeps the plain button inset.
-        let trailingInset: CGFloat = 16
+        let trailingInset: CGFloat = 12
 
         layout {
             Button {
@@ -211,8 +211,8 @@ struct ContentView: View {
         .animation(.easeInOut(duration: 0.2), value: isPickingRegion)
         .environment(\.mapControlsAreHorizontal, isCompactHeight)
         .animation(.easeInOut(duration: 0.2), value: isShowingMoreControls)
-        .padding(.top, isCompactHeight ? 16 : 125)
-        .padding(.trailing, isCompactHeight ? trailingInset + 52 : trailingInset)
+        .padding(.top, isCompactHeight ? 12 : 100)
+        .padding(.trailing, isCompactHeight ? trailingInset + 60 : trailingInset)
     }
 
     private func toggleTrackingMode() {

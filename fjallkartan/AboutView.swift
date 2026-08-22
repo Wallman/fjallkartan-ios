@@ -41,7 +41,7 @@ struct AboutSheet: View {
                     ExternalLink(title: "©Kartverket", url: Self.kartverketURL)
                     ExternalLink(title: "©Lantmäteriet", url: Self.lantmaterietURL)
                     ExternalLink(title: "©NVE", url: Self.nveURL)
-                    ExternalLink(title: "©MapLibre", url: Self.maplibreURL)
+                    ExternalLink(title: "©MapLibre Native iOS", url: Self.maplibreURL)
                 }
 
                 Section {
