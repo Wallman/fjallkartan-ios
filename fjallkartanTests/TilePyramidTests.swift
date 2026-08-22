@@ -9,27 +9,6 @@ struct TilePyramidTests {
                            span: MKCoordinateSpan(latitudeDelta: spanDegrees, longitudeDelta: spanDegrees))
     }
 
-    @Test func enumerationCoversFixedZoomRange() {
-        let rect = region(center: CLLocationCoordinate2D(latitude: 68.35, longitude: 18.83),
-                          spanDegrees: 0.2).toMapRect()
-        let paths = TilePyramid.tiles(in: rect)
-        let zooms = Set(paths.map(\.z))
-        #expect(zooms == Set(TilePyramid.minZoom...TilePyramid.maxZoom))
-    }
-
-    @Test func enumerationIsOrderedLowToHighZoom() {
-        let rect = region(center: CLLocationCoordinate2D(latitude: 68.35, longitude: 18.83),
-                          spanDegrees: 0.5).toMapRect()
-        let paths = TilePyramid.tiles(in: rect)
-        var lastZ = TilePyramid.minZoom - 1
-        for path in paths {
-            #expect(Int(path.z) >= lastZ)
-            lastZ = max(lastZ, Int(path.z))
-        }
-        #expect(paths.first?.z == TilePyramid.minZoom)
-        #expect(paths.last?.z == TilePyramid.maxZoom)
-    }
-
     @Test func indicesAreClampedToValidRangeAtLowZoom() {
         // At z7, n = 128; a huge span must not overflow the valid range.
         let huge = region(center: CLLocationCoordinate2D(latitude: 0, longitude: 0), spanDegrees: 400)
@@ -61,42 +40,6 @@ struct TilePyramidTests {
         let n = 1 << 13
         #expect(indices[0].x >= 0 && indices[0].x < n)
         #expect(indices[0].y >= 0 && indices[0].y < n)
-    }
-
-    @Test func estimateCountsEveryLayerItWillActuallyFetch() {
-        let rect = region(center: CLLocationCoordinate2D(latitude: 68.35, longitude: 18.83),
-                          spanDegrees: 0.2).toMapRect()
-        let estimate = TilePyramid.estimate(rect: rect)
-        #expect(estimate.tileCount == TilePyramid.jobs(in: rect).count)
-    }
-
-    @Test func jobsCoverEveryLayerWithinItsOwnZoomCap() {
-        let rect = region(center: CLLocationCoordinate2D(latitude: 68.35, longitude: 18.83),
-                          spanDegrees: 0.2).toMapRect()
-        let jobs = TilePyramid.jobs(in: rect)
-
-        #expect(Set(jobs.map(\.server)) == Set(TileServer.allCases))
-        for server in TileServer.allCases {
-            let zooms = Set(jobs.filter { $0.server == server }.map { Int($0.path.z) })
-            #expect(zooms == Set(server.offlineMinimumZ...server.offlineMaximumZ))
-        }
-        // Sweden publishes no slope tiles above z13, so z14 must not be requested.
-        #expect(!jobs.contains { $0.server == .swedenSlope && Int($0.path.z) > 13 })
-        #expect(jobs.contains { $0.server == .norwaySlope && Int($0.path.z) == TilePyramid.maxZoom })
-        // Elevation is published at one zoom only and is never drawn, so the
-        // coarser levels the picture layers need must not be fetched.
-        #expect(Set(jobs.filter { $0.server == .elevation }.map { Int($0.path.z) })
-                == [TileServer.elevation.sourceMaximumZ])
-    }
-
-    @Test func jobsAreOrderedLowToHighZoom() {
-        let rect = region(center: CLLocationCoordinate2D(latitude: 68.35, longitude: 18.83),
-                          spanDegrees: 0.3).toMapRect()
-        var lastZ = TilePyramid.minZoom
-        for job in TilePyramid.jobs(in: rect) {
-            #expect(Int(job.path.z) >= lastZ)
-            lastZ = max(lastZ, Int(job.path.z))
-        }
     }
 
     @Test func slopeLayersAddAModestShareOfTheEstimate() {
@@ -131,6 +74,13 @@ struct TilePyramidTests {
         let estimate = TilePyramid.estimate(rect: rect)
         #expect(estimate.tileCount > 0)
         #expect(estimate.bytes > 0)
+    }
+
+    @Test func availableCapacityBytesReportsSomethingOnSimulator() {
+        // Relocated from `OfflineTileStore` — a real device always has *some*
+        // free space, so this just guards against the resource-values lookup
+        // silently starting to fail.
+        #expect((TilePyramid.availableCapacityBytes ?? 0) > 0)
     }
 }
 

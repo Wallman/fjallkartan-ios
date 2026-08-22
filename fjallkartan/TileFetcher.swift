@@ -26,12 +26,11 @@ nonisolated final class TileFetcher: @unchecked Sendable {
         config.urlCache = sharedTileCache
         config.requestCachePolicy = .reloadIgnoringLocalCacheData // cache retrieval done manually, to put custom TTL
         config.httpMaximumConnectionsPerHost = 12
-        return TileFetcher(session: URLSession(configuration: config), cache: sharedTileCache, offlineStore: OfflineTileStore.shared, metrics: .shared)
+        return TileFetcher(session: URLSession(configuration: config), cache: sharedTileCache, metrics: .shared)
     }()
 
     private let session: URLSession
     private let cache: URLCache?
-    private let offlineStore: OfflineTileStore?
     private let storesResponses: Bool
     private let configuration: Configuration
     private let metrics: TileMetrics?
@@ -48,48 +47,21 @@ nonisolated final class TileFetcher: @unchecked Sendable {
     /// - Parameter metrics: `nil` disables recording entirely
     init(session: URLSession,
          cache: URLCache? = nil,
-         offlineStore: OfflineTileStore? = nil,
          storesResponses: Bool = true,
          configuration: Configuration = Configuration(),
          metrics: TileMetrics? = nil) {
         self.session = session
         self.cache = cache
-        self.offlineStore = offlineStore
         self.storesResponses = storesResponses
         self.configuration = configuration
         self.metrics = metrics
     }
 
-    /// The full lookup for one tile of one layer: offline store → `URLCache` →
-    /// network, falling back above the downloaded zoom cap to an upscale of the
-    /// nearest stored ancestor rather than leaving the tile blank.
     func fetchTile(server: TileServer, z: Int, x: Int, y: Int,
                    completion: @escaping (TileFetchOutcome) -> Void) {
-        let code = server.storeCode
         let started = DispatchTime.now()
 
-        if let data = offlineStore?.tileData(server: code, z: z, x: x, y: y) {
-            record(.offlineStore, server: server, z: z, attempts: 0, started: started)
-            completion(.success(data))
-            return
-        }
-
         resolve(url: server.url(z: z, x: x, y: y)) { [self] outcome, resolution in
-            if case .success = outcome {
-                record(resolution.source, server: server, z: z, attempts: resolution.attempts, started: started)
-                completion(outcome)
-                return
-            }
-            // Both `noData` and `failure` land here: either way there is no
-            // fresh tile, so an ancestor is the best available picture.
-            if let offlineStore, z > server.offlineMaximumZ,
-               let ancestor = offlineStore.nearestAncestorTile(server: code, z: z, x: x, y: y),
-               let upscaled = TileUpscaler.upscaledTile(ancestor: ancestor, targetZ: z, targetX: x, targetY: y,
-                                                        interpolation: server.upscaleInterpolation) {
-                record(.upscaledAncestor, server: server, z: z, attempts: resolution.attempts, started: started)
-                completion(.success(upscaled))
-                return
-            }
             record(resolution.source, server: server, z: z, attempts: resolution.attempts, started: started)
             completion(outcome)
         }

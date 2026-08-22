@@ -1,19 +1,13 @@
 import Foundation
 import MapKit
 
-/// Pure functions for enumerating and sizing the tile pyramid that
-/// `OfflineRegionDownloader` fetches and `OfflineTileStore` persists.
-/// The fixed z7–z14 range for offline download is a deliberate cap.
+/// Pure functions for sizing the tile pyramid an `MLNOfflinePack` downloads
+/// (`MLNTilePyramidOfflineRegion` handles the actual per-tile enumeration and
+/// fetching). The fixed z7–z14 range for offline download is a deliberate cap,
+/// passed to `MLNTilePyramidOfflineRegion` as `fromZoomLevel`/`toZoomLevel`.
 nonisolated enum TilePyramid {
     static let minZoom = 7
     static let maxZoom = 14
-
-    struct Job {
-        let server: TileServer
-        let path: MKTileOverlayPath
-    }
-
-    static let layers: [TileServer] = TileServer.allCases
 
     /// Measured bytes per tile position at each zoom, for size estimation.
     private static let measuredBytesPerPosition: [Int: Double] = [
@@ -46,34 +40,6 @@ nonisolated enum TilePyramid {
 
     static let maxDownloadBytes = 1_500_000_000
 
-    /// All tile positions covering `rect` across the fixed z7–z14 range, in
-    /// low-to-high zoom order so a cancelled download still leaves usable
-    /// low-zoom coverage.
-    static func tiles(in rect: MKMapRect) -> [MKTileOverlayPath] {
-        let region = MKCoordinateRegion(rect)
-        var paths: [MKTileOverlayPath] = []
-        for z in minZoom...maxZoom {
-            for (x, y) in tileIndices(for: region, z: z) {
-                paths.append(MKTileOverlayPath(x: x, y: y, z: z, contentScaleFactor: 1))
-            }
-        }
-        return paths
-    }
-
-    static func jobs(in rect: MKMapRect) -> [Job] {
-        let region = MKCoordinateRegion(rect)
-        var jobs: [Job] = []
-        for z in minZoom...maxZoom {
-            let servers = layers.filter { $0.covers(zoom: z) }
-            guard !servers.isEmpty else { continue }
-            for (x, y) in tileIndices(for: region, z: z) {
-                let path = MKTileOverlayPath(x: x, y: y, z: z, contentScaleFactor: 1)
-                jobs.append(contentsOf: servers.map { Job(server: $0, path: path) })
-            }
-        }
-        return jobs
-    }
-
     /// Estimated tile count and total download size (bytes) for `rect`,
     static func estimate(rect: MKMapRect) -> (tileCount: Int, bytes: Int) {
         let region = MKCoordinateRegion(rect)
@@ -81,7 +47,7 @@ nonisolated enum TilePyramid {
         var bytes = 0.0
         for z in minZoom...maxZoom {
             let positions = tileCount(for: region, z: z)
-            totalTiles += positions * layers.filter { $0.covers(zoom: z) }.count
+            totalTiles += positions * TileServer.allCases.filter { $0.covers(zoom: z) }.count
             bytes += Double(positions) * (baseBytesPerPosition(atZoom: z)
                                           + slopeBytesPerPosition(atZoom: z)
                                           + elevationBytesPerPosition(atZoom: z))
@@ -168,5 +134,15 @@ nonisolated enum TilePyramid {
 
     private static func clamp(_ value: Int, _ lower: Int, _ upper: Int) -> Int {
         min(max(value, lower), upper)
+    }
+
+    static var availableCapacityBytes: Int? {
+        let directory = URL(fileURLWithPath: NSHomeDirectory())
+        let values = try? directory.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+        if let capacity = values?.volumeAvailableCapacityForImportantUsage {
+            return Int(capacity)
+        }
+        let fallback = try? directory.resourceValues(forKeys: [.volumeAvailableCapacityKey])
+        return fallback?.volumeAvailableCapacity
     }
 }

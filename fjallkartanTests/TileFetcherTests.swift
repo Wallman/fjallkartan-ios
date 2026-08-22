@@ -1,6 +1,5 @@
 import Foundation
 import Testing
-import UIKit
 
 @testable import fjallkartan
 
@@ -78,13 +77,12 @@ struct TileFetcherTests {
         return URLCache(memoryCapacity: 0, diskCapacity: 8 * 1024 * 1024, directory: directory)
     }
 
-    private func makeFetcher(cache: URLCache? = nil, offlineStore: OfflineTileStore? = nil,
-                             metrics: TileMetrics? = nil) -> TileFetcher {
+    private func makeFetcher(cache: URLCache? = nil, metrics: TileMetrics? = nil) -> TileFetcher {
         var configuration = TileFetcher.Configuration()
         configuration.initialRetryDelay = 0.01
         configuration.connectivityRetryDelay = 0.01
         return TileFetcher(session: makeSession(cache: cache), cache: cache,
-                           offlineStore: offlineStore, configuration: configuration,
+                           configuration: configuration,
                            metrics: metrics)
     }
 
@@ -93,21 +91,6 @@ struct TileFetcherTests {
 
     private func count(_ metrics: TileMetrics, _ server: TileServer, _ source: TileMetrics.Source) -> Int {
         metrics.snapshot().layers.first { $0.server == server }?.count(source) ?? 0
-    }
-
-    private func makeStore() throws -> OfflineTileStore {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("TileFetcherTests-store-\(UUID().uuidString).sqlite")
-        return try OfflineTileStore(url: url)
-    }
-
-    /// A real (decodable) tile, needed wherever `TileUpscaler` has to read one.
-    private func makeTilePNG() -> Data {
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 256, height: 256))
-        return renderer.image { context in
-            UIColor.orange.setFill()
-            context.fill(CGRect(x: 0, y: 0, width: 256, height: 256))
-        }.pngData()!
     }
 
     private func fetchTile(_ fetcher: TileFetcher, server: TileServer, z: Int, x: Int, y: Int) async -> TileFetchOutcome {
@@ -272,76 +255,7 @@ struct TileFetcherTests {
         cache.removeAllCachedResponses()
     }
 
-    // MARK: - Offline store
-
-    @Test func storedOfflineTileIsServedWithoutHittingTheNetwork() async throws {
-        TileFetcherStubURLProtocol.handler = { _ in (200, Self.png, Self.imageHeaders) }
-        let store = try makeStore()
-        let stored = Data([0xCA, 0xFE, 0xBA, 0xBE])
-        try store.putTiles([.init(server: TileServer.swedenSlope.storeCode, z: 12, x: 3, y: 4, data: stored)],
-                           regionID: "r1")
-
-        let outcome = await fetchTile(makeFetcher(offlineStore: store), server: .swedenSlope, z: 12, x: 3, y: 4)
-
-        guard case .success(let data) = outcome else {
-            Issue.record("expected success, got \(outcome)")
-            return
-        }
-        #expect(data == stored)
-        #expect(TileFetcherStubURLProtocol.requestCount == 0)
-    }
-
-    @Test func aboveTheOfflineCapAStoredAncestorIsUpscaled() async throws {
-        // Nothing on the network: only the offline pyramid can answer.
-        TileFetcherStubURLProtocol.handler = { _ in (404, Data(), [:]) }
-        let store = try makeStore()
-        try store.putTiles([.init(server: TileServer.norwaySlope.storeCode, z: 14, x: 250, y: 500,
-                                  data: makeTilePNG())],
-                           regionID: "r1")
-
-        // z16 is above Norway's z14 offline cap; (250, 500) at z14 is its ancestor.
-        let outcome = await fetchTile(makeFetcher(offlineStore: store), server: .norwaySlope, z: 16, x: 1000, y: 2000)
-
-        guard case .success(let data) = outcome else {
-            Issue.record("expected an upscaled ancestor, got \(outcome)")
-            return
-        }
-        #expect(UIImage(data: data) != nil)
-    }
-
-    @Test func withinTheOfflineCapAMissIsNotFilledFromAnAncestor() async throws {
-        TileFetcherStubURLProtocol.handler = { _ in (404, Data(), [:]) }
-        let store = try makeStore()
-        try store.putTiles([.init(server: TileServer.norwaySlope.storeCode, z: 12, x: 62, y: 125,
-                                  data: makeTilePNG())],
-                           regionID: "r1")
-
-        // z13 is inside the downloaded range, so a blank tile there is real
-        // no-data rather than something to paper over with a blurry ancestor.
-        let outcome = await fetchTile(makeFetcher(offlineStore: store), server: .norwaySlope, z: 13, x: 125, y: 250)
-
-        guard case .noData = outcome else {
-            Issue.record("expected noData, got \(outcome)")
-            return
-        }
-    }
-
     // MARK: - Metrics attribution
-
-    @Test func offlineStoreHitIsAttributedToTheStore() async throws {
-        TileFetcherStubURLProtocol.handler = { _ in (200, Self.png, Self.imageHeaders) }
-        let metrics = makeMetrics()
-        let store = try makeStore()
-        try store.putTiles([.init(server: TileServer.swedenSlope.storeCode, z: 12, x: 3, y: 4,
-                                  data: Data([0xCA, 0xFE]))],
-                           regionID: "r1")
-
-        _ = await fetchTile(makeFetcher(offlineStore: store, metrics: metrics),
-                            server: .swedenSlope, z: 12, x: 3, y: 4)
-
-        #expect(count(metrics, .swedenSlope, .offlineStore) == 1)
-        #expect(count(metrics, .swedenSlope, .network) == 0)
-    }
 
     @Test func networkThenCacheAreAttributedSeparately() async {
         TileFetcherStubURLProtocol.handler = { _ in (200, Self.png, Self.imageHeaders) }
@@ -393,24 +307,6 @@ struct TileFetcherTests {
 
         #expect(count(metrics, .lantmateriet, .unexpectedNoData) == 1)
         #expect(count(metrics, .lantmateriet, .network) == 0)
-    }
-
-    @Test func upscaledAncestorIsAttributedSeparatelyFromTheMiss() async throws {
-        TileFetcherStubURLProtocol.handler = { _ in (404, Data(), [:]) }
-        let metrics = makeMetrics()
-        let store = try makeStore()
-        try store.putTiles([.init(server: TileServer.norwaySlope.storeCode, z: 14, x: 250, y: 500,
-                                  data: makeTilePNG())],
-                           regionID: "r1")
-
-        _ = await fetchTile(makeFetcher(offlineStore: store, metrics: metrics),
-                            server: .norwaySlope, z: 16, x: 1000, y: 2000)
-
-        // One request, one record: the 404 that preceded the upscale is not
-        // also counted, or the totals would no longer sum to requests made.
-        #expect(count(metrics, .norwaySlope, .upscaledAncestor) == 1)
-        #expect(count(metrics, .norwaySlope, .expectedNoData) == 0)
-        #expect(metrics.snapshot().layers.first { $0.server == .norwaySlope }?.total == 1)
     }
 
     @Test func retriesAreCountedAgainstTheSucceedingRequest() async {

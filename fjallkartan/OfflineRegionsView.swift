@@ -1,88 +1,181 @@
 import MapKit
+import MapLibre
 import SwiftUI
 
-/// Owns the offline tile store's region list plus any in-flight downloaders,
-/// so `OfflineRegionsSheet` and its rows can show live progress.
+/// Arbitrary data JSON-encoded into an `MLNOfflinePack`'s `context`, since a
+/// pack has no stable name/creation-date concept of its own
+private struct RegionContext: Codable {
+    let id: String
+    let name: String
+    let createdAt: Date
+}
+
+struct RegionSummary: Identifiable, Hashable {
+    enum Status: Hashable {
+        case downloading
+        case paused
+        case complete
+        case failed(String)
+    }
+
+    let id: String
+    let name: String
+    let createdAt: Date
+    let resourcesDone: Int
+    let resourcesExpected: Int
+    let bytes: Int
+    let status: Status
+}
+
 @MainActor
 @Observable
 final class OfflineRegionsModel {
-    let store: OfflineTileStore
-    private(set) var regions: [OfflineTileStore.RegionSummary] = []
-    private(set) var activeDownloaders: [String: OfflineRegionDownloader] = [:]
+    private(set) var regions: [RegionSummary] = []
 
     var onRegionDownloadCompleted: () -> Void = { ReviewPrompter.shared.recordSuccessfulRegionDownload() }
 
-    init(store: OfflineTileStore) {
-        self.store = store
+    private var packsByID: [String: MLNOfflinePack] = [:]
+    private var failureMessages: [String: String] = [:]
+    @ObservationIgnored private nonisolated(unsafe) var progressObserver: NSObjectProtocol?
+    @ObservationIgnored private nonisolated(unsafe) var errorObserver: NSObjectProtocol?
+
+    init() {
+        MLNOfflineStorage.shared.reloadPacks()
         refresh()
+        observeNotifications()
     }
 
-    func refresh() {
-        regions = store.regions()
+    deinit {
+        let center = NotificationCenter.default
+        if let progressObserver { center.removeObserver(progressObserver) }
+        if let errorObserver { center.removeObserver(errorObserver) }
     }
 
-    func downloader(for regionID: String) -> OfflineRegionDownloader? {
-        activeDownloaders[regionID]
-    }
-
-    /// Starts a new region download, or resumes one that was interrupted
-    /// (same `regionID`, re-enumerates and skips tiles already on disk).
-    func startDownload(name: String, rect: MKMapRect, regionID: String = UUID().uuidString) {
-        let downloader = OfflineRegionDownloader(store: store)
-        activeDownloaders[regionID] = downloader
-        downloader.start(regionID: regionID, name: name, rect: rect)
-        refresh()
-        watch(regionID: regionID, downloader: downloader)
-    }
-
-    func pause(_ regionID: String) {
-        activeDownloaders[regionID]?.pause()
-    }
-
-    func resume(_ regionID: String) {
-        guard let region = store.regions().first(where: { $0.id == regionID }) else { return }
-        // A prior downloader instance may already be gone (e.g. after the app
-        // relaunched); start() transparently resumes from what's on disk.
-        if let downloader = activeDownloaders[regionID] {
-            downloader.resume()
-        } else {
-            startDownload(name: region.name, rect: region.mapRect, regionID: regionID)
+    private func observeNotifications() {
+        progressObserver = NotificationCenter.default.addObserver(
+            forName: .MLNOfflinePackProgressChanged, object: nil, queue: .main
+        ) { [weak self] notification in
+            MainActor.assumeIsolated {
+                self?.handleProgressChanged(notification)
+            }
+        }
+        errorObserver = NotificationCenter.default.addObserver(
+            forName: .MLNOfflinePackError, object: nil, queue: .main
+        ) { [weak self] notification in
+            MainActor.assumeIsolated {
+                self?.handleError(notification)
+            }
         }
     }
 
-    func delete(_ regionID: String) {
-        activeDownloaders[regionID]?.cancel()
-        activeDownloaders[regionID] = nil
-        try? store.deleteRegion(id: regionID)
+    private func handleProgressChanged(_ notification: Notification) {
+        guard let pack = notification.object as? MLNOfflinePack,
+              let context = decodeContext(pack) else { return }
+        failureMessages[context.id] = nil
+        if pack.state == .complete {
+            // Only fire once per completion: refresh() rebuilds `regions`
+            // every time, so gate on this being the transition into
+            // `.complete` rather than an already-settled pack.
+            let wasComplete = regions.first(where: { $0.id == context.id })?.status == .complete
+            if !wasComplete { onRegionDownloadCompleted() }
+        }
         refresh()
     }
 
-    /// Polls a downloader until it settles, refreshing `regions` so the list
-    /// reflects on-disk progress and clearing it from `activeDownloaders`
-    /// once there is nothing left to observe live.
-    private func watch(regionID: String, downloader: OfflineRegionDownloader) {
-        Task { [weak self] in
-            while true {
-                try? await Task.sleep(nanoseconds: 500_000_000)
-                guard let self, self.activeDownloaders[regionID] === downloader else { return }
-                self.refresh()
-                if downloader.status == .completed || downloader.status == .cancelled {
-                    let didComplete = downloader.status == .completed
-                    self.activeDownloaders[regionID] = nil
-                    self.refresh()
-                    if didComplete { self.onRegionDownloadCompleted() }
-                    return
+    private func handleError(_ notification: Notification) {
+        guard let pack = notification.object as? MLNOfflinePack,
+              let context = decodeContext(pack) else { return }
+        let error = notification.userInfo?[MLNOfflinePackUserInfoKey.error] as? NSError
+        failureMessages[context.id] = error?.localizedDescription ?? String(localized: "Download failed.")
+        refresh()
+    }
+
+    private func decodeContext(_ pack: MLNOfflinePack) -> RegionContext? {
+        try? JSONDecoder().decode(RegionContext.self, from: pack.context)
+    }
+
+    func refresh() {
+        let packs = MLNOfflineStorage.shared.packs ?? []
+        var byID: [String: MLNOfflinePack] = [:]
+        var summaries: [RegionSummary] = []
+
+        for pack in packs {
+            guard pack.state != .invalid, let context = decodeContext(pack) else { continue }
+            byID[context.id] = pack
+
+            let status: RegionSummary.Status
+            if let message = failureMessages[context.id] {
+                status = .failed(message)
+            } else {
+                switch pack.state {
+                case .complete: status = .complete
+                case .inactive: status = .paused
+                default: status = .downloading
                 }
             }
+
+            summaries.append(RegionSummary(
+                id: context.id,
+                name: context.name,
+                createdAt: context.createdAt,
+                resourcesDone: Int(pack.progress.countOfResourcesCompleted),
+                resourcesExpected: Int(pack.progress.countOfResourcesExpected),
+                bytes: Int(pack.progress.countOfBytesCompleted),
+                status: status
+            ))
+        }
+
+        packsByID = byID
+        regions = summaries.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    func startDownload(name: String, rect: MKMapRect) {
+        let context = RegionContext(id: UUID().uuidString, name: name, createdAt: Date())
+        guard let contextData = try? JSONEncoder().encode(context) else { return }
+
+        let region = MLNTilePyramidOfflineRegion(
+            styleURL: MapLibreMapView.buildStyleURL(),
+            bounds: MLNCoordinateBounds(mapRect: rect),
+            fromZoomLevel: Double(TilePyramid.minZoom),
+            toZoomLevel: Double(TilePyramid.maxZoom)
+        )
+
+        MLNOfflineStorage.shared.addPack(for: region, withContext: contextData) { [weak self] pack, _ in
+            guard let pack else { return }
+            pack.resume()
+            Task { @MainActor [weak self] in self?.refresh() }
+        }
+    }
+
+    func pause(_ regionID: String) {
+        packsByID[regionID]?.suspend()
+        refresh()
+    }
+
+    func resume(_ regionID: String) {
+        guard let pack = packsByID[regionID] else { return }
+        failureMessages[regionID] = nil
+        pack.resume()
+        refresh()
+    }
+
+    func delete(_ regionID: String) {
+        guard let pack = packsByID[regionID] else { return }
+        failureMessages[regionID] = nil
+        MLNOfflineStorage.shared.removePack(pack) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.refresh() }
         }
     }
 }
 
-private extension OfflineTileStore.RegionSummary {
-    var mapRect: MKMapRect {
-        let a = MKMapPoint(CLLocationCoordinate2D(latitude: minLat, longitude: minLon))
-        let b = MKMapPoint(CLLocationCoordinate2D(latitude: maxLat, longitude: maxLon))
-        return MKMapRect(x: min(a.x, b.x), y: min(a.y, b.y), width: abs(a.x - b.x), height: abs(a.y - b.y))
+private extension MLNCoordinateBounds {
+    init(mapRect: MKMapRect) {
+        let northwest = MKMapPoint(x: mapRect.minX, y: mapRect.minY).coordinate
+        let southeast = MKMapPoint(x: mapRect.maxX, y: mapRect.maxY).coordinate
+        self.init(
+            sw: CLLocationCoordinate2D(latitude: southeast.latitude, longitude: northwest.longitude),
+            ne: CLLocationCoordinate2D(latitude: northwest.latitude, longitude: southeast.longitude)
+        )
     }
 }
 
@@ -147,7 +240,7 @@ struct RegionDownloadBar: View {
     }
 
     private var insufficientStorage: Bool {
-        guard let available = OfflineTileStore.availableCapacityBytes else { return false }
+        guard let available = TilePyramid.availableCapacityBytes else { return false }
         return estimate.bytes > available
     }
 
@@ -196,27 +289,20 @@ struct RegionDownloadBar: View {
 
 private struct RegionRow: View {
     let model: OfflineRegionsModel
-    let region: OfflineTileStore.RegionSummary
+    let region: RegionSummary
     @State private var isConfirmingDelete = false
 
-    private var downloader: OfflineRegionDownloader? { model.downloader(for: region.id) }
-
-    private var isDownloading: Bool { downloader?.status == .downloading }
-    private var isPaused: Bool { downloader?.status == .paused || region.status == .paused }
+    private var isDownloading: Bool { region.status == .downloading }
+    private var isPaused: Bool { region.status == .paused }
 
     private var failureMessage: String? {
-        if case .failed(let message) = downloader?.status { return message }
-        return region.status == .failed ? String(localized: "Download failed.") : nil
+        if case .failed(let message) = region.status { return message }
+        return nil
     }
 
     private var doneFraction: Double {
-        guard let downloader, downloader.tilesTotal > 0 else {
-            return region.tileTotal > 0 ? Double(region.tileDone) / Double(region.tileTotal) : 1
-        }
-        return Double(downloader.tilesDone) / Double(downloader.tilesTotal)
+        region.resourcesExpected > 0 ? Double(region.resourcesDone) / Double(region.resourcesExpected) : 1
     }
-
-    private var bytes: Int { downloader?.bytesDownloaded ?? region.bytes }
 
     var body: some View {
         HStack {
@@ -240,7 +326,7 @@ private struct RegionRow: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 } else {
-                    Text(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file))
+                    Text(ByteCountFormatter.string(fromByteCount: Int64(region.bytes), countStyle: .file))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

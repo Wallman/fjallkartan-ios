@@ -23,7 +23,7 @@
 			</array>
 		</dict>
 		<dict>
-			<!-- OfflineTileStore.availableCapacityBytes checks free space before
+			<!-- TilePyramid.availableCapacityBytes checks free space before
 			     an offline region download; RegionDownloadBar then disables the
 			     download button and shows an explanatory message, which is the
 			     observable difference in behaviour E174.1 requires. The value is

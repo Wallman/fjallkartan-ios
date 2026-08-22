@@ -408,7 +408,7 @@ struct MapLibreMapView: UIViewRepresentable {
     var onDismissPlace: (() -> Void)?
     var onOpenPinDetail: ((SavedPin) -> Void)?
 
-    private static func buildStyleURL() -> URL {
+    static func buildStyleURL() -> URL {
         let settings = RemoteSettings.shared.settings
         let json = """
         {

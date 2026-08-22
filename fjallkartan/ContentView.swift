@@ -25,7 +25,7 @@ struct ContentView: View {
     @State private var isShowingMoreControls = false
     @State private var visibleTip: GuideTip?
     @State private var didSaveRoute = false
-    @State private var offlineModel = OfflineTileStore.shared.map(OfflineRegionsModel.init)
+    @State private var offlineModel = OfflineRegionsModel()
     @State private var savedRoutesModel = (try? SavedRouteStore()).map(SavedRoutesModel.init)
     @State private var savedPinsModel = (try? SavedPinStore()).map(SavedPinsModel.init)
     @State private var routeFitToken = 0 // Needed to avoid re-centering when drawing
@@ -184,29 +184,27 @@ struct ContentView: View {
                 }
                 .transition(.scale.combined(with: .opacity))
 
-                if offlineModel != nil {
+                Button {
+                    isPickingRegion.toggle()
+                } label: {
+                    Image(systemName: "arrow.down.circle")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(isPickingRegion ? Color.orange : Color.primary)
+                        .symbolVariant(isPickingRegion ? .fill : .none)
+                        .buttonStyle(MapControlLabel.download)
+                }
+                .transition(.scale.combined(with: .opacity))
+
+                if isPickingRegion {
                     Button {
-                        isPickingRegion.toggle()
+                        isOfflineRegionsListPresented = true
                     } label: {
-                        Image(systemName: "arrow.down.circle")
+                        Image(systemName: "tray.full")
                             .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(isPickingRegion ? Color.orange : Color.primary)
-                            .symbolVariant(isPickingRegion ? .fill : .none)
-                            .buttonStyle(MapControlLabel.download)
+                            .foregroundStyle(Color.blue)
+                            .buttonStyle(MapControlLabel.regions)
                     }
                     .transition(.scale.combined(with: .opacity))
-
-                    if isPickingRegion {
-                        Button {
-                            isOfflineRegionsListPresented = true
-                        } label: {
-                            Image(systemName: "tray.full")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(Color.blue)
-                                .buttonStyle(MapControlLabel.regions)
-                        }
-                        .transition(.scale.combined(with: .opacity))
-                    }
                 }
             }
         }
@@ -308,7 +306,7 @@ struct ContentView: View {
                 }
             }
             .overlay(alignment: .bottom) {
-                if isPickingRegion, let offlineModel {
+                if isPickingRegion {
                     RegionDownloadBar(
                         model: offlineModel,
                         rect: offlineRegionPreviewRect(for: visibleMapRect),
@@ -337,9 +335,7 @@ struct ContentView: View {
                 LegendSheet()
             }
             .sheet(isPresented: $isOfflineRegionsListPresented) {
-                if let offlineModel {
-                    OfflineRegionsSheet(model: offlineModel)
-                }
+                OfflineRegionsSheet(model: offlineModel)
             }            .sheet(isPresented: $isElevationPresented) {
                 ElevationProfileSheet(profile: elevation)
             }
