@@ -477,8 +477,8 @@ struct MapView: UIViewRepresentable {
         mapView.overrideUserInterfaceStyle = .light
         mapView.automaticallyAdjustsContentInset = false
         mapView.setCenter(
-            CLLocationCoordinate2D(latitude: 64.0, longitude: 13.5),
-            zoomLevel: 4,
+            CLLocationCoordinate2D(latitude: 67.0, longitude: 16),
+            zoomLevel: 3.4,
             animated: false
         )
 
