@@ -43,7 +43,7 @@ nonisolated final class ElevationService: @unchecked Sendable {
     private let lock = NSLock()
     private var inFlight: [TileKey: [(HeightTile?) -> Void]] = [:]
 
-    init(fetcher: TileFetcher = .mapTiles, cachedTiles: Int = 64) {
+    init(fetcher: TileFetcher = .elevationTiles, cachedTiles: Int = 64) {
         self.fetcher = fetcher
         cache.countLimit = cachedTiles
     }

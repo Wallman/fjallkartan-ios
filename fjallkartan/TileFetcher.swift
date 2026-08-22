@@ -18,79 +18,46 @@ nonisolated final class TileFetcher: @unchecked Sendable {
 
     static let sharedTileCache = URLCache(
         memoryCapacity: 0,
-        diskCapacity: 500 * 1024 * 1024 // 500 MB
+        diskCapacity: 50 * 1024 * 1024 // 50 MB
     )
 
-    static let mapTiles: TileFetcher = {
+    static let elevationTiles: TileFetcher = {
         let config = URLSessionConfiguration.default
         config.urlCache = sharedTileCache
         config.requestCachePolicy = .reloadIgnoringLocalCacheData // cache retrieval done manually, to put custom TTL
         config.httpMaximumConnectionsPerHost = 12
-        return TileFetcher(session: URLSession(configuration: config), cache: sharedTileCache, metrics: .shared)
+        return TileFetcher(session: URLSession(configuration: config), cache: sharedTileCache)
     }()
 
     private let session: URLSession
     private let cache: URLCache?
-    private let storesResponses: Bool
     private let configuration: Configuration
-    private let metrics: TileMetrics?
 
     private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "fjallkartan", category: "TileFetcher")
 
-    /// The terminal state of one lookup. Kept private: it exists so the
-    /// fetcher can attribute its own work.
-    private struct Resolution {
-        var source: TileMetrics.Source
-        var attempts: Int
-    }
-
-    /// - Parameter metrics: `nil` disables recording entirely
     init(session: URLSession,
          cache: URLCache? = nil,
-         storesResponses: Bool = true,
-         configuration: Configuration = Configuration(),
-         metrics: TileMetrics? = nil) {
+         configuration: Configuration = Configuration()) {
         self.session = session
         self.cache = cache
-        self.storesResponses = storesResponses
         self.configuration = configuration
-        self.metrics = metrics
     }
 
     func fetchTile(server: TileServer, z: Int, x: Int, y: Int,
                    completion: @escaping (TileFetchOutcome) -> Void) {
-        let started = DispatchTime.now()
-
-        resolve(url: server.url(z: z, x: x, y: y)) { [self] outcome, resolution in
-            record(resolution.source, server: server, z: z, attempts: resolution.attempts, started: started)
-            completion(outcome)
-        }
+        fetch(url: server.url(z: z, x: x, y: y), completion: completion)
     }
 
     func fetch(url: URL, completion: @escaping (TileFetchOutcome) -> Void) {
-        resolve(url: url) { outcome, _ in completion(outcome) }
-    }
-
-    private func resolve(url: URL,
-                         completion: @escaping (TileFetchOutcome, Resolution) -> Void) {
         if let data = cache?.cachedResponse(for: URLRequest(url: url))?.data {
-            completion(.success(data), Resolution(source: .urlCache, attempts: 0))
+            completion(.success(data))
             return
         }
-        attempt(url: url, attempt: 1,
-                delay: configuration.initialRetryDelay, completion: completion)
-    }
-
-    private func record(_ source: TileMetrics.Source, server: TileServer, z: Int,
-                        attempts: Int, started: DispatchTime) {
-        guard let metrics else { return }
-        let nanoseconds = DispatchTime.now().uptimeNanoseconds &- started.uptimeNanoseconds
-        metrics.record(server: server, z: z, source: source,
-                       attempts: attempts, seconds: Double(nanoseconds) / 1_000_000_000)
+        attempt(url: url, attempt: 1, delay: configuration.initialRetryDelay, completion: completion)
     }
 
     private func attempt(url: URL, attempt: Int, delay: TimeInterval,
-                         completion: @escaping (TileFetchOutcome, Resolution) -> Void) {
+                         completion: @escaping (TileFetchOutcome) -> Void) {
         let request = URLRequest(url: url)
         session.dataTask(with: request) { [self] data, response, error in
             let http = response as? HTTPURLResponse
@@ -98,11 +65,11 @@ nonisolated final class TileFetcher: @unchecked Sendable {
             if let data, error == nil, let http, (200...299).contains(http.statusCode) {
                 guard http.mimeType?.hasPrefix("image/") ?? false else {
                     Self.log.error("non-image \(http.statusCode) (\(http.mimeType ?? "no MIME type", privacy: .public)) for \(url.absoluteString, privacy: .public)")
-                    completion(.noData, Resolution(source: .unexpectedNoData, attempts: attempt))
+                    completion(.noData)
                     return
                 }
                 store(data, for: request, url: url)
-                completion(.success(data), Resolution(source: .network, attempts: attempt))
+                completion(.success(data))
                 return
             }
 
@@ -118,8 +85,7 @@ nonisolated final class TileFetcher: @unchecked Sendable {
 
             // A client error other than throttling is a genuine no-data tile.
             if let http, !Self.isRetryable(status: http.statusCode) {
-                completion(.noData, Resolution(source: http.statusCode == 404 ? .expectedNoData : .unexpectedNoData,
-                                               attempts: attempt))
+                completion(.noData)
                 return
             }
             // Claims of "no connection" get their own small budget rather than
@@ -127,7 +93,7 @@ nonisolated final class TileFetcher: @unchecked Sendable {
             // cold start can report this before the network stack is up.
             if let urlError = error as? URLError, Self.isConnectivityError(urlError) {
                 guard attempt < configuration.connectivityAttempts else {
-                    completion(.failure(urlError), Resolution(source: .failure, attempts: attempt))
+                    completion(.failure(urlError))
                     return
                 }
                 DispatchQueue.global().asyncAfter(deadline: .now() + configuration.connectivityRetryDelay) {
@@ -139,8 +105,7 @@ nonisolated final class TileFetcher: @unchecked Sendable {
 
             guard attempt < configuration.maximumAttempts else {
                 Self.log.error("giving up after \(attempt) attempts for \(url.absoluteString, privacy: .public)")
-                completion(.failure(error ?? URLError(.badServerResponse)),
-                           Resolution(source: .failure, attempts: attempt))
+                completion(.failure(error ?? URLError(.badServerResponse)))
                 return
             }
 
@@ -152,7 +117,7 @@ nonisolated final class TileFetcher: @unchecked Sendable {
     }
 
     private func store(_ data: Data, for request: URLRequest, url: URL) {
-        guard storesResponses, let cache,
+        guard let cache,
               let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil,
                                              headerFields: ["Cache-Control": "max-age=\(Int(configuration.cacheTTL))"])
         else { return }
@@ -174,3 +139,4 @@ nonisolated final class TileFetcher: @unchecked Sendable {
         }
     }
 }
+
