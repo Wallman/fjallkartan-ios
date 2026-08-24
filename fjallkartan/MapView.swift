@@ -389,7 +389,7 @@ private final class MapLibreMeasureCaptureView: UIView, UIGestureRecognizerDeleg
 struct MapView: UIViewRepresentable {
     @Binding var metersPerPoint: Double
     @Binding var visibleMapRect: MKMapRect
-    @Binding var zoomLevel: Double
+    @Binding var centerTileCoordinate: String?
     @Binding var trackingMode: MLNUserTrackingMode
 
     let measurement: DistanceMeasurement
@@ -460,7 +460,7 @@ struct MapView: UIViewRepresentable {
     func makeCoordinator() -> Coordinator {
         Coordinator(metersPerPoint: $metersPerPoint,
                     visibleMapRect: $visibleMapRect,
-                    zoomLevel: $zoomLevel,
+                    centerTileCoordinate: $centerTileCoordinate,
                     trackingMode: $trackingMode)
     }
 
@@ -517,7 +517,7 @@ struct MapView: UIViewRepresentable {
         let locationManager = CLLocationManager()
         @Binding var metersPerPoint: Double
         @Binding var visibleMapRect: MKMapRect
-        @Binding var zoomLevel: Double
+        @Binding var centerTileCoordinate: String?
         @Binding var trackingMode: MLNUserTrackingMode
 
         private weak var mapView: MLNMapView?
@@ -551,11 +551,11 @@ struct MapView: UIViewRepresentable {
 
         init(metersPerPoint: Binding<Double>,
              visibleMapRect: Binding<MKMapRect>,
-             zoomLevel: Binding<Double>,
+             centerTileCoordinate: Binding<String?>,
              trackingMode: Binding<MLNUserTrackingMode>) {
             _metersPerPoint = metersPerPoint
             _visibleMapRect = visibleMapRect
-            _zoomLevel = zoomLevel
+            _centerTileCoordinate = centerTileCoordinate
             _trackingMode = trackingMode
         }
 
@@ -840,6 +840,10 @@ struct MapView: UIViewRepresentable {
             var rect = MKMapRect(origin: MKMapPoint(bounds.sw), size: MKMapSize(width: 0, height: 0))
             rect = rect.union(MKMapRect(origin: MKMapPoint(bounds.ne), size: MKMapSize(width: 0, height: 0)))
             let updatedZoomLevel = (mapView.zoomLevel + log2(512.0 / 256.0)).rounded()
+            let tileZoom = Int(updatedZoomLevel)
+            let updatedCenterTileCoordinate = TilePyramid
+                .tileCoordinate(for: mapView.centerCoordinate, z: tileZoom)
+                .map { "\(tileZoom)/\($0.x)/\($0.y)" }
 
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
@@ -850,8 +854,8 @@ struct MapView: UIViewRepresentable {
                 if !MKMapRectEqualToRect(visibleMapRect, rect) {
                     visibleMapRect = rect
                 }
-                if zoomLevel != updatedZoomLevel {
-                    zoomLevel = updatedZoomLevel
+                if centerTileCoordinate != updatedCenterTileCoordinate {
+                    centerTileCoordinate = updatedCenterTileCoordinate
                 }
             }
         }

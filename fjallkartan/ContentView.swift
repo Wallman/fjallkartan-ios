@@ -9,7 +9,7 @@ struct ContentView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var metersPerPoint: Double = 0
     @State private var visibleMapRect = MKMapRect.world
-    @State private var zoomLevel: Double = 0
+    @State private var centerTileCoordinate: String?
     @AppStorage(DebugSettings.showsZoomOverlayKey) private var showsZoomOverlay = false
     @State private var measurement = DistanceMeasurement()
     @State private var elevation = ElevationProfile()
@@ -243,7 +243,7 @@ struct ContentView: View {
     var body: some View {
         MapView(metersPerPoint: $metersPerPoint,
                 visibleMapRect: $visibleMapRect,
-                zoomLevel: $zoomLevel,
+                centerTileCoordinate: $centerTileCoordinate,
                 trackingMode: $trackingMode,
                 measurement: measurement,
                 isMeasuring: measurement.isMeasuring,
@@ -277,7 +277,9 @@ struct ContentView: View {
                         }
                     }
                     if showsZoomOverlay {
-                        ZoomLevelBadge(zoomLevel: zoomLevel)
+                        if let centerTileCoordinate {
+                            CenterTileBadge(coordinate: centerTileCoordinate)
+                        }
                     }
                     ScaleBarView(metersPerPoint: metersPerPoint)
                 }
@@ -615,12 +617,12 @@ struct MeasureReadoutView: View {
     }
 }
 
-/// Debug-only readout of the camera zoom level, toggled from `DebugSheet`.
-struct ZoomLevelBadge: View {
-    let zoomLevel: Double
+/// Debug-only readout of the Web Mercator tile containing the map center.
+struct CenterTileBadge: View {
+    let coordinate: String
 
     var body: some View {
-        Text(verbatim: String(format: "z %.0f", zoomLevel))
+        Text(verbatim: coordinate)
             .font(.system(size: 12, weight: .semibold))
             .monospacedDigit()
             .foregroundStyle(Color.primary)

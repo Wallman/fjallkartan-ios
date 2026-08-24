@@ -42,6 +42,16 @@ struct TilePyramidTests {
         #expect(indices[0].y >= 0 && indices[0].y < n)
     }
 
+    @Test func centerTileCoordinateUsesSlippyMapNotation() throws {
+        let tile = try #require(TilePyramid.tileCoordinate(
+            for: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+            z: 1
+        ))
+
+        #expect(tile.x == 1)
+        #expect(tile.y == 1)
+    }
+
     @Test func slopeLayersAddAModestShareOfTheEstimate() {
         let rect = region(center: CLLocationCoordinate2D(latitude: 68.35, longitude: 18.83),
                           spanDegrees: 0.2).toMapRect()

@@ -103,6 +103,17 @@ nonisolated enum TilePyramid {
         return (bounds.maxX - bounds.minX + 1) * (bounds.maxY - bounds.minY + 1)
     }
 
+    /// The Web Mercator tile containing `coordinate` at zoom `z`.
+    static func tileCoordinate(for coordinate: CLLocationCoordinate2D, z: Int) -> (x: Int, y: Int)? {
+        guard CLLocationCoordinate2DIsValid(coordinate), (0...30).contains(z) else { return nil }
+
+        let n = 1 << z
+        let latitude = min(max(coordinate.latitude, -85.0511), 85.0511)
+        let x = clamp(xIndex(forLongitude: coordinate.longitude, n: n), 0, n - 1)
+        let y = clamp(yIndex(forLatitude: latitude, n: n), 0, n - 1)
+        return (x, y)
+    }
+
     private static func tileBounds(for region: MKCoordinateRegion, z: Int) -> (minX: Int, maxX: Int, minY: Int, maxY: Int)? {
         let n = 1 << z
 
