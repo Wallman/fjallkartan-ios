@@ -620,7 +620,7 @@ struct ZoomLevelBadge: View {
     let zoomLevel: Double
 
     var body: some View {
-        Text(verbatim: String(format: "z %.1f", zoomLevel))
+        Text(verbatim: String(format: "z %.0f", zoomLevel))
             .font(.system(size: 12, weight: .semibold))
             .monospacedDigit()
             .foregroundStyle(Color.primary)

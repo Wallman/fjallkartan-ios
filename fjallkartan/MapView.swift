@@ -839,7 +839,7 @@ struct MapView: UIViewRepresentable {
 
             var rect = MKMapRect(origin: MKMapPoint(bounds.sw), size: MKMapSize(width: 0, height: 0))
             rect = rect.union(MKMapRect(origin: MKMapPoint(bounds.ne), size: MKMapSize(width: 0, height: 0)))
-            let updatedZoomLevel = mapView.zoomLevel
+            let updatedZoomLevel = (mapView.zoomLevel + log2(512.0 / 256.0)).rounded()
 
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
