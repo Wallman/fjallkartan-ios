@@ -1,3 +1,4 @@
+import MapLibre
 import SwiftUI
 
 enum DebugSettings {
@@ -10,6 +11,8 @@ struct DebugSheet: View {
     @State private var exportedLogURL: URL?
     @State private var exportError: String?
     @State private var isExporting = false
+    @State private var isClearingTileCache = false
+    @State private var tileCacheClearedMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -30,6 +33,23 @@ struct DebugSheet: View {
                     .disabled(isExporting)
                     if let exportError {
                         Text(verbatim: exportError)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Section {
+                    Button(role: .destructive) {
+                        clearTileCache()
+                    } label: {
+                        if isClearingTileCache {
+                            ProgressView()
+                        } else {
+                            Text(verbatim: "Clear tile cache")
+                        }
+                    }
+                    .disabled(isClearingTileCache)
+                    if let tileCacheClearedMessage {
+                        Text(verbatim: tileCacheClearedMessage)
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -67,6 +87,19 @@ struct DebugSheet: View {
                     }
                     isExporting = false
                 }
+            }
+        }
+    }
+
+    private func clearTileCache() {
+        tileCacheClearedMessage = nil
+        isClearingTileCache = true
+        MLNOfflineStorage.shared.clearAmbientCache { error in
+            isClearingTileCache = false
+            if let error {
+                tileCacheClearedMessage = "Failed to clear: \(error.localizedDescription)"
+            } else {
+                tileCacheClearedMessage = "Tile cache cleared."
             }
         }
     }
