@@ -132,12 +132,14 @@ nonisolated final class KartverketTileProxy: @unchecked Sendable {
             guard let self else { return }
             guard let http = response as? HTTPURLResponse else {
                 // No HTTP response at all (e.g. connectivity loss)
+                Self.log.error("Kartverket tile \(tile.z, privacy: .public)/\(tile.x, privacy: .public)/\(tile.y, privacy: .public) fetch failed: \(error?.localizedDescription ?? "no response", privacy: .public)")
                 self.respond(status: "503 Service Unavailable", body: nil, contentType: nil, on: connection)
                 return
             }
             guard (200...299).contains(http.statusCode), let data, error == nil else {
                 if Self.isRetryable(status: http.statusCode) {
                     // Forward throttling/server errors as-is
+                    Self.log.warning("Kartverket tile \(tile.z, privacy: .public)/\(tile.x, privacy: .public)/\(tile.y, privacy: .public) upstream status \(http.statusCode, privacy: .public)")
                     self.respond(status: "\(http.statusCode) \(Self.reasonPhrase(for: http.statusCode))",
                                  body: nil, contentType: nil, on: connection)
                 } else {

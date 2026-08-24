@@ -7,6 +7,7 @@ struct fjallkartanApp: App {
 
     init() {
         MetricKitReporter.shared.start()
+        MapLibreLoggingBridge.start()
     }
 
     var body: some Scene {

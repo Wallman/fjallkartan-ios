@@ -151,7 +151,7 @@ nonisolated final class RemoteSettings: @unchecked Sendable {
             guard let data, error == nil,
                   let http = response as? HTTPURLResponse,
                   (200...299).contains(http.statusCode) else {
-                Self.log.debug("settings fetch failed: \(error?.localizedDescription ?? "bad response")")
+                Self.log.error("settings fetch failed: \(error?.localizedDescription ?? "bad response")")
                 return
             }
             self.apply(data)
