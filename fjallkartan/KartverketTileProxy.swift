@@ -57,7 +57,7 @@ nonisolated final class KartverketTileProxy: @unchecked Sendable {
         return URLSession(configuration: config)
     }()
 
-    private static let port: NWEndpoint.Port = 58355
+    private static let port: NWEndpoint.Port = 8062
 
     private let listener: NWListener
 
