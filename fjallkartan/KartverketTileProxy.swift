@@ -39,7 +39,14 @@ nonisolated final class KartverketTileProxy: @unchecked Sendable {
     /// `nil` if the local listener could not be started (e.g. some sandboxed
     /// CI environment); callers should fall back to Kartverket's real URL,
     /// which only loses the cream-fill fix, not the map itself.
-    static let shared = KartverketTileProxy()
+    private(set) static var shared = KartverketTileProxy()
+
+    static func restartAfterBackgrounding() {
+        guard shared != nil else { return }
+        log.debug("restarting Kartverket tile proxy after returning from background")
+        shared?.listener.cancel()
+        shared = KartverketTileProxy()
+    }
 
     private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "fjallkartan",
                                     category: "KartverketTileProxy")
