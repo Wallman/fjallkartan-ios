@@ -14,9 +14,7 @@ Usage
 -----
     python3 tools/serve_finland_gap_local.py [--port 8765]
 
-Then either:
-  - point the app at http://127.0.0.1:<port>/v1/{z}/{y}/{x}.png with
-    `tools/point_app_at_local_tiles.py`, or
+Then:
   - hardcode that URL directly in MapView.swift for a quick manual test.
 
 127.0.0.1 is ATS-exempt on iOS, so plain HTTP works with no Info.plist

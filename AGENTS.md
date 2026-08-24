@@ -58,7 +58,6 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 ## Architecture notes
 
 - **`MapView`**
-  - `tileSize: 128` (half of MapLibre's 256 default) roughly doubles the tile request rate per view versus a naive estimate — this is why the offline-download byte tables in `TilePyramid` are measured, not computed from tile count.
   - Route/endpoint/distance-marker rendering uses `MLNShapeSource` + `MLNLineStyleLayer`/`MLNCircleStyleLayer`, added once in `mapView(_:didFinishLoading:)` and updated by replacing the source's `shape` — not `MKOverlayRenderer`.
   - `MapLibreMeasureCaptureView` is a same-size subview added on top of the map. MapLibre's own pan/pinch/rotate gesture recognizers live on the map view itself, an *ancestor* of the capture view, so they still see every touch unless explicitly disabled — `setMeasuring(_:on:)` toggles `map.isScrollEnabled`/`isZoomEnabled`/`isRotateEnabled` off and the capture view's `isUserInteractionEnabled` on, together, whenever measuring starts or stops. The capture view brings in its own two-finger pinch/pan recognizers so panning and zooming still work one-handed while drawing.
   - `mapViewRegionIsChanging`/`regionDidChangeAnimated` both funnel into one `updateRegion(for:)` that recomputes `metersPerPoint`/`visibleMapRect`/`zoomLevel` and only writes back to the `@Binding`s that actually changed — MapLibre's region-changing delegate callback fires far more often than MapKit's did, so an unconditional write would re-render the scale bar every frame.
