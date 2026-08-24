@@ -24,6 +24,7 @@ struct AboutSheet: View {
     private static let supportURL = URL(string: "https://wallman.github.io/fjallkartan-ios/support.html")!
     private static let kartverketURL = URL(string: "https://www.kartverket.no/")!
     private static let lantmaterietURL = URL(string: "https://www.lantmateriet.se/")!
+    private static let mmlURL = URL(string: "https://www.maanmittauslaitos.fi/")!
     private static let nveURL = URL(string: "https://www.nve.no/")!
     private static let maplibreURL = URL(string: "https://maplibre.org/")!
 
@@ -40,6 +41,7 @@ struct AboutSheet: View {
                 Section("Copyright") {
                     ExternalLink(title: "©Kartverket", url: Self.kartverketURL)
                     ExternalLink(title: "©Lantmäteriet", url: Self.lantmaterietURL)
+                    ExternalLink(title: "©Maanmittauslaitos", url: Self.mmlURL)
                     ExternalLink(title: "©NVE", url: Self.nveURL)
                     ExternalLink(title: "©MapLibre Native iOS", url: Self.maplibreURL)
                 }
