@@ -1,7 +1,19 @@
 # AGENTS.md
 
 ## Project overview
-iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket (Norway) and Lantmäteriet (Sweden).
+iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket (Norway), Lantmäteriet (Sweden), and Maanmittauslaitos (the Finnish border sliver near Treriksröset).
+
+## Android sibling repository
+
+- The Android port lives in the neighboring `../fjallkartan-android` repository. Its own `AGENTS.md` documents the Compose/MapLibre architecture, build commands, release configuration, and Google Play delivery.
+- Treat this iOS repository as the source of truth for shared product content: `Localizable.xcstrings`, `fastlane/metadata/`, `resources/featured-routes.json`, `places.sqlite`, legend symbols, and the app-icon artwork.
+- Android import tools intentionally read this repository through the sibling path:
+  - `../fjallkartan-android/tools/import_localizations.py`
+  - `../fjallkartan-android/tools/import_play_metadata.py`
+  - `../fjallkartan-android/tools/import_legend_assets.py`
+  - `../fjallkartan-android/tools/import_app_icon.py`
+- When changing shared schemas, tile settings, review thresholds, onboarding/legend copy, featured routes, or map behavior, check whether the Android implementation needs the same change. Preserve saved-route and saved-pin JSON compatibility across both apps.
+- Changes to one repository must be committed in that repository only. Never include sibling-repository files in an iOS commit, and never push either repository without explicit user authorization.
 
 ## Key files
 | File | Purpose |
@@ -9,7 +21,10 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 | `fjallkartan/fjallkartanApp.swift` | App entry point |
 | `fjallkartan/ContentView.swift` | Root SwiftUI view; hosts `MapView` plus the scale bar, copyright notice and measurement overlays. |
 | `fjallkartan/MapView.swift` | `UIViewRepresentable` wrapping `MLNMapView`: builds the raster style (base layers + slope), owns the measurement-capture view (`MapLibreMeasureCaptureView`), route/endpoint/distance-marker `MLNShapeSource`s, search/pin annotations, offline-region preview border, and user-location tracking. |
-| `fjallkartan/DebugView.swift` | `DebugSheet`: just the "Show zoom level" toggle that drives `ZoomLevelBadge`, opened by long-pressing the version row in `AboutSheet`. |
+| `fjallkartan/DebugView.swift` | `DebugSheet`, opened by long-pressing the version row in `AboutSheet`: toggles the centre-tile `z/x/y` badge, exports unified logs, and clears MapLibre's ambient tile cache. |
+| `fjallkartan/LogExporter.swift` | Exports the current process's app and MapLibre unified-log entries from the last 24 hours to a shareable temporary `.log` file. |
+| `fjallkartan/MapLibreLoggingBridge.swift` | Routes MapLibre warnings/errors through unified logging so `LogExporter` can include tile, network, and style failures. |
+| `fjallkartan/MetricKitReporter.swift` | Registers for MetricKit payloads at launch and records metric, crash, and hang summaries in unified logging. |
 | `fjallkartan/DistanceMeasurement.swift` | `@Observable` model holding the traced route and its geodesic length, plus `LineSimplifier` (Ramer–Douglas–Peucker). |
 | `fjallkartan/PlaceSearch.swift` | SQLite-backed FTS5 lookup of place names (`PlaceSearch`, `PlaceResult`, `PlaceKind`) against the bundled `places.sqlite`. |
 | `fjallkartan/PlaceSearchView.swift` | `PlaceSearchModel` (debounced async search) and `PlaceSearchSheet` UI presenting results. |
@@ -28,13 +43,13 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 | `fjallkartan/ElevationProfile.swift` | `@Observable` profile of the measured route — fixed-spacing resampling, ascent/descent with hysteresis, coverage, and a `needsConnection` flag for the offline case. |
 | `fjallkartan/ElevationProfileView.swift` | `ElevationProfileSheet`: Swift Charts terrain profile opened from the distance readout. |
 | `fjallkartan/TilePyramid.swift` | Pure functions sizing the offline download estimate for the fixed z7–z14 `MLNTilePyramidOfflineRegion` range. |
-| `fjallkartan/RemoteSettings.swift` | Remotely configurable tile URL templates (`TileSettings`: Lantmäteriet, Kartverket, Norwegian slope, Swedish slope, elevation), fetched from `settings.json` with built-in fallbacks. |
+| `fjallkartan/RemoteSettings.swift` | Remotely configurable tile URL templates (`TileSettings`: hosted Sweden/Finland base map, Kartverket, Norwegian slope, Swedish slope, elevation), fetched from `settings.json` with built-in fallbacks. |
 | `fjallkartan/TileServer.swift` | One case per tile source; zoom limits, offline min/max zoom and URL construction shared by the style builder, the offline size estimate and `ElevationService`. |
 | `fjallkartan/KartverketTileProxy.swift` | Loopback-only HTTP server (`Network.framework`) that fronts Kartverket tiles for MapLibre, rewriting the cream no-data fill (nested `NoDataFill` enum) for tiles at z≥15 before MapLibre's ambient cache stores the response. |
 | `fjallkartan/LegendCatalog.swift` | All legend entries — grouped into sections. |
 | `fjallkartan/LegendView.swift` | `LegendCountry` and `LegendSheet`; renders the bundled per-country legend PDFs (`legend_no` / `legend_se`) via PDFKit. |
 | `fjallkartan/AboutView.swift` | `AboutButton` and `AboutSheet`: data-source attribution (Kartverket, Lantmäteriet, NVE) plus privacy-policy and support links, and the row that reopens the get-started guide. |
-| `fjallkartan/OnboardingView.swift` | `OnboardingPage`/`OnboardingNote` content plus `OnboardingSheet`, the paged get-started guide shown on first launch. |
+| `fjallkartan/OnboardingView.swift` | `OnboardingPage`/`OnboardingNote` content plus `OnboardingSheet`, the paged get-started guide opened on demand from About. |
 | `fjallkartan/GuideTipView.swift` | `GuideTip` (one-time contextual hints, one `UserDefaults` key each) and the `GuideTipBadge` that renders them over the map. |
 | `fjallkartan/ReviewPrompter.swift` | Throttling logic deciding when to ask for an App Store review. |
 | `fjallkartan/NetworkCheck.swift` | One-shot `NWPathMonitor` connectivity check (no persistent monitor); used to postpone the review prompt while offline, and to tell "no connection" apart from "outside coverage" in the elevation profile. |
@@ -54,6 +69,9 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 | `tools/make_app_icon.py` | Regenerates the app icon. |
 | `tools/build_elevation_tiles.py` | Builds the z12 elevation tiles for both countries and uploads them to R2 (`tiles` → `verify` → `upload`). |
 | `tools/build_sweden_slope_tiles.py` | Derives the Swedish slope tiles from Lantmäteriet elevation data and uploads them to R2 (`fetch` → `tiles` → `verify` → `upload`). |
+| `tools/upload_gpkg_tiles_to_r2.py` | Streams selected zooms or explicit tiles from Lantmäteriet's GeoPackage to the hosted `z/y/x` R2 base-map pyramid, with dry-run and retry support. |
+| `tools/build_finland_gap_tiles.py` | Fetches MML tiles, composites the Finnish Treriksröset gap into the hosted Lantmäteriet pyramid, renders verification previews, and uploads only after explicit confirmation. |
+| `tools/serve_finland_gap_local.py` | Local test proxy that serves composited Finland-gap tiles and falls back to/caches the production base map for all other requests. |
 
 ## Architecture notes
 
@@ -61,6 +79,7 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
   - Route/endpoint/distance-marker rendering uses `MLNShapeSource` + `MLNLineStyleLayer`/`MLNCircleStyleLayer`, added once in `mapView(_:didFinishLoading:)` and updated by replacing the source's `shape` — not `MKOverlayRenderer`.
   - `MapLibreMeasureCaptureView` is a same-size subview added on top of the map. MapLibre's own pan/pinch/rotate gesture recognizers live on the map view itself, an *ancestor* of the capture view, so they still see every touch unless explicitly disabled — `setMeasuring(_:on:)` toggles `map.isScrollEnabled`/`isZoomEnabled`/`isRotateEnabled` off and the capture view's `isUserInteractionEnabled` on, together, whenever measuring starts or stops. The capture view brings in its own two-finger pinch/pan recognizers so panning and zooming still work one-handed while drawing.
   - `mapViewRegionIsChanging`/`regionDidChangeAnimated` both funnel into one `updateRegion(for:)` that recomputes `metersPerPoint`/`visibleMapRect`/`zoomLevel` and only writes back to the `@Binding`s that actually changed — MapLibre's region-changing delegate callback fires far more often than MapKit's did, so an unconditional write would re-render the scale bar every frame.
+  - The hidden debug overlay shows the Web Mercator tile containing the map centre as `z/x/y`; `updateRegion(for:)` derives it with `TilePyramid.tileCoordinate(for:z:)`.
   - Search results, saved pins and route-distance markers are all `MLNAnnotation`s with their own `MLNAnnotationView` subclasses (`SearchResultMarkerView`, `SavedPinMarkerView`, `RouteDistanceMarkerView`) rather than `MKAnnotationView`; only `SearchResultAnnotation` gets a callout (`annotationCanShowCallout`), with the bookmark/✗ accessories reproduced via `leftCalloutAccessoryViewFor`/`rightCalloutAccessoryViewFor`.
   - Tapping a saved pin goes through `mapView(_:didSelect:)`, which immediately deselects and opens `PinDetailSheet` — same behaviour as the MapKit version, just on the MapLibre delegate.
   - Location tracking calls `locationManager.requestWhenInUseAuthorization()` lazily, only when the user first taps the tracking button (`setTrackingMode`), and defers actually engaging `.follow` until `locationManagerDidChangeAuthorization` reports authorized.
@@ -69,6 +88,13 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 - **Remote settings**
   - `RemoteSettings.shared.refresh()` runs on scene activation and fetches `https://tiles.wallman.dev/settings.json` at most once per 6 h, so a provider that changes its URL can be followed without an app update.
   - `RemoteSettings.builtIn` holds the original hardcoded templates and is always a working configuration. An accepted payload is persisted as raw JSON in `UserDefaults`, so later launches start from the last known-good value.
+  - The built-in `lantmaterietUrl` points at the app's R2-backed `tiles.wallman.dev/v1` pyramid rather than Lantmäteriet directly. That hosted pyramid contains Lantmäteriet's base tiles plus the composited MML coverage described below.
+
+- **Finnish gap near Treriksröset**
+  - Lantmäteriet's map ends at Sweden's border, leaving the Finnish Käsivarsi/Kilpisjärvi sliver blank between Norway and Sweden. `tools/build_finland_gap_tiles.py` fills only that gap with MML's `maastokartta` WMTS tiles.
+  - Both providers encode no-data as opaque pure white rather than transparency. The composite keeps the Swedish pixel unless it is white, then substitutes a non-white Finnish pixel, preventing either provider's blank fill from covering real map content at the seam.
+  - The workflow is deliberately staged: `fetch` caches MML source tiles, `composite` writes only changed tiles under `out/finland-gap`, `verify` creates side-by-side previews, and `upload --confirm` overwrites the corresponding live R2 objects.
+  - `tools/serve_finland_gap_local.py` supports manual Simulator/device testing before upload by overlaying those local composites on the otherwise unchanged production tile pyramid.
 
 - **Slope layer**
   - Two raster sources/layers (`norway-slope`, `sweden-slope`) in the same style document, both painted at `raster-opacity: 0.6`, replacing the old per-country `SlopeTileOverlay` (`MKTileOverlay`) instances. `MapView.Coordinator.setSlopeVisible(_:)` toggles `MLNRasterStyleLayer.isVisible` on both rather than adding/removing overlays. Norway serves NVE's finished `Bratthet_med_utlop_2024` pictures (z5–16); Sweden has no such service, so we render our own (z5–13) — each source still carries its own `TileServer.sourceMaximumZ` as `maxzoom`, so MapLibre's own overzoom handles anything deeper.
@@ -83,7 +109,13 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
   - Fixed by `KartverketTileProxy`: a loopback-only `NWListener` HTTP server that the "kartverket" raster source's tile URL points at instead of the real host. Rewritten before MapLibre sees it, and MapLibre caches the rewritten tile.
   - `KartverketTileProxy.NoDataFill.rewritten(_:)` does the actual rewrite. Only applied for `z >= 15` (`KartverketTileProxy.rewriteMinimumZoom`) since the fill never appears below that — tiles below z15 are proxied unmodified, skipping the decode/pixel-scan pass for the vast majority of requests.
   - Kartverket 429/5xx responses (and connection failures) are forwarded to MapLibre as their real status rather than a 404, so they read as transient and retryable.
-  - Known limitations: the proxy has no background execution entitlement, so it's suspended along with the rest of the app when backgrounded.
+  - The proxy uses a fixed loopback port (`8062`). Because iOS suspends the listener in the background, `fjallkartanApp` recreates it when the scene returns from `.background` to `.active`.
+
+- **Diagnostics**
+  - `fjallkartanApp.init` starts `MetricKitReporter` and `MapLibreLoggingBridge` before `ContentView` is created.
+  - `MapLibreLoggingBridge` installs MapLibre's global logging handler at warning level and writes messages under the `org.maplibre` subsystem; app components use the bundle identifier subsystem.
+  - `LogExporter` reads both subsystems from the current process's unified log and writes a timestamped temporary file. The hidden `DebugSheet` presents the system share sheet for that file.
+  - The same debug sheet can clear `MLNOfflineStorage.shared`'s ambient cache. This does not delete user-created offline packs.
 
 - **Elevation**
   - Elevation comes from prebaked XYZ tiles (`https://tiles.wallman.dev/elevation/v1/{z}/{y}/{x}.png`).
@@ -108,7 +140,7 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 
 
 - **Get started guide**
-  - Two layers. `OnboardingSheet` is the paged tour, opened on demand from `AboutSheet`. `GuideTip` is the contextual layer: a hint shown the first time a mode is actually entered, which is the only moment a gesture can be acted on.
+  - Two layers. `OnboardingSheet` is the paged tour, opened on demand from `AboutSheet`; do not present the full guide automatically at app launch. `GuideTip` is the contextual layer: a hint shown the first time a mode is actually entered, which is the only moment a gesture can be acted on.
   - Both cover the interactions that are invisible in the UI: two-finger pan/pinch while drawing, tapping the distance readout for the profile, long-press to drop a pin or rename a saved route, the search callout's bookmark/✗, and where a saved route reappears. The tile-metrics debug sheet is deliberately left out.
   - `ContentView` owns tip arbitration: `updateVisibleTip()` shows the highest-priority unseen tip whose condition holds, marks it seen **on display** (an ignored tip has had its chance), and retires it when the condition ends or after 7 s. Only one tip is ever on screen, so placement is a single overlay.
   - Guide strings are `LocalizedStringResource` rather than `LocalizedStringKey` so `OnboardingGuideTests` can assert every string is in the catalog (a missing entry resolves back to its own key) and every SF Symbol exists — both fail silently at runtime otherwise.

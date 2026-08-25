@@ -69,8 +69,7 @@ extension OnboardingPage {
     ]
 }
 
-/// Paged get-started guide, shown once on first launch and reachable from
-/// `AboutSheet` afterwards.
+/// Paged get-started guide opened on demand from `AboutSheet`.
 struct OnboardingSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selection = 0
