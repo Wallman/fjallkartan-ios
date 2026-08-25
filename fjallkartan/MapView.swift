@@ -411,49 +411,67 @@ struct MapView: UIViewRepresentable {
     static func buildStyleURL() -> URL {
         let settings = RemoteSettings.shared.settings
         let kartverketUrl = KartverketTileProxy.shared?.tileURLTemplate ?? settings.kartverketUrl
-        let json = """
-        {
-          "version": 8,
-          "sources": {
-            "lantmateriet": {
-              "type": "raster",
-              "tiles": ["\(settings.lantmaterietUrl)"],
-              "tileSize": 256,
-              "minzoom": 0,
-              "maxzoom": \(TileServer.lantmateriet.sourceMaximumZ)
-            },
-            "kartverket": {
-              "type": "raster",
-              "tiles": ["\(kartverketUrl)"],
-              "tileSize": 256,
-              "minzoom": 0,
-              "maxzoom": \(TileServer.kartverket.sourceMaximumZ)
-            },
-            "norway-slope": {
-              "type": "raster",
-              "tiles": ["\(settings.norwaySlopeUrl)"],
-              "tileSize": 256,
-              "minzoom": 5,
-              "maxzoom": \(TileServer.norwaySlope.sourceMaximumZ)
-            },
-            "sweden-slope": {
-              "type": "raster",
-              "tiles": ["\(settings.swedenSlopeUrl)"],
-              "tileSize": 256,
-              "minzoom": 5,
-              "maxzoom": \(TileServer.swedenSlope.sourceMaximumZ)
+
+        var swedenLayers: [[String: Any]] = []
+        var glyphsUrl: String?
+        if let martinStyleData = try? Data(contentsOf: URL(string: "http://localhost:3131/style/topografi50")!),
+           let martinStyle = try? JSONSerialization.jsonObject(with: martinStyleData) as? [String: Any] {
+            if let layers = martinStyle["layers"] as? [[String: Any]] {
+                swedenLayers = layers
             }
-          },
-          "layers": [
-            {"id": "lantmateriet-layer", "type": "raster", "source": "lantmateriet"},
-            {"id": "kartverket-layer", "type": "raster", "source": "kartverket"},
-            {"id": "norway-slope-layer", "type": "raster", "source": "norway-slope", "paint": {"raster-opacity": 0.6}},
-            {"id": "sweden-slope-layer", "type": "raster", "source": "sweden-slope", "paint": {"raster-opacity": 0.6}}
-          ]
+            // Symbol layers (labels, POI text) need this to resolve glyphs; without it
+            // MapLibre silently fails to render any text/symbol layer.
+            glyphsUrl = martinStyle["glyphs"] as? String
         }
-        """
-        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("maplibre-map-style.json")
-        try? json.write(to: fileURL, atomically: true, encoding: .utf8)
+
+        var style: [String: Any] = [
+            "version": 8,
+            "sources": [
+                "sweden": [
+                    "type": "vector",
+                    "tiles": ["http://localhost:3131/sweden/{z}/{x}/{y}"],
+                    "minzoom": 5,
+                    "maxzoom": 11,
+                ],
+                "kartverket": [
+                    "type": "raster",
+                    "tiles": [kartverketUrl],
+                    "tileSize": 256,
+                    "minzoom": 0,
+                    "maxzoom": TileServer.kartverket.sourceMaximumZ,
+                ],
+                "norway-slope": [
+                    "type": "raster",
+                    "tiles": [settings.norwaySlopeUrl],
+                    "tileSize": 256,
+                    "minzoom": 5,
+                    "maxzoom": TileServer.norwaySlope.sourceMaximumZ,
+                ],
+                "sweden-slope": [
+                    "type": "raster",
+                    "tiles": [settings.swedenSlopeUrl],
+                    "tileSize": 256,
+                    "minzoom": 5,
+                    "maxzoom": TileServer.swedenSlope.sourceMaximumZ,
+                ],
+            ],
+        ]
+        style["layers"] = swedenLayers + [
+            ["id": "kartverket-layer", "type": "raster", "source": "kartverket"],
+            ["id": "norway-slope-layer", "type": "raster", "source": "norway-slope", "paint": ["raster-opacity": 0.6]],
+            ["id": "sweden-slope-layer", "type": "raster", "source": "sweden-slope", "paint": ["raster-opacity": 0.6]],
+        ]
+        if let glyphsUrl {
+            style["glyphs"] = glyphsUrl
+        }
+
+        // Use a unique filename per build: MapLibre's ambient cache keys responses (including
+        // file:// URLs) by URL, so reusing a fixed path can silently serve a stale style
+        // from a previous run instead of the freshly written one.
+        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("maplibre-map-style-\(UUID().uuidString).json")
+        if let data = try? JSONSerialization.data(withJSONObject: style) {
+            try? data.write(to: fileURL, options: .atomic)
+        }
         return fileURL
     }
 
