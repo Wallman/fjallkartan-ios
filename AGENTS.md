@@ -92,6 +92,7 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 
 - **Finnish gap near Treriksröset**
   - Lantmäteriet's map ends at Sweden's border, leaving the Finnish Käsivarsi/Kilpisjärvi sliver blank between Norway and Sweden. `tools/build_finland_gap_tiles.py` fills only that gap with MML's `maastokartta` WMTS tiles.
+  - The production composite uses only z11–z16. Its WGS84 fetch bounding box is `20.412598,68.196052,23.977661,69.373541` (`min_lon,min_lat,max_lon,max_lat`).
   - Both providers encode no-data as opaque pure white rather than transparency. The composite keeps the Swedish pixel unless it is white, then substitutes a non-white Finnish pixel, preventing either provider's blank fill from covering real map content at the seam.
   - The workflow is deliberately staged: `fetch` caches MML source tiles, `composite` writes only changed tiles under `out/finland-gap`, `verify` creates side-by-side previews, and `upload --confirm` overwrites the corresponding live R2 objects.
   - `tools/serve_finland_gap_local.py` supports manual Simulator/device testing before upload by overlaying those local composites on the otherwise unchanged production tile pyramid.
