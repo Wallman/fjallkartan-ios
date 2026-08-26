@@ -41,9 +41,9 @@ nonisolated final class KartverketTileProxy: @unchecked Sendable {
     /// which only loses the cream-fill fix, not the map itself.
     private(set) static var shared = KartverketTileProxy()
 
-    static func restartAfterBackgrounding() {
-        guard shared != nil else { return }
-        log.debug("restarting Kartverket tile proxy after returning from background")
+    static func ensureRunning() {
+        if let shared, shared.listener.state == .ready { return }
+        log.debug("(re)starting Kartverket tile proxy")
         shared?.listener.cancel()
         shared = KartverketTileProxy()
     }

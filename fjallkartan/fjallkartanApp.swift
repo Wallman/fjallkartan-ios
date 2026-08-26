@@ -14,14 +14,12 @@ struct fjallkartanApp: App {
         WindowGroup {
             ContentView()
         }
-        .onChange(of: scenePhase, initial: true) { oldPhase, phase in
+        .onChange(of: scenePhase, initial: true) { _, phase in
             switch phase {
             case .active:
                 reviewPrompter.noteBecameActive()
                 RemoteSettings.shared.refresh()
-                if oldPhase == .background {
-                    KartverketTileProxy.restartAfterBackgrounding()
-                }
+                KartverketTileProxy.ensureRunning()
             case .background:
                 reviewPrompter.noteEnteredBackground()
             default: break
