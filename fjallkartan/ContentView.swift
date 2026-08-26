@@ -250,6 +250,7 @@ struct ContentView: View {
                 routeVersion: measurement.version,
                 routeFitToken: routeFitToken,
                 selectedPlace: search.selection,
+                selectedPlaceToken: search.selectionToken,
                 isRegionPreviewVisible: isPickingRegion,
                 isSlopeLayerVisible: isSlopeLayerVisible,
                 pins: savedPinsModel?.pins ?? [],
@@ -260,7 +261,7 @@ struct ContentView: View {
                     savedPinsModel?.save(SavedPin(coordinate: Coord(place.coordinate), name: place.name))
                 },
                 onDismissPlace: {
-                    search.selection = nil
+                    search.clearSelection()
                 },
                 onOpenPinDetail: { pin in
                     pinDetail = pin

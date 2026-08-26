@@ -397,6 +397,7 @@ struct MapView: UIViewRepresentable {
     let routeVersion: Int
     var routeFitToken: Int = 0
     let selectedPlace: PlaceResult?
+    var selectedPlaceToken: Int = 0
 
     let isRegionPreviewVisible: Bool
 
@@ -504,7 +505,7 @@ struct MapView: UIViewRepresentable {
         context.coordinator.setMeasuring(isMeasuring, on: uiView)
         context.coordinator.setRoute(measurement.coordinates, version: routeVersion, on: uiView)
         context.coordinator.fitRouteIfNeeded(on: uiView, fitToken: routeFitToken)
-        context.coordinator.syncSelection(selectedPlace, on: uiView)
+        context.coordinator.syncSelection(selectedPlace, token: selectedPlaceToken, on: uiView)
         context.coordinator.syncRegionPreview(isVisible: isRegionPreviewVisible)
         context.coordinator.setSlopeVisible(isSlopeLayerVisible)
         context.coordinator.syncPins(on: uiView, pins: pins)
@@ -541,6 +542,7 @@ struct MapView: UIViewRepresentable {
 
         private var renderedPins: [SavedPin] = []
         private var shownPlaceID: Int64?
+        private var shownPlaceToken = -1
         private var wantsTrackingOnceAuthorized = false
         private var renderedTrackingMode: MLNUserTrackingMode = .none
 
@@ -718,9 +720,10 @@ struct MapView: UIViewRepresentable {
 
         // MARK: - Search selection
 
-        func syncSelection(_ place: PlaceResult?, on mapView: MLNMapView) {
-            guard shownPlaceID != place?.id else { return }
+        func syncSelection(_ place: PlaceResult?, token: Int, on mapView: MLNMapView) {
+            guard shownPlaceID != place?.id || shownPlaceToken != token else { return }
             shownPlaceID = place?.id
+            shownPlaceToken = token
 
             if let existing = mapView.annotations?.compactMap({ $0 as? SearchResultAnnotation }), !existing.isEmpty {
                 mapView.removeAnnotations(existing)

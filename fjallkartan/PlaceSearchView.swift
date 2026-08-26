@@ -10,7 +10,8 @@ var query: String = "" {
     private(set) var results: [PlaceResult] = []
     private(set) var isSearching = false
 
-    var selection: PlaceResult?
+    private(set) var selection: PlaceResult?
+    private(set) var selectionToken = 0
     static let minimumQueryLength = 2
 
     @ObservationIgnored private lazy var search = PlaceSearch()
@@ -23,6 +24,15 @@ var query: String = "" {
         query = ""
         results = []
         isSearching = false
+    }
+
+    func select(_ result: PlaceResult) {
+        selection = result
+        selectionToken &+= 1
+    }
+
+    func clearSelection() {
+        selection = nil
     }
 
     private func scheduleSearch() {
@@ -77,7 +87,7 @@ struct PlaceSearchSheet: View {
             Divider()
             List(model.results) { result in
                 Button {
-                    model.selection = result
+                    model.select(result)
                     dismiss()
                 } label: {
                     PlaceRow(result: result)

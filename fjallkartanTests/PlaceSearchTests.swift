@@ -5,6 +5,27 @@ import Testing
 @testable import fjallkartan
 
 struct PlaceSearchQueryTests {
+    @Test @MainActor func reselectingSameResultAdvancesSelectionToken() {
+        let model = PlaceSearchModel()
+        let result = PlaceResult(
+            id: 1,
+            name: "Test",
+            kind: .settlement,
+            matchedAlias: nil,
+            municipality: nil,
+            region: nil,
+            country: .sweden,
+            coordinate: CLLocationCoordinate2D(latitude: 67, longitude: 18)
+        )
+
+        model.select(result)
+        let firstToken = model.selectionToken
+        model.select(result)
+
+        #expect(model.selection == result)
+        #expect(model.selectionToken == firstToken + 1)
+    }
+
     @Test func buildsPrefixTermsForEachToken() {
         #expect(PlaceSearch.ftsExpression(for: "stora sjöfal") == "stora* AND sjöfal*")
     }
