@@ -22,6 +22,7 @@ struct fjallkartanApp: App {
                 KartverketTileProxy.ensureRunning()
             case .background:
                 reviewPrompter.noteEnteredBackground()
+                KartverketTileProxy.stop()
             default: break
             }
         }

@@ -48,6 +48,13 @@ nonisolated final class KartverketTileProxy: @unchecked Sendable {
         shared = KartverketTileProxy()
     }
 
+    static func stop() {
+        guard shared != nil else { return }
+        log.debug("stopping Kartverket tile proxy while backgrounded")
+        shared?.listener.cancel()
+        shared = nil
+    }
+
     private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "fjallkartan",
                                     category: "KartverketTileProxy")
 
