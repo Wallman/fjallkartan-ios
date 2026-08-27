@@ -43,9 +43,12 @@ final class OfflineRegionsModel {
 
     @ObservationIgnored private nonisolated(unsafe) var progressObserver: NSObjectProtocol?
     @ObservationIgnored private nonisolated(unsafe) var errorObserver: NSObjectProtocol?
+    @ObservationIgnored private var packsObserver: NSKeyValueObservation?
 
     init() {
-        MLNOfflineStorage.shared.reloadPacks()
+        packsObserver = MLNOfflineStorage.shared.observe(\.packs, options: [.new]) { _, _ in
+            Task { @MainActor [weak self] in self?.refresh() }
+        }
         refresh()
         observeNotifications()
     }
@@ -92,6 +95,18 @@ final class OfflineRegionsModel {
         try? JSONDecoder().decode(RegionContext.self, from: pack.context)
     }
 
+    private static let pausedIDsDefaultsKey = "OfflineRegionsModel.pausedIDs"
+
+    private func isUserPaused(_ id: String) -> Bool {
+        (UserDefaults.standard.stringArray(forKey: Self.pausedIDsDefaultsKey) ?? []).contains(id)
+    }
+
+    private func setUserPaused(_ id: String, _ paused: Bool) {
+        var ids = Set(UserDefaults.standard.stringArray(forKey: Self.pausedIDsDefaultsKey) ?? [])
+        if paused { ids.insert(id) } else { ids.remove(id) }
+        UserDefaults.standard.set(Array(ids), forKey: Self.pausedIDsDefaultsKey)
+    }
+
     func refresh() {
         let packs = MLNOfflineStorage.shared.packs ?? []
         var byID: [String: MLNOfflinePack] = [:]
@@ -99,6 +114,12 @@ final class OfflineRegionsModel {
 
         for pack in packs {
             guard pack.state != .invalid, let context = decodeContext(pack) else { continue }
+            if packsByID[context.id] == nil {
+                pack.requestProgress()
+                if !isUserPaused(context.id) {
+                    pack.resume()
+                }
+            }
             byID[context.id] = pack
             ensureElevationTracking(id: context.id, pack: pack)
 
@@ -197,6 +218,7 @@ final class OfflineRegionsModel {
     }
 
     func pause(_ regionID: String) {
+        setUserPaused(regionID, true)
         packsByID[regionID]?.suspend()
         elevationTasks[regionID]?.cancel()
         elevationTasks[regionID] = nil
@@ -205,6 +227,7 @@ final class OfflineRegionsModel {
 
     func resume(_ regionID: String) {
         guard let pack = packsByID[regionID] else { return }
+        setUserPaused(regionID, false)
         failureMessages[regionID] = nil
         pack.resume()
         startElevationDownload(id: regionID)
@@ -213,6 +236,7 @@ final class OfflineRegionsModel {
 
     func delete(_ regionID: String) {
         guard let pack = packsByID[regionID] else { return }
+        setUserPaused(regionID, false)
         failureMessages[regionID] = nil
         elevationTasks[regionID]?.cancel()
         elevationTasks[regionID] = nil
