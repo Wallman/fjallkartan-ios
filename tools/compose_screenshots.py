@@ -353,12 +353,12 @@ def compose(scene: dict, raw_dir: Path, out_dir: Path, device: dict,
     draw = ImageDraw.Draw(canvas)
 
     y = draw_centered(draw, headline, CAPTION_TOP,
-                      fitted_font(draw, headline, 96, "Bold", language, device["text_safe_width"]),
-                      scene["ink"], line_gap=26, canvas_width=canvas_size[0])
+                      fitted_font(draw, headline, 108, "Bold", language, device["text_safe_width"]),
+                      scene["ink"], line_gap=28, canvas_width=canvas_size[0])
     y += 30
     y = draw_centered(draw, subtitle, y,
-                      fitted_font(draw, subtitle, 41, "Medium", language, device["text_safe_width"]),
-                      scene["muted"], line_gap=16, canvas_width=canvas_size[0])
+                      fitted_font(draw, subtitle, 46, "Medium", language, device["text_safe_width"]),
+                      scene["muted"], line_gap=18, canvas_width=canvas_size[0])
 
     # Device frame
     screen_w = round(canvas_size[0] * device["device_width"])
