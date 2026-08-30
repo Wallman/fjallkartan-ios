@@ -43,13 +43,13 @@ struct GuideTipBadge: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: tip.symbol)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(Color.orange)
             Text(tip.text)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 17, weight: .medium))
                 .fixedSize(horizontal: false, vertical: true)
             Image(systemName: "xmark")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 14)
