@@ -336,6 +336,7 @@ struct RegionDownloadBar: View {
     @Bindable var model: OfflineRegionsModel
     let rect: MKMapRect
     let onDownload: () -> Void
+    @State private var isNamingRegion = false
 
     private var estimate: (tileCount: Int, bytes: Int) {
         TilePyramid.estimate(rect: rect)
@@ -373,8 +374,7 @@ struct RegionDownloadBar: View {
             }
 
             Button {
-                model.startDownload(name: regionNameFormatter.string(from: Date()), rect: rect)
-                onDownload()
+                isNamingRegion = true
             } label: {
                 Label("Download this area", systemImage: "arrow.down.circle")
                     .font(.system(size: 15, weight: .semibold))
@@ -390,6 +390,19 @@ struct RegionDownloadBar: View {
         .background(Color(.systemBackground).opacity(0.9), in: RoundedRectangle(cornerRadius: 14))
         .frame(maxWidth: 300)
         .padding(.horizontal, 16)
+        .sheet(isPresented: $isNamingRegion) {
+            RouteNameSheet(
+                title: "Name this region",
+                initialName: ""
+            ) { name in
+                let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                model.startDownload(
+                    name: trimmed.isEmpty ? regionNameFormatter.string(from: Date()) : trimmed,
+                    rect: rect
+                )
+                onDownload()
+            }
+        }
     }
 }
 
