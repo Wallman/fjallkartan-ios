@@ -4,6 +4,7 @@ marketing/raw/
 marketing/raw-ipad/
 .envrc
 out/
+.playwright-mcp/
 
 # Screenshots are ~220 MB of PNGs derived from the raw captures above.
 fastlane/screenshots/
