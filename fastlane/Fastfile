@@ -416,7 +416,8 @@ platform :ios do
       overwrite_screenshots: true,
       force: options.fetch(:force, true),
       submit_for_review: false,
-      precheck_include_in_app_purchases: false
+      precheck_include_in_app_purchases: false,
+      app_version: options[:app_version]
     )
   end
 
