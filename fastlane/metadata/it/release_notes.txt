@@ -1,0 +1,3 @@
+Questo aggiornamento aggiunge un indicatore di caricamento durante il caricamento della mappa, un avviso per aggiornare se la versione dell'app è molto obsoleta, e un testo più grande nei suggerimenti introduttivi per una migliore leggibilità.
+
+I download delle mappe offline ora riprendono automaticamente se l'app viene chiusa durante il download. Abbiamo anche migliorato l'affidabilità delle tessere della mappa vicino al confine tra Norvegia e Svezia e aggiornato la nostra informativa sulla privacy.

@@ -1,0 +1,3 @@
+This update adds a loading indicator while the map loads, a prompt to update if your app version is very outdated, and larger text in the get-started tips for better readability.
+
+Offline map downloads now resume automatically if the app is closed while downloading. We've also improved reliability of map tiles near the Norway–Sweden border, and updated our privacy policy.

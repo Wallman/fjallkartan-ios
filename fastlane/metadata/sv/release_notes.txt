@@ -1,0 +1,3 @@
+Den här uppdateringen lägger till en laddningsindikator medan kartan laddas, en påminnelse om att uppdatera om din appversion är väldigt gammal, och större text i kom-igång-tipsen för bättre läsbarhet.
+
+Nedladdningar av offlinekartor återupptas nu automatiskt om appen stängs under nedladdningen. Vi har även förbättrat tillförlitligheten för karttiles nära gränsen mellan Norge och Sverige, samt uppdaterat vår integritetspolicy.

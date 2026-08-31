@@ -444,6 +444,36 @@ platform :ios do
     )
   end
 
+  desc "Attach the latest processed build to the editable version and submit it for review"
+  lane :submit do |options|
+    UI.important(EDITABLE_HINT)
+
+    # Nothing here uploads a binary or screenshots — this only waits for the
+    # most recent build already processed by App Store Connect (e.g. the one
+    # Xcode Cloud just finished), attaches it to the editable version, and
+    # files the review submission. Run `metadata`/`screenshots`/`store` first
+    # for anything those are meant to change.
+    deliver(
+      api_key: asc_api_key,
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      skip_metadata: true,
+      force: options.fetch(:force, true),
+      app_version: options[:app_version],
+      # "latest" polls App Store Connect until a processed build appears.
+      build_number: options.fetch(:build_number, "latest"),
+      submit_for_review: true,
+      automatic_release: options.fetch(:automatic_release, false),
+      phased_release: options.fetch(:phased_release, false),
+      # HTTPS-only (map tiles, settings.json) is exempt from export compliance;
+      # see the ITSAppUsesNonExemptEncryption docs linked in deliver's error.
+      submission_information: {
+        export_compliance_uses_encryption: options.fetch(:uses_encryption, false)
+      },
+      precheck_include_in_app_purchases: false
+    )
+  end
+
   desc "Overwrite fastlane/metadata with what App Store Connect currently holds, so `git diff` shows any drift"
   lane :pull do
     # Downloading is a deliver subcommand, not the deliver action (which uploads).

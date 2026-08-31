@@ -1,0 +1,3 @@
+Dieses Update fügt eine Ladeanzeige beim Laden der Karte hinzu, eine Aufforderung zum Aktualisieren, wenn deine App-Version sehr veraltet ist, und größeren Text in den Erste-Schritte-Tipps für bessere Lesbarkeit.
+
+Offline-Kartendownloads werden jetzt automatisch fortgesetzt, wenn die App während des Downloads geschlossen wird. Außerdem haben wir die Zuverlässigkeit der Kartenkacheln nahe der norwegisch-schwedischen Grenze verbessert und unsere Datenschutzrichtlinie aktualisiert.

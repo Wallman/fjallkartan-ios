@@ -1,0 +1,3 @@
+Tämä päivitys lisää latausilmaisimen kartan latautuessa, kehotuksen päivittää sovellus, jos versiosi on hyvin vanha, sekä suuremman tekstin aloitusoppaan vinkeissä paremman luettavuuden vuoksi.
+
+Offline-karttalataukset jatkuvat nyt automaattisesti, jos sovellus suljetaan latauksen aikana. Olemme myös parantaneet karttalaattojen luotettavuutta Norjan ja Ruotsin rajan lähellä sekä päivittäneet tietosuojakäytäntömme.
