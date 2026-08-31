@@ -31,6 +31,7 @@ struct ContentView: View {
     @State private var routeFitToken = 0 // Needed to avoid re-centering when drawing
     @State private var pinDetail: SavedPin?
     @State private var trackingMode: MLNUserTrackingMode = .none
+    @State private var isMapReady = false
 
     @State private var measuringStartVersion = 0
     private let reviewPrompter = ReviewPrompter.shared
@@ -266,6 +267,9 @@ struct ContentView: View {
                 },
                 onOpenPinDetail: { pin in
                     pinDetail = pin
+                },
+                onFirstFrameRendered: {
+                    isMapReady = true
                 })
             .ignoresSafeArea()
             .overlay(alignment: .bottomLeading) {
@@ -398,6 +402,18 @@ struct ContentView: View {
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: forceUpdateGate.isUpdateRequired)
+            .overlay {
+                if !isMapReady {
+                    MapLoadingView()
+                }
+            }
+            .animation(.easeInOut(duration: 0.25), value: isMapReady)
+            .task {
+                // Belt-and-braces: if tiles never finish (e.g. no connection),
+                // don't leave the loading screen covering the map forever.
+                try? await Task.sleep(for: .seconds(5))
+                isMapReady = true
+            }
     }
 }
 

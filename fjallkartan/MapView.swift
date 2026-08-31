@@ -408,6 +408,7 @@ struct MapView: UIViewRepresentable {
     var onSavePlace: ((PlaceResult) -> Void)?
     var onDismissPlace: (() -> Void)?
     var onOpenPinDetail: ((SavedPin) -> Void)?
+    var onFirstFrameRendered: (() -> Void)?
 
     static func buildStyleURL() -> URL {
         let settings = RemoteSettings.shared.settings
@@ -501,6 +502,7 @@ struct MapView: UIViewRepresentable {
         context.coordinator.onSavePlace = onSavePlace
         context.coordinator.onDismissPlace = onDismissPlace
         context.coordinator.onOpenPinDetail = onOpenPinDetail
+        context.coordinator.onFirstFrameRendered = onFirstFrameRendered
         context.coordinator.setTrackingMode(trackingMode, on: uiView)
         context.coordinator.setMeasuring(isMeasuring, on: uiView)
         context.coordinator.setRoute(measurement.coordinates, version: routeVersion, on: uiView)
@@ -550,6 +552,8 @@ struct MapView: UIViewRepresentable {
         var onSavePlace: ((PlaceResult) -> Void)?
         var onDismissPlace: (() -> Void)?
         var onOpenPinDetail: ((SavedPin) -> Void)?
+        var onFirstFrameRendered: (() -> Void)?
+        private var hasReportedFirstFrame = false
 
         init(metersPerPoint: Binding<Double>,
              visibleMapRect: Binding<MKMapRect>,
@@ -973,6 +977,12 @@ struct MapView: UIViewRepresentable {
             style.addLayer(endLayer)
 
             applyPendingRoute(on: mapView)
+        }
+
+        func mapViewDidFinishRenderingMap(_ mapView: MLNMapView, fullyRendered: Bool) {
+            guard fullyRendered, !hasReportedFirstFrame else { return }
+            hasReportedFirstFrame = true
+            onFirstFrameRendered?()
         }
     }
 }
