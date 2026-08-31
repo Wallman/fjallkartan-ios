@@ -49,10 +49,25 @@ nonisolated final class KartverketTileProxy: @unchecked Sendable {
     }
 
     static func stop() {
+        guard activeDownloadCount == 0 else {
+            log.debug("keeping Kartverket tile proxy alive: offline download in progress")
+            return
+        }
         guard shared != nil else { return }
         log.debug("stopping Kartverket tile proxy while backgrounded")
         shared?.listener.cancel()
         shared = nil
+    }
+
+    nonisolated(unsafe) private static var activeDownloadCount = 0
+
+    static func beginKeepAliveForDownload() {
+        activeDownloadCount += 1
+        ensureRunning()
+    }
+
+    static func endKeepAliveForDownload() {
+        activeDownloadCount = max(0, activeDownloadCount - 1)
     }
 
     private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "fjallkartan",
