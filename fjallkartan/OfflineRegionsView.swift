@@ -1,7 +1,6 @@
 import MapKit
 import MapLibre
 import SwiftUI
-import UIKit
 
 /// Arbitrary data JSON-encoded into an `MLNOfflinePack`'s `context`, since a
 /// pack has no stable name/creation-date concept of its own
@@ -46,8 +45,6 @@ final class OfflineRegionsModel {
     @ObservationIgnored private nonisolated(unsafe) var errorObserver: NSObjectProtocol?
     @ObservationIgnored private var packsObserver: NSKeyValueObservation?
 
-    @ObservationIgnored private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
-
     init() {
         packsObserver = MLNOfflineStorage.shared.observe(\.packs, options: [.new]) { _, _ in
             Task { @MainActor [weak self] in self?.refresh() }
@@ -60,28 +57,6 @@ final class OfflineRegionsModel {
         let center = NotificationCenter.default
         if let progressObserver { center.removeObserver(progressObserver) }
         if let errorObserver { center.removeObserver(errorObserver) }
-        let taskID = backgroundTaskID
-        if taskID != .invalid {
-            Task { @MainActor in
-                UIApplication.shared.endBackgroundTask(taskID)
-                KartverketTileProxy.endKeepAliveForDownload()
-            }
-        }
-    }
-
-    private func beginBackgroundTaskIfNeeded() {
-        guard backgroundTaskID == .invalid else { return }
-        backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "OfflineRegionDownload") { [weak self] in
-            self?.endBackgroundTask()
-        }
-        KartverketTileProxy.beginKeepAliveForDownload()
-    }
-
-    private func endBackgroundTask() {
-        guard backgroundTaskID != .invalid else { return }
-        UIApplication.shared.endBackgroundTask(backgroundTaskID)
-        backgroundTaskID = .invalid
-        KartverketTileProxy.endKeepAliveForDownload()
     }
 
     private func observeNotifications() {
@@ -182,12 +157,6 @@ final class OfflineRegionsModel {
 
         packsByID = byID
         regions = summaries.sorted { $0.createdAt > $1.createdAt }
-
-        if regions.contains(where: { $0.status == .downloading }) {
-            beginBackgroundTaskIfNeeded()
-        } else {
-            endBackgroundTask()
-        }
     }
 
     /// Makes sure a pack's elevation tiles are known and, if the pack is
