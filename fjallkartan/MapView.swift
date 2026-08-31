@@ -227,10 +227,25 @@ private final class MapLibreMeasureCaptureView: UIView, UIGestureRecognizerDeleg
         twoFingerPan.maximumNumberOfTouches = 2
         twoFingerPan.delegate = self
         addGestureRecognizer(twoFingerPan)
+
+        let rotation = UIRotationGestureRecognizer(target: self, action: #selector(handleRotation(_:)))
+        rotation.delegate = self
+        addGestureRecognizer(rotation)
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    /// Lets touches over the map's own compass button (a sibling subview added
+    /// behind this capture view) fall through to it instead of being
+    /// swallowed here, so tapping it to reset north still works while
+    /// measuring.
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        guard super.point(inside: point, with: event) else { return false }
+        guard let compassView = mapView?.compassView, !compassView.isHidden else { return true }
+        let pointInCompass = convert(point, to: compassView)
+        return !compassView.bounds.contains(pointInCompass)
+    }
 
     func gestureRecognizer(
         _ gestureRecognizer: UIGestureRecognizer,
@@ -249,6 +264,20 @@ private final class MapLibreMeasureCaptureView: UIView, UIGestureRecognizerDeleg
             guard scale > 0 else { return }
             mapView.zoomLevel += log2(scale)
             recognizer.scale = 1.0
+        default:
+            break
+        }
+    }
+
+    @objc private func handleRotation(_ recognizer: UIRotationGestureRecognizer) {
+        guard let mapView else { return }
+        switch recognizer.state {
+        case .began:
+            cancelStroke()
+        case .changed:
+            let degrees = recognizer.rotation * 180 / .pi
+            mapView.direction += degrees
+            recognizer.rotation = 0
         default:
             break
         }
