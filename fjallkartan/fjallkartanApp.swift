@@ -18,7 +18,12 @@ struct fjallkartanApp: App {
             switch phase {
             case .active:
                 reviewPrompter.noteBecameActive()
-                RemoteSettings.shared.refresh()
+                RemoteSettings.shared.refresh { settings in
+                    guard let settings else { return }
+                    Task { @MainActor in
+                        ForceUpdateGate.shared.evaluate(minAppVersion: settings.minAppVersion)
+                    }
+                }
                 KartverketTileProxy.ensureRunning()
             case .background:
                 reviewPrompter.noteEnteredBackground()

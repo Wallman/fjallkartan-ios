@@ -128,14 +128,14 @@ nonisolated final class RemoteSettings: @unchecked Sendable {
 
     // MARK: - Refresh
 
-    func refresh(force: Bool = false, completion: (() -> Void)? = nil) {
+    func refresh(force: Bool = false, completion: ((TileSettings?) -> Void)? = nil) {
         lock.lock()
         let shouldSkip = !force && (isRefreshing || !isStaleLocked())
         if !shouldSkip { isRefreshing = true }
         lock.unlock()
 
         guard !shouldSkip else {
-            completion?()
+            completion?(nil)
             return
         }
 
@@ -145,16 +145,16 @@ nonisolated final class RemoteSettings: @unchecked Sendable {
                 self.lock.lock()
                 self.isRefreshing = false
                 self.lock.unlock()
-                completion?()
             }
 
             guard let data, error == nil,
                   let http = response as? HTTPURLResponse,
                   (200...299).contains(http.statusCode) else {
                 Self.log.error("settings fetch failed: \(error?.localizedDescription ?? "bad response")")
+                completion?(nil)
                 return
             }
-            self.apply(data)
+            completion?(self.apply(data) ? self.settings : nil)
         }.resume()
     }
 

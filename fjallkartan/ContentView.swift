@@ -34,6 +34,7 @@ struct ContentView: View {
 
     @State private var measuringStartVersion = 0
     private let reviewPrompter = ReviewPrompter.shared
+    private let forceUpdateGate = ForceUpdateGate.shared
 
     /// Nothing is covering or competing with the map, so a system review
     /// prompt would not interrupt anything the user is in the middle of.
@@ -391,6 +392,12 @@ struct ContentView: View {
                 guard !Task.isCancelled, isQuietForReviewPrompt, await NetworkCheck.hasConnectivity() else { return }
                 if reviewPrompter.consumePendingPrompt() { requestReview() }
             }
+            .overlay {
+                if forceUpdateGate.isUpdateRequired {
+                    ForceUpdateView()
+                }
+            }
+            .animation(.easeInOut(duration: 0.25), value: forceUpdateGate.isUpdateRequired)
     }
 }
 
