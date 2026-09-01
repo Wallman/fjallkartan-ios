@@ -32,6 +32,10 @@ struct RegionSummary: Identifiable, Hashable {
 final class OfflineRegionsModel {
     private(set) var regions: [RegionSummary] = []
 
+    private(set) var hasInterruptedDownloads = false
+
+    private var didPromptForInterruptedDownloads = false
+
     var onRegionDownloadCompleted: () -> Void = { ReviewPrompter.shared.recordSuccessfulRegionDownload() }
 
     private var packsByID: [String: MLNOfflinePack] = [:]
@@ -80,6 +84,9 @@ final class OfflineRegionsModel {
         guard let pack = notification.object as? MLNOfflinePack,
               let context = decodeContext(pack) else { return }
         failureMessages[context.id] = nil
+        if pack.state == .inactive, !isUserPaused(context.id) {
+            noteInterruptedDownload()
+        }
         refresh()
     }
 
@@ -116,9 +123,6 @@ final class OfflineRegionsModel {
             guard pack.state != .invalid, let context = decodeContext(pack) else { continue }
             if packsByID[context.id] == nil {
                 pack.requestProgress()
-                if !isUserPaused(context.id) {
-                    pack.resume()
-                }
             }
             byID[context.id] = pack
             ensureElevationTracking(id: context.id, pack: pack)
@@ -131,10 +135,22 @@ final class OfflineRegionsModel {
                 status = .failed(message)
             } else {
                 switch pack.state {
-                case .complete: status = elevationComplete ? .complete : .downloading
+                case .complete:
+                    // The pack's own tiles are done, but its elevation tiles
+                    // are downloaded separately and that `Task` doesn't
+                    // survive a relaunch.
+                    if elevationComplete {
+                        status = .complete
+                    } else {
+                        status = elevationTasks[context.id] != nil ? .downloading : .paused
+                    }
                 case .inactive: status = .paused
                 default: status = .downloading
                 }
+            }
+
+            if status == .paused, !isUserPaused(context.id) {
+                noteInterruptedDownload()
             }
 
             // Only fire once per completion: `regions` is rebuilt every time,
@@ -159,21 +175,35 @@ final class OfflineRegionsModel {
         regions = summaries.sorted { $0.createdAt > $1.createdAt }
     }
 
-    /// Makes sure a pack's elevation tiles are known and, if the pack is
-    /// actively downloading, being fetched — covers both a freshly created
-    /// pack and one restored from disk on a fresh launch, since the download
-    /// `Task` itself never survives a relaunch.
+    func resumeInterruptedDownloads() {
+        for region in regions where region.status == .paused && !isUserPaused(region.id) {
+            resume(region.id)
+        }
+        hasInterruptedDownloads = false
+    }
+
+    func dismissInterruptedDownloadsPrompt() {
+        hasInterruptedDownloads = false
+    }
+
+    /// `refresh()` runs constantly, so the prompt is armed at most once per
+    /// launch — otherwise dismissing it would just bring it straight back.
+    private func noteInterruptedDownload() {
+        guard !didPromptForInterruptedDownloads else { return }
+        didPromptForInterruptedDownloads = true
+        hasInterruptedDownloads = true
+    }
+
+    /// Makes sure a pack's elevation tile keys and cached-tile count are
+    /// known, so the pack's progress can include them. Deliberately does not
+    /// start a download: like the pack itself, an unfinished elevation
+    /// download is only resumed when the user asks for it, via `resume(_:)`.
     private func ensureElevationTracking(id: String, pack: MLNOfflinePack) {
-        if elevationKeysByID[id] == nil {
-            let keys = Self.elevationKeys(for: pack)
-            elevationKeysByID[id] = keys
-            let done = keys.filter(ElevationService.isTileCached).count
-            elevationProgressByID[id] = (done: done, total: keys.count, bytes: 0)
-        }
-        let complete = (elevationProgressByID[id]?.done ?? 0) >= (elevationProgressByID[id]?.total ?? 0)
-        if !complete, pack.state != .inactive, elevationTasks[id] == nil {
-            startElevationDownload(id: id)
-        }
+        guard elevationKeysByID[id] == nil else { return }
+        let keys = Self.elevationKeys(for: pack)
+        elevationKeysByID[id] = keys
+        let done = keys.filter(ElevationService.isTileCached).count
+        elevationProgressByID[id] = (done: done, total: keys.count, bytes: 0)
     }
 
     private static func elevationKeys(for pack: MLNOfflinePack) -> [ElevationService.TileKey] {

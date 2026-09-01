@@ -344,7 +344,22 @@ struct ContentView: View {
             }
             .sheet(isPresented: $isOfflineRegionsListPresented) {
                 OfflineRegionsSheet(model: offlineModel)
-            }            .sheet(isPresented: $isElevationPresented) {
+            }
+            .alert(
+                "Resume downloads?",
+                isPresented: Binding(
+                    get: { offlineModel.hasInterruptedDownloads },
+                    set: { isPresented in
+                        if !isPresented { offlineModel.dismissInterruptedDownloadsPrompt() }
+                    }
+                )
+            ) {
+                Button("Resume") { offlineModel.resumeInterruptedDownloads() }
+                Button("Not Now", role: .cancel) { offlineModel.dismissInterruptedDownloadsPrompt() }
+            } message: {
+                Text("Some offline downloads didn't finish. Resume them now?")
+            }
+            .sheet(isPresented: $isElevationPresented) {
                 ElevationProfileSheet(profile: elevation)
             }
             .sheet(item: $pinDetail) { pin in
