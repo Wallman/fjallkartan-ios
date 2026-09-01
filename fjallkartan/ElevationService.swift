@@ -71,6 +71,14 @@ nonisolated final class ElevationService: @unchecked Sendable {
         return values?.fileSize ?? 0
     }
 
+    private static func markTileAbsent(_ key: TileKey) {
+        try? Data().write(to: offlineCacheURL(for: key), options: .atomic)
+    }
+
+    private static func isTileKnownAbsent(_ key: TileKey) -> Bool {
+        cachedFileSize(key) == 0 && isTileCached(key)
+    }
+
     static func deleteTiles(_ keys: some Sequence<TileKey>) {
         for key in keys {
             try? FileManager.default.removeItem(at: offlineCacheURL(for: key))
@@ -120,11 +128,19 @@ nonisolated final class ElevationService: @unchecked Sendable {
         guard Task.isCancelled == false else { return (false, 0) }
         let url = TileServer.elevation.url(z: Self.zoom, x: key.x, y: key.y)
         guard let (data, response) = try? await session.data(from: url),
-              let http = response as? HTTPURLResponse,
-              (200...299).contains(http.statusCode),
-              Self.decode(data) != nil else {
+              let http = response as? HTTPURLResponse else {
             return (false, 0)
         }
+        // The elevation tileset is sparse, so "not found" is a settled answer
+        // rather than a failure: record it and count the tile as done.
+        guard (200...299).contains(http.statusCode) else {
+            if http.statusCode == 404 {
+                Self.markTileAbsent(key)
+                return (true, 0)
+            }
+            return (false, 0)
+        }
+        guard Self.decode(data) != nil else { return (false, 0) }
         try? data.write(to: Self.offlineCacheURL(for: key), options: .atomic)
         return (true, data.count)
     }
@@ -198,6 +214,7 @@ nonisolated final class ElevationService: @unchecked Sendable {
     }
 
     private func fetchTile(_ key: TileKey) async -> HeightTile? {
+        if Self.isTileKnownAbsent(key) { return nil }
         if let data = try? Data(contentsOf: Self.offlineCacheURL(for: key)),
            let tile = Self.decode(data) {
             return tile
