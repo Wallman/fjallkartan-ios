@@ -347,9 +347,10 @@ struct DistanceMarkerTests {
     /// The 500 m spacing tier would otherwise round to a whole (and
     /// duplicate/zero) kilometre label.
     @Test func markerLabelShowsFractionalKilometres() {
-        #expect(DistanceMeasurement.markerLabel(meters: 500).contains("0.5"))
-        #expect(DistanceMeasurement.markerLabel(meters: 1_500).contains("1.5"))
+        let separator = Locale.current.decimalSeparator ?? "."
+        #expect(DistanceMeasurement.markerLabel(meters: 500).contains("0\(separator)5"))
+        #expect(DistanceMeasurement.markerLabel(meters: 1_500).contains("1\(separator)5"))
         #expect(DistanceMeasurement.markerLabel(meters: 1_000).contains("1"))
-        #expect(!DistanceMeasurement.markerLabel(meters: 1_000).contains("."))
+        #expect(!DistanceMeasurement.markerLabel(meters: 1_000).contains(separator))
     }
 }
