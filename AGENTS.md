@@ -32,7 +32,7 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 | `fjallkartan/SavedRouteStore.swift` | Thin wrapper over `DocumentDirectoryStore<SavedRoute>` for one-JSON-file-per-route persistence. |
 | `fjallkartan/SavedRoutesView.swift` | `SavedRoutesModel` and `SavedRoutesList` UI (embedded in `SavedSheet`) for listing/loading/renaming/deleting saved routes. |
 | `fjallkartan/FeaturedRoutes.swift` | Read-only catalogue of bundled suggested routes, decoded once from `resources/featured-routes.json`. |
-| `fjallkartan/RouteNameSheet.swift` | Small sheet used both to name a route on save and to rename one from the saved list. |
+| `fjallkartan/RouteNameAlert.swift` | `.routeNameAlert` view modifiers (Bool- and item-driven) used to name a route on save, rename one from the saved list, and name a new offline region — alerts rather than a sheet so the keyboard doesn't force a two-step resize animation. |
 | `fjallkartan/Coord.swift` | Shared `Coord` (lat/lon pair) used by both `SavedRoute` and `SavedPin`, since `CLLocationCoordinate2D` isn't `Codable`. |
 | `fjallkartan/DocumentDirectoryStore.swift` | Generic one-JSON-file-per-item store; local-first with optional iCloud Documents sync (migration, `NSFileCoordinator` writes, `NSMetadataQuery` change observation). Backs both `SavedRouteStore` and `SavedPinStore`. |
 | `fjallkartan/SavedPin.swift` | Codable model for a saved pin (id, createdAt, coordinate, optional name/subtitle, schemaVersion, displayName). |

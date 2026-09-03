@@ -103,11 +103,10 @@ struct SavedRoutesSheet: View {
                 }
             }
             .navigationTitle("Saved routes")
-            .sheet(item: $renamingRoute) { route in
-                RouteNameSheet(title: "Rename route",
-                               initialName: route.displayName) { name in
-                    model.rename(route, to: name)
-                }
+            .routeNameAlert("Rename route",
+                        item: $renamingRoute,
+                        initialName: { $0.displayName }) { route, name in
+                model.rename(route, to: name)
             }
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

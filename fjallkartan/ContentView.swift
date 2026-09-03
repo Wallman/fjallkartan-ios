@@ -565,14 +565,13 @@ struct MeasureControlsView: View {
                             .buttonStyle(MapControlLabel.save)
                     }
                     .disabled(measurement.isEmpty)
-                    .sheet(isPresented: $isNamingRoute) {
-                        RouteNameSheet(title: "Name route",
-                                       initialName: savedRoutesModel.nextDefaultName()) { name in
-                            let saved = measurement.snapshot(elevation: elevation).renamed(to: name)
-                            savedRoutesModel.save(saved)
-                            measurement.markSaved(as: saved.displayName)
-                            onRouteSaved()
-                        }
+                    .routeNameAlert("Name route",
+                                     isPresented: $isNamingRoute,
+                                     initialName: savedRoutesModel.nextDefaultName()) { name in
+                        let saved = measurement.snapshot(elevation: elevation).renamed(to: name)
+                        savedRoutesModel.save(saved)
+                        measurement.markSaved(as: saved.displayName)
+                        onRouteSaved()
                     }
                 }
             }

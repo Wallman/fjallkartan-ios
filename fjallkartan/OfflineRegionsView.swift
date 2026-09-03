@@ -585,18 +585,17 @@ struct RegionDownloadBar: View {
         .background(Color(.systemBackground).opacity(0.9), in: RoundedRectangle(cornerRadius: 14))
         .frame(maxWidth: 300)
         .padding(.horizontal, 16)
-        .sheet(isPresented: $isNamingRegion) {
-            RouteNameSheet(
-                title: "Name this region",
-                initialName: ""
-            ) { name in
-                let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-                model.startDownload(
-                    name: trimmed.isEmpty ? regionNameFormatter.string(from: Date()) : trimmed,
-                    rect: rect
-                )
-                onDownload()
-            }
+        .routeNameAlert(
+            "Name this region",
+            isPresented: $isNamingRegion,
+            initialName: ""
+        ) { name in
+            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            model.startDownload(
+                name: trimmed.isEmpty ? regionNameFormatter.string(from: Date()) : trimmed,
+                rect: rect
+            )
+            onDownload()
         }
     }
 }
