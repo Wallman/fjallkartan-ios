@@ -2,14 +2,6 @@ import MapKit
 import MapLibre
 import SwiftUI
 
-/// Arbitrary data JSON-encoded into an `MLNOfflinePack`'s `context`, since a
-/// pack has no stable name/creation-date concept of its own
-private struct RegionContext: Codable {
-    let id: String
-    let name: String
-    let createdAt: Date
-}
-
 struct RegionSummary: Identifiable, Hashable {
     enum Status: Hashable {
         case downloading
@@ -25,6 +17,7 @@ struct RegionSummary: Identifiable, Hashable {
     let resourcesExpected: Int
     let bytes: Int
     let status: Status
+    let userPaused: Bool
 }
 
 @MainActor
@@ -33,28 +26,123 @@ final class OfflineRegionsModel {
     private(set) var regions: [RegionSummary] = []
 
     private(set) var hasInterruptedDownloads = false
-
     private var didPromptForInterruptedDownloads = false
 
-    var onRegionDownloadCompleted: () -> Void = { ReviewPrompter.shared.recordSuccessfulRegionDownload() }
-
-    private var packsByID: [String: MLNOfflinePack] = [:]
     private var failureMessages: [String: String] = [:]
 
-    private var elevationKeysByID: [String: [ElevationService.TileKey]] = [:]
     private var elevationProgressByID: [String: (done: Int, total: Int, bytes: Int)] = [:]
     private var elevationTasks: [String: Task<Void, Never>] = [:]
+    private var initialProgressRequestedIDs: Set<String> = []
 
     @ObservationIgnored private nonisolated(unsafe) var progressObserver: NSObjectProtocol?
     @ObservationIgnored private nonisolated(unsafe) var errorObserver: NSObjectProtocol?
     @ObservationIgnored private var packsObserver: NSKeyValueObservation?
 
     init() {
+        Self.performOneTimeWipeIfNeeded()
         packsObserver = MLNOfflineStorage.shared.observe(\.packs, options: [.new]) { _, _ in
             Task { @MainActor [weak self] in self?.refresh() }
         }
         refresh()
         observeNotifications()
+    }
+
+    private static let didWipeLegacyRegionsKey = "OfflineRegionsModel.didWipeLegacyRegions"
+
+    private static func performOneTimeWipeIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: didWipeLegacyRegionsKey) else { return }
+
+        for pack in MLNOfflineStorage.shared.packs ?? [] {
+            MLNOfflineStorage.shared.removePack(pack) { _ in }
+        }
+
+        let legacyElevationDirectory = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("ElevationTiles", isDirectory: true)
+        try? FileManager.default.removeItem(at: legacyElevationDirectory)
+
+        UserDefaults.standard.removeObject(forKey: pausedIDsDefaultsKey)
+        UserDefaults.standard.set(true, forKey: didWipeLegacyRegionsKey)
+    }
+    
+    func refresh() {
+        let allInfos = OfflineRegionsStore.shared.allRegions()
+
+        let needsPacks = allInfos.contains { !$0.completed }
+        let packsByMLNRegionID: [Int64: MLNOfflinePack] = needsPacks
+            ? Dictionary(
+                uniqueKeysWithValues: (MLNOfflineStorage.shared.packs ?? [])
+                    .filter { $0.state != .invalid }
+                    .compactMap { pack in pack.regionId.map { ($0.int64Value, pack) } }
+            )
+            : [:]
+
+        var summaries: [RegionSummary] = []
+
+        for info in allInfos {
+            let pack = info.mlnRegionID.flatMap { packsByMLNRegionID[$0] }
+            if !info.completed {
+                ensureElevationTracking(id: info.id)
+                if let pack, initialProgressRequestedIDs.insert(info.id).inserted {
+                    pack.requestProgress()
+                }
+            } else if elevationProgressByID[info.id] == nil {
+                let progress = OfflineRegionsStore.shared.regionProgress(id: info.id)
+                elevationProgressByID[info.id] = (done: progress.count, total: progress.count, bytes: progress.bytes)
+            }
+
+            let elevation = elevationProgressByID[info.id] ?? (done: 0, total: 0, bytes: 0)
+            let elevationComplete = elevation.done >= elevation.total
+
+            let status: RegionSummary.Status
+            if let message = failureMessages[info.id] {
+                status = .failed(message)
+            } else if info.completed {
+                status = .complete
+            } else if let pack {
+                switch pack.state {
+                case .complete:
+                    if elevationComplete {
+                        status = .complete
+                    } else {
+                        status = elevationTasks[info.id] != nil ? .downloading : .paused
+                    }
+                case .inactive: status = .paused
+                default: status = .downloading
+                }
+            } else {
+                status = .downloading
+            }
+
+            if status == .paused, !info.paused {
+                noteInterruptedDownload()
+            }
+
+            
+            if status == .complete, let pack, !info.completed {
+                ReviewPrompter.shared.recordSuccessfulRegionDownload()
+                OfflineRegionsStore.shared.setSize(info.id, bytes: Int64(pack.progress.countOfBytesCompleted) + Int64(elevation.bytes))
+                OfflineRegionsStore.shared.setCompleted(info.id)
+            }
+
+            
+            let bytes = status == .complete
+                ? Int(info.size ?? (Int64(pack?.progress.countOfBytesCompleted ?? 0) + Int64(elevation.bytes)))
+                : Int(pack?.progress.countOfBytesCompleted ?? 0) + elevation.bytes
+
+            summaries.append(RegionSummary(
+                id: info.id,
+                name: info.name,
+                createdAt: info.createdAt,
+                resourcesDone: Int(pack?.progress.countOfResourcesCompleted ?? 0) + elevation.done,
+                resourcesExpected: Int(pack?.progress.countOfResourcesExpected ?? 0) + elevation.total,
+                bytes: bytes,
+                status: status,
+                userPaused: info.paused
+            ))
+        }
+
+        regions = summaries.sorted { $0.createdAt > $1.createdAt }
     }
 
     deinit {
@@ -82,9 +170,16 @@ final class OfflineRegionsModel {
 
     private func handleProgressChanged(_ notification: Notification) {
         guard let pack = notification.object as? MLNOfflinePack,
-              let context = decodeContext(pack) else { return }
-        failureMessages[context.id] = nil
-        if pack.state == .inactive, !isUserPaused(context.id) {
+              let id = decodeContext(pack) else { return }
+        let region = regions.first { $0.id == id }
+        // Gate on `regions` already reflecting a settled status, not on the
+        // DB's `userPaused` flag alone — after a force quit, a user-paused
+        // region's flag is already true before its pack has ever been
+        // queried this launch, and skipping here would leave `regions`
+        // stuck showing its stale pre-resolve numbers forever.
+        guard region?.status != .complete, region?.status != .paused else { return }
+        failureMessages[id] = nil
+        if pack.state == .inactive, !(region?.userPaused ?? false) {
             noteInterruptedDownload()
         }
         refresh()
@@ -92,91 +187,20 @@ final class OfflineRegionsModel {
 
     private func handleError(_ notification: Notification) {
         guard let pack = notification.object as? MLNOfflinePack,
-              let context = decodeContext(pack) else { return }
+              let id = decodeContext(pack) else { return }
         let error = notification.userInfo?[MLNOfflinePackUserInfoKey.error] as? NSError
-        failureMessages[context.id] = error?.localizedDescription ?? String(localized: "Download failed.")
+        failureMessages[id] = error?.localizedDescription ?? String(localized: "Download failed.")
         refresh()
     }
 
-    private func decodeContext(_ pack: MLNOfflinePack) -> RegionContext? {
-        try? JSONDecoder().decode(RegionContext.self, from: pack.context)
+    private func decodeContext(_ pack: MLNOfflinePack) -> String? {
+        try? JSONDecoder().decode(String.self, from: pack.context)
     }
 
     private static let pausedIDsDefaultsKey = "OfflineRegionsModel.pausedIDs"
 
-    private func isUserPaused(_ id: String) -> Bool {
-        (UserDefaults.standard.stringArray(forKey: Self.pausedIDsDefaultsKey) ?? []).contains(id)
-    }
-
-    private func setUserPaused(_ id: String, _ paused: Bool) {
-        var ids = Set(UserDefaults.standard.stringArray(forKey: Self.pausedIDsDefaultsKey) ?? [])
-        if paused { ids.insert(id) } else { ids.remove(id) }
-        UserDefaults.standard.set(Array(ids), forKey: Self.pausedIDsDefaultsKey)
-    }
-
-    func refresh() {
-        let packs = MLNOfflineStorage.shared.packs ?? []
-        var byID: [String: MLNOfflinePack] = [:]
-        var summaries: [RegionSummary] = []
-
-        for pack in packs {
-            guard pack.state != .invalid, let context = decodeContext(pack) else { continue }
-            if packsByID[context.id] == nil {
-                pack.requestProgress()
-            }
-            byID[context.id] = pack
-            ensureElevationTracking(id: context.id, pack: pack)
-
-            let elevation = elevationProgressByID[context.id] ?? (done: 0, total: 0, bytes: 0)
-            let elevationComplete = elevation.done >= elevation.total
-
-            let status: RegionSummary.Status
-            if let message = failureMessages[context.id] {
-                status = .failed(message)
-            } else {
-                switch pack.state {
-                case .complete:
-                    // The pack's own tiles are done, but its elevation tiles
-                    // are downloaded separately and that `Task` doesn't
-                    // survive a relaunch.
-                    if elevationComplete {
-                        status = .complete
-                    } else {
-                        status = elevationTasks[context.id] != nil ? .downloading : .paused
-                    }
-                case .inactive: status = .paused
-                default: status = .downloading
-                }
-            }
-
-            if status == .paused, !isUserPaused(context.id) {
-                noteInterruptedDownload()
-            }
-
-            // Only fire once per completion: `regions` is rebuilt every time,
-            // so gate on this being the transition into `.complete` rather
-            // than an already-settled pack.
-            if status == .complete, regions.first(where: { $0.id == context.id })?.status != .complete {
-                onRegionDownloadCompleted()
-            }
-
-            summaries.append(RegionSummary(
-                id: context.id,
-                name: context.name,
-                createdAt: context.createdAt,
-                resourcesDone: Int(pack.progress.countOfResourcesCompleted) + elevation.done,
-                resourcesExpected: Int(pack.progress.countOfResourcesExpected) + elevation.total,
-                bytes: Int(pack.progress.countOfBytesCompleted) + elevation.bytes,
-                status: status
-            ))
-        }
-
-        packsByID = byID
-        regions = summaries.sorted { $0.createdAt > $1.createdAt }
-    }
-
     func resumeInterruptedDownloads() {
-        for region in regions where region.status == .paused && !isUserPaused(region.id) {
+        for region in regions where region.status == .paused && !region.userPaused {
             resume(region.id)
         }
         hasInterruptedDownloads = false
@@ -194,37 +218,54 @@ final class OfflineRegionsModel {
         hasInterruptedDownloads = true
     }
 
-    /// Makes sure a pack's elevation tile keys and cached-tile count are
-    /// known, so the pack's progress can include them. Deliberately does not
-    /// start a download: like the pack itself, an unfinished elevation
-    /// download is only resumed when the user asks for it, via `resume(_:)`.
-    private func ensureElevationTracking(id: String, pack: MLNOfflinePack) {
-        guard elevationKeysByID[id] == nil else { return }
-        let keys = Self.elevationKeys(for: pack)
-        elevationKeysByID[id] = keys
-        let done = keys.filter(ElevationService.isTileCached).count
-        elevationProgressByID[id] = (done: done, total: keys.count, bytes: 0)
+    private func ensureElevationTracking(id: String) {
+        guard elevationProgressByID[id] == nil else { return }
+        let progress = OfflineRegionsStore.shared.regionProgress(id: id)
+        let total = OfflineRegionsStore.shared.allKeys(regionID: id).count
+        elevationProgressByID[id] = (done: progress.count, total: total, bytes: progress.bytes)
     }
 
-    private static func elevationKeys(for pack: MLNOfflinePack) -> [ElevationService.TileKey] {
-        guard let region = pack.region as? MLNTilePyramidOfflineRegion else { return [] }
-        return ElevationService.tileKeys(coveringRect: MKMapRect(bounds: region.bounds))
-    }
-
-    private func startElevationDownload(id: String) {
-        guard let keys = elevationKeysByID[id], !keys.isEmpty else { return }
+    private func startElevationDownload(id: String, keys: [ElevationService.TileKey]? = nil) {
         elevationTasks[id] = Task { @MainActor [weak self] in
-            await ElevationService.shared.prefetchTiles(keys) { done, total, bytes in
-                self?.elevationProgressByID[id] = (done: done, total: total, bytes: bytes)
-                self?.refresh()
+            defer { self?.elevationTasks[id] = nil }
+            let resolvedKeys: [ElevationService.TileKey]
+            if let keys {
+                resolvedKeys = keys
+            } else {
+                resolvedKeys = await Task.detached {
+                    OfflineRegionsStore.shared.allKeys(regionID: id)
+                }.value
             }
-            self?.elevationTasks[id] = nil
+            guard !resolvedKeys.isEmpty else { return }
+
+            // Filter out already-downloaded tiles in bulk up front, rather
+            // than letting `prefetchTiles` re-check each one individually —
+            // on resume, a big mostly-finished region could otherwise run
+            // thousands of SQLite lookups.
+            let (alreadyFetched, baseline) = await Task.detached {
+                (OfflineRegionsStore.shared.fetchedKeys(regionID: id),
+                 OfflineRegionsStore.shared.regionProgress(id: id))
+            }.value
+            let missingKeys = resolvedKeys.filter { !alreadyFetched.contains($0) }
+            let total = resolvedKeys.count
+            self?.elevationProgressByID[id] = (done: baseline.count, total: total, bytes: baseline.bytes)
+            guard !missingKeys.isEmpty else { return }
+
+            var lastRefresh = Date.distantPast
+            await ElevationService.shared.prefetchTiles(missingKeys) { done, _, bytes in
+                self?.elevationProgressByID[id] = (done: baseline.count + done, total: total, bytes: baseline.bytes + bytes)
+                let now = Date()
+                if baseline.count + done == total || now.timeIntervalSince(lastRefresh) > 0.2 {
+                    lastRefresh = now
+                    self?.refresh()
+                }
+            }
         }
     }
 
     func startDownload(name: String, rect: MKMapRect) {
-        let context = RegionContext(id: UUID().uuidString, name: name, createdAt: Date())
-        guard let contextData = try? JSONEncoder().encode(context) else { return }
+        let id = UUID().uuidString
+        guard let contextData = try? JSONEncoder().encode(id) else { return }
 
         let region = MLNTilePyramidOfflineRegion(
             styleURL: MapView.buildStyleURL(),
@@ -234,30 +275,40 @@ final class OfflineRegionsModel {
         )
 
         let keys = ElevationService.tileKeys(coveringRect: rect)
-        elevationKeysByID[context.id] = keys
-        elevationProgressByID[context.id] = (done: 0, total: keys.count, bytes: 0)
+        elevationProgressByID[id] = (done: 0, total: keys.count, bytes: 0)
+
+        OfflineRegionsStore.shared.insertRegion(id: id, name: name, createdAt: Date())
+        OfflineRegionsStore.shared.linkTiles(regionID: id, keys: keys)
 
         MLNOfflineStorage.shared.addPack(for: region, withContext: contextData) { [weak self] pack, _ in
             guard let pack else { return }
+            if let mlnRegionID = pack.regionId?.int64Value {
+                OfflineRegionsStore.shared.setMLNRegionID(id, mlnRegionID: mlnRegionID)
+            }
             pack.resume()
             Task { @MainActor [weak self] in
-                self?.startElevationDownload(id: context.id)
+                self?.startElevationDownload(id: id, keys: keys)
                 self?.refresh()
             }
         }
     }
 
+    private func mlnPack(for regionID: String) -> MLNOfflinePack? {
+        guard let mlnRegionID = OfflineRegionsStore.shared.mlnRegionID(for: regionID) else { return nil }
+        return (MLNOfflineStorage.shared.packs ?? []).first { $0.regionId?.int64Value == mlnRegionID }
+    }
+
     func pause(_ regionID: String) {
-        setUserPaused(regionID, true)
-        packsByID[regionID]?.suspend()
+        OfflineRegionsStore.shared.setPaused(regionID, true)
+        mlnPack(for: regionID)?.suspend()
         elevationTasks[regionID]?.cancel()
         elevationTasks[regionID] = nil
         refresh()
     }
 
     func resume(_ regionID: String) {
-        guard let pack = packsByID[regionID] else { return }
-        setUserPaused(regionID, false)
+        guard let pack = mlnPack(for: regionID) else { return }
+        OfflineRegionsStore.shared.setPaused(regionID, false)
         failureMessages[regionID] = nil
         pack.resume()
         startElevationDownload(id: regionID)
@@ -265,28 +316,20 @@ final class OfflineRegionsModel {
     }
 
     func delete(_ regionID: String) {
-        guard let pack = packsByID[regionID] else { return }
-        setUserPaused(regionID, false)
         failureMessages[regionID] = nil
         elevationTasks[regionID]?.cancel()
         elevationTasks[regionID] = nil
-
-        // A tile can be shared with another downloaded region (overlapping
-        // areas), so only delete the ones no other tracked region still needs.
-        let ownKeys = Set(elevationKeysByID[regionID] ?? [])
-        let keysStillNeeded = elevationKeysByID
-            .filter { $0.key != regionID }
-            .reduce(into: Set<ElevationService.TileKey>()) { $0.formUnion($1.value) }
-        let keysToDelete = ownKeys.subtracting(keysStillNeeded)
-        elevationKeysByID[regionID] = nil
         elevationProgressByID[regionID] = nil
-        if !keysToDelete.isEmpty {
-            Task.detached(priority: .utility) { ElevationService.deleteTiles(keysToDelete) }
-        }
+        initialProgressRequestedIDs.remove(regionID)
 
-        MLNOfflineStorage.shared.removePack(pack) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.refresh() }
+        // Look up the pack before deleting the row — `mlnRegionID(for:)`
+        // needs it to still exist.
+        let pack = mlnPack(for: regionID)
+        OfflineRegionsStore.shared.deleteRegion(id: regionID)
+        if let pack {
+            MLNOfflineStorage.shared.removePack(pack)
         }
+        refresh()
     }
 }
 

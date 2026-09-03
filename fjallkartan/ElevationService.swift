@@ -49,39 +49,42 @@ nonisolated final class ElevationService: @unchecked Sendable {
         cache.countLimit = cachedTiles
     }
 
-    // MARK: - Offline cache
+    // MARK: - Offline store
+    
+    func prefetchTiles(
+        _ keys: [TileKey],
+        onProgress: @MainActor @escaping (_ tilesDone: Int, _ tilesTotal: Int, _ bytesDone: Int) -> Void
+    ) async {
+        let total = keys.count
+        var done = 0
+        var bytes = 0
+        await onProgress(done, total, bytes)
 
-    private static let offlineCacheDirectory: URL = {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let directory = base.appendingPathComponent("ElevationTiles", isDirectory: true)
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return directory
-    }()
-
-    private static func offlineCacheURL(for key: TileKey) -> URL {
-        offlineCacheDirectory.appendingPathComponent("\(key.x)_\(key.y).png")
-    }
-
-    static func isTileCached(_ key: TileKey) -> Bool {
-        FileManager.default.fileExists(atPath: offlineCacheURL(for: key).path)
-    }
-
-    private static func cachedFileSize(_ key: TileKey) -> Int {
-        let values = try? offlineCacheURL(for: key).resourceValues(forKeys: [.fileSizeKey])
-        return values?.fileSize ?? 0
-    }
-
-    private static func markTileAbsent(_ key: TileKey) {
-        try? Data().write(to: offlineCacheURL(for: key), options: .atomic)
-    }
-
-    private static func isTileKnownAbsent(_ key: TileKey) -> Bool {
-        cachedFileSize(key) == 0 && isTileCached(key)
-    }
-
-    static func deleteTiles(_ keys: some Sequence<TileKey>) {
-        for key in keys {
-            try? FileManager.default.removeItem(at: offlineCacheURL(for: key))
+        let concurrency = 6
+        var index = 0
+        await withTaskGroup(of: (resolved: Bool, bytesAdded: Int).self) { group in
+            func addNext() {
+                guard index < keys.count else { return }
+                let key = keys[index]
+                index += 1
+                group.addTask { [weak self] in
+                    guard let self, Task.isCancelled == false else { return (false, 0) }
+                    let result = await self.fetchTile(key)
+                    if let dataToStore = result.dataToStore {
+                        OfflineRegionsStore.shared.setTileData(key, data: dataToStore)
+                    }
+                    return (result.resolved, result.bytesAdded)
+                }
+            }
+            for _ in 0..<min(concurrency, keys.count) { addNext() }
+            while let (resolved, bytesAdded) = await group.next() {
+                if resolved {
+                    done += 1
+                    bytes += bytesAdded
+                }
+                await onProgress(done, total, bytes)
+                addNext()
+            }
         }
     }
 
@@ -90,59 +93,30 @@ nonisolated final class ElevationService: @unchecked Sendable {
         return TilePyramid.tileIndices(for: region, z: zoom).map { TileKey(x: $0.x, y: $0.y) }
     }
 
-    func prefetchTiles(
-        _ keys: [TileKey],
-        onProgress: @MainActor @escaping (_ tilesDone: Int, _ tilesTotal: Int, _ bytesDone: Int) -> Void
-    ) async {
-        let total = keys.count
-        var done = 0
-        var bytes = keys.reduce(0) { $0 + (Self.isTileCached($1) ? Self.cachedFileSize($1) : 0) }
-        await onProgress(keys.filter(Self.isTileCached).count, total, bytes)
-
-        let concurrency = 6
-        var index = 0
-        await withTaskGroup(of: (Bool, Int).self) { group in
-            func addNext() {
-                guard index < keys.count else { return }
-                let key = keys[index]
-                index += 1
-                group.addTask { [weak self] in
-                    guard let self else { return (false, 0) }
-                    if Self.isTileCached(key) { return (true, 0) }
-                    return await self.fetchAndCacheTile(key)
-                }
-            }
-            for _ in 0..<min(concurrency, keys.count) { addNext() }
-            while let (succeeded, addedBytes) = await group.next() {
-                if succeeded {
-                    done += 1
-                    bytes += addedBytes
-                }
-                await onProgress(done, total, bytes)
-                addNext()
-            }
+    private func fetchTile(_ key: TileKey) async -> (tile: HeightTile?, dataToStore: Data?, resolved: Bool, bytesAdded: Int) {
+        if let downloaded = OfflineRegionsStore.shared.tileData(key) {
+            let tile = downloaded.isEmpty ? nil : Self.decode(downloaded)
+            if let tile { cache.setObject(tile, forKey: Self.cacheKey(key)) }
+            return (tile, nil, true, downloaded.count)
         }
+
+        guard let (data, statusCode) = await fetchFromNetwork(key) else { return (nil, nil, false, 0) }
+        guard (200...299).contains(statusCode) else {
+            guard statusCode == 404 else { return (nil, nil, false, 0) }
+            return (nil, Data(), true, 0)
+        }
+        guard let tile = Self.decode(data) else { return (nil, nil, false, 0) }
+        cache.setObject(tile, forKey: Self.cacheKey(key))
+        return (tile, data, true, data.count)
     }
 
-    private func fetchAndCacheTile(_ key: TileKey) async -> (succeeded: Bool, bytes: Int) {
-        guard Task.isCancelled == false else { return (false, 0) }
+    private func fetchFromNetwork(_ key: TileKey) async -> (data: Data, statusCode: Int)? {
         let url = TileServer.elevation.url(z: Self.zoom, x: key.x, y: key.y)
         guard let (data, response) = try? await session.data(from: url),
               let http = response as? HTTPURLResponse else {
-            return (false, 0)
+            return nil
         }
-        // The elevation tileset is sparse, so "not found" is a settled answer
-        // rather than a failure: record it and count the tile as done.
-        guard (200...299).contains(http.statusCode) else {
-            if http.statusCode == 404 {
-                Self.markTileAbsent(key)
-                return (true, 0)
-            }
-            return (false, 0)
-        }
-        guard Self.decode(data) != nil else { return (false, 0) }
-        try? data.write(to: Self.offlineCacheURL(for: key), options: .atomic)
-        return (true, data.count)
+        return (data, http.statusCode)
     }
 
     // MARK: - Sampling
@@ -173,10 +147,6 @@ nonisolated final class ElevationService: @unchecked Sendable {
         }
     }
 
-    func height(for coordinate: CLLocationCoordinate2D) async -> Double? {
-        await heights(for: [coordinate]).first ?? nil
-    }
-
     // MARK: - Tile loading
 
     private func tile(_ key: TileKey) async -> HeightTile? {
@@ -195,10 +165,7 @@ nonisolated final class ElevationService: @unchecked Sendable {
             lock.unlock()
 
             Task {
-                let tile = await fetchTile(key)
-                if let tile {
-                    cache.setObject(tile, forKey: Self.cacheKey(key))
-                }
+                let tile = await fetchTile(key).tile
                 let waiting = removeWaiters(for: key)
                 for waiter in waiting { waiter(tile) }
             }
@@ -211,22 +178,6 @@ nonisolated final class ElevationService: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return inFlight.removeValue(forKey: key) ?? []
-    }
-
-    private func fetchTile(_ key: TileKey) async -> HeightTile? {
-        if Self.isTileKnownAbsent(key) { return nil }
-        if let data = try? Data(contentsOf: Self.offlineCacheURL(for: key)),
-           let tile = Self.decode(data) {
-            return tile
-        }
-
-        let url = TileServer.elevation.url(z: Self.zoom, x: key.x, y: key.y)
-        guard let (data, response) = try? await session.data(from: url),
-              let http = response as? HTTPURLResponse,
-              (200...299).contains(http.statusCode) else {
-            return nil
-        }
-        return Self.decode(data)
     }
 
     private static func cacheKey(_ key: TileKey) -> NSString {
