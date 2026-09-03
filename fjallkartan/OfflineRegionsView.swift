@@ -620,16 +620,22 @@ private struct RegionRow: View {
 
     var body: some View {
         HStack {
-            if isDownloading || isPaused {
+            if isDownloading {
                 ProgressView(value: doneFraction)
                     .progressViewStyle(.circular)
-                    .frame(width: 24, height: 24)
+                    .frame(width: 20, height: 20)
+            } else if isPaused {
+                Image(systemName: "pause.circle.fill")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20, height: 20)
             } else if failureMessage != nil {
                 Image(systemName: "exclamationmark.circle.fill")
                     .foregroundStyle(.red)
+                    .frame(width: 20, height: 20)
             } else {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
+                    .frame(width: 20, height: 20)
             }
 
             VStack(alignment: .leading, spacing: 2) {
