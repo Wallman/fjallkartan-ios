@@ -532,17 +532,15 @@ struct RegionDownloadBar: View {
     let rect: MKMapRect
     let onDownload: () -> Void
     @State private var isNamingRegion = false
-
-    private var estimate: (tileCount: Int, bytes: Int) {
-        TilePyramid.estimate(rect: rect)
-    }
+    @State private var estimate: (tileCount: Int, bytes: Int) = (0, 0)
+    @State private var availableCapacityBytes: Int?
 
     private var exceedsGuard: Bool {
         estimate.bytes > TilePyramid.maxDownloadBytes
     }
 
     private var insufficientStorage: Bool {
-        guard let available = TilePyramid.availableCapacityBytes else { return false }
+        guard let available = availableCapacityBytes else { return false }
         return estimate.bytes > available
     }
 
@@ -585,6 +583,19 @@ struct RegionDownloadBar: View {
         .background(Color(.systemBackground).opacity(0.9), in: RoundedRectangle(cornerRadius: 14))
         .frame(maxWidth: 300)
         .padding(.horizontal, 16)
+        .onAppear {
+            Task.detached(priority: .userInitiated) {
+                let capacity = TilePyramid.availableCapacityBytes
+                await MainActor.run { availableCapacityBytes = capacity }
+            }
+        }
+        .onChange(of: "\(rect)", initial: true) { _, _ in
+            let currentRect = rect
+            Task.detached(priority: .userInitiated) {
+                let computed = TilePyramid.estimate(rect: currentRect)
+                await MainActor.run { estimate = computed }
+            }
+        }
         .routeNameAlert(
             "Name this region",
             isPresented: $isNamingRegion,
