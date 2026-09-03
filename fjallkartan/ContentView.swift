@@ -25,7 +25,7 @@ struct ContentView: View {
     @State private var isShowingMoreControls = false
     @State private var visibleTip: GuideTip?
     @State private var didSaveRoute = false
-    @State private var offlineModel = OfflineRegionsModel()
+    @State private var offlineModel = OfflineRegionsModel.shared
     @State private var savedRoutesModel = (try? SavedRouteStore()).map(SavedRoutesModel.init)
     @State private var savedPinsModel = (try? SavedPinStore()).map(SavedPinsModel.init)
     @State private var routeFitToken = 0 // Needed to avoid re-centering when drawing

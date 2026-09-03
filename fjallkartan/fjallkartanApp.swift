@@ -1,4 +1,5 @@
 import SwiftUI
+import BackgroundTasks
 
 @main
 struct fjallkartanApp: App {
@@ -8,6 +9,8 @@ struct fjallkartanApp: App {
     init() {
         MetricKitReporter.shared.start()
         MapLibreLoggingBridge.start()
+        OfflineRegionsModel.registerBackgroundTask()
+        OfflineRegionsModel.allowBackgroundDownloads()
     }
 
     var body: some Scene {
@@ -27,7 +30,9 @@ struct fjallkartanApp: App {
                 KartverketTileProxy.ensureRunning()
             case .background:
                 reviewPrompter.noteEnteredBackground()
-                KartverketTileProxy.stop()
+                if !OfflineRegionsModel.shared.hasActiveBackgroundContinuation {
+                    KartverketTileProxy.stop()
+                }
             default: break
             }
         }

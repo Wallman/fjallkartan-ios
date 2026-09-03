@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	Merged into the Xcode-generated Info.plist alongside GENERATE_INFOPLIST_FILE = YES
+	(via the INFOPLIST_FILE build setting) because BGTaskSchedulerPermittedIdentifiers
+	is an array, which INFOPLIST_KEY_* build settings can't synthesize for arbitrary keys.
+
+	Wildcard form required by BGContinuedProcessingTaskRequest: the submitted concrete
+	identifier (see OfflineRegionsModel) must be prefixed by everything before the `.*`.
+	-->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>fjallkartan.fjallkartan.offline-download.*</string>
+	</array>
+</dict>
+</plist>

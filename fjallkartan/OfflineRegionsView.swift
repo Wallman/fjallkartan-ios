@@ -1,6 +1,9 @@
 import MapKit
 import MapLibre
 import SwiftUI
+import BackgroundTasks
+import OSLog
+import UIKit
 
 struct RegionSummary: Identifiable, Hashable {
     enum Status: Hashable {
@@ -23,6 +26,8 @@ struct RegionSummary: Identifiable, Hashable {
 @MainActor
 @Observable
 final class OfflineRegionsModel {
+    static let shared = OfflineRegionsModel()
+    
     private(set) var regions: [RegionSummary] = []
 
     private(set) var hasInterruptedDownloads = false
@@ -37,6 +42,40 @@ final class OfflineRegionsModel {
     @ObservationIgnored private nonisolated(unsafe) var progressObserver: NSObjectProtocol?
     @ObservationIgnored private nonisolated(unsafe) var errorObserver: NSObjectProtocol?
     @ObservationIgnored private var packsObserver: NSKeyValueObservation?
+
+    private static let backgroundTaskIdentifierPrefix = "fjallkartan.fjallkartan.offline-download."
+    private static let backgroundTaskConcreteIdentifier = backgroundTaskIdentifierPrefix + "active"
+
+    private static let backgroundLog = Logger(subsystem: Bundle.main.bundleIdentifier ?? "fjallkartan",
+                                              category: "OfflineBackgroundTask")
+
+    @ObservationIgnored private var backgroundContinuation: BGContinuedProcessingTask?
+
+    var hasActiveBackgroundContinuation: Bool { backgroundContinuation != nil }
+
+    static func registerBackgroundTask() {
+        let registered = BGTaskScheduler.shared.register(forTaskWithIdentifier: backgroundTaskConcreteIdentifier, using: nil) { task in
+            guard let continuedTask = task as? BGContinuedProcessingTask else {
+                task.setTaskCompleted(success: false)
+                return
+            }
+            backgroundLog.notice("continuation launch handler invoked")
+            Task { @MainActor in
+                OfflineRegionsModel.shared.attachBackgroundContinuation(continuedTask)
+            }
+        }
+        backgroundLog.notice("registerBackgroundTask: registered=\(registered, privacy: .public)")
+    }
+
+    /// `MLNOfflineStorage` pauses when the app is backgrounded, removing
+    /// this observer is what lets a download keep going while the continuation.
+    static func allowBackgroundDownloads() {
+        NotificationCenter.default.removeObserver(
+            MLNOfflineStorage.shared,
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+    }
 
     init() {
         Self.performOneTimeWipeIfNeeded()
@@ -143,6 +182,81 @@ final class OfflineRegionsModel {
         }
 
         regions = summaries.sorted { $0.createdAt > $1.createdAt }
+
+        updateBackgroundContinuationProgress()
+    }
+
+    private func ensureBackgroundContinuationRequested() {
+        guard backgroundContinuation == nil else { return }
+        let request = BGContinuedProcessingTaskRequest(
+            identifier: Self.backgroundTaskConcreteIdentifier,
+            title: String(localized: "Downloading offline map"),
+            subtitle: String(localized: "Preparing…")
+        )
+        request.strategy = .queue
+        do {
+            try BGTaskScheduler.shared.submit(request)
+            Self.backgroundLog.notice("submitted continuation request")
+        } catch {
+            Self.backgroundLog.error("failed to submit continuation request: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func attachBackgroundContinuation(_ task: BGContinuedProcessingTask) {
+        Self.backgroundLog.notice("continuation attached")
+        backgroundContinuation = task
+        KartverketTileProxy.ensureRunning()
+        task.expirationHandler = { [weak self] in
+            Task { @MainActor in
+                Self.backgroundLog.notice("continuation expired")
+                // System-revoked continuation: pause rather than let packs
+                // keep transferring with no runtime left to track them.
+                self?.suspendDownloadingRegions()
+                self?.finishBackgroundContinuation(success: false)
+            }
+        }
+        updateBackgroundContinuationProgress()
+    }
+
+    private func suspendDownloadingRegions() {
+        for region in regions where region.status == .downloading {
+            mlnPack(for: region.id)?.suspend()
+            elevationTasks[region.id]?.cancel()
+            elevationTasks[region.id] = nil
+        }
+        refresh()
+    }
+
+    private func finishBackgroundContinuation(success: Bool) {
+        guard let task = backgroundContinuation else { return }
+        Self.backgroundLog.notice("continuation finished, success=\(success, privacy: .public)")
+        backgroundContinuation = nil
+        task.setTaskCompleted(success: success)
+        if UIApplication.shared.applicationState != .active {
+            KartverketTileProxy.stop()
+        }
+    }
+
+    private func updateBackgroundContinuationProgress() {
+        let downloading = regions.filter { $0.status == .downloading }
+
+        guard let task = backgroundContinuation else {
+            return
+        }
+
+        guard !downloading.isEmpty else {
+            finishBackgroundContinuation(success: true)
+            return
+        }
+
+        let done = downloading.reduce(0) { $0 + $1.resourcesDone }
+        let expected = max(downloading.reduce(0) { $0 + $1.resourcesExpected }, 1)
+        task.progress.totalUnitCount = Int64(expected)
+        task.progress.completedUnitCount = Int64(done)
+        let subtitle = downloading.count > 1
+            ? String(localized: "\(downloading.count) regions")
+            : downloading[0].name
+        task.updateTitle(String(localized: "Downloading offline map"), subtitle: subtitle)
     }
 
     deinit {
@@ -289,6 +403,7 @@ final class OfflineRegionsModel {
             Task { @MainActor [weak self] in
                 self?.startElevationDownload(id: id, keys: keys)
                 self?.refresh()
+                self?.ensureBackgroundContinuationRequested()
             }
         }
     }
@@ -313,6 +428,7 @@ final class OfflineRegionsModel {
         pack.resume()
         startElevationDownload(id: regionID)
         refresh()
+        ensureBackgroundContinuationRequested()
     }
 
     func delete(_ regionID: String) {
