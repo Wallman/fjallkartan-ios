@@ -1,3 +1,1 @@
-Denne opdatering tilføjer en indlæsningsindikator, mens kortet indlæses, en påmindelse om at opdatere, hvis din appversion er meget forældet, og større tekst i kom-i-gang-tipsene for bedre læsbarhed.
-
-Offline kortdownloads genoptages nu automatisk, hvis appen lukkes under download. Vi har også forbedret pålideligheden af kortfliser nær grænsen mellem Norge og Sverige og opdateret vores privatlivspolitik.
+Offline kortdownloads fortsætter nu automatisk i baggrunden, så det ikke længere afbryder dem at skifte app – og vi har gjort downloads hurtigere. Vi har også rettet et problem, der kunne gøre kortet trægt, når man valgte et downloadområde.

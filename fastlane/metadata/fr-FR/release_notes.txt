@@ -1,3 +1,1 @@
-Cette mise à jour ajoute un indicateur de chargement pendant le chargement de la carte, une invite à mettre à jour si votre version de l'application est très ancienne, et un texte plus grand dans les astuces de prise en main pour une meilleure lisibilité.
-
-Les téléchargements de cartes hors ligne reprennent désormais automatiquement si l'application est fermée pendant le téléchargement. Nous avons également amélioré la fiabilité des tuiles de carte près de la frontière entre la Norvège et la Suède, et mis à jour notre politique de confidentialité.
+Les téléchargements de cartes hors ligne se poursuivent désormais automatiquement en arrière-plan, de sorte que changer d'application ne les interrompt plus, et nous avons accéléré les téléchargements. Nous avons également corrigé un problème qui pouvait rendre la carte peu réactive lors du choix d'une zone de téléchargement.

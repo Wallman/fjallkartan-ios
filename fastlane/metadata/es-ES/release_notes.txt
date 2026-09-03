@@ -1,3 +1,1 @@
-Esta actualización añade un indicador de carga mientras se carga el mapa, un aviso para actualizar si tu versión de la app es muy antigua, y texto más grande en los consejos de introducción para mejorar la legibilidad.
-
-Las descargas de mapas sin conexión ahora se reanudan automáticamente si la app se cierra durante la descarga. También hemos mejorado la fiabilidad de las teselas del mapa cerca de la frontera entre Noruega y Suecia, y hemos actualizado nuestra política de privacidad.
+Las descargas de mapas sin conexión ahora continúan automáticamente en segundo plano, así que cambiar de app ya no las interrumpe, y hemos acelerado las descargas. También hemos solucionado un problema que podía hacer que el mapa fuera lento al elegir una zona de descarga.

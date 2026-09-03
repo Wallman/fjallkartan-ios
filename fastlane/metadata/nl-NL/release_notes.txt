@@ -1,3 +1,1 @@
-Deze update voegt een laadindicator toe terwijl de kaart laadt, een melding om te updaten als je app-versie erg verouderd is, en grotere tekst in de introductietips voor betere leesbaarheid.
-
-Offline kaartdownloads worden nu automatisch hervat als de app tijdens het downloaden wordt gesloten. Ook hebben we de betrouwbaarheid van kaarttegels bij de grens tussen Noorwegen en Zweden verbeterd en ons privacybeleid bijgewerkt.
+Offline kaartdownloads gaan nu automatisch door op de achtergrond, zodat wisselen van app ze niet meer onderbreekt – en we hebben de downloads versneld. Ook hebben we een probleem opgelost waardoor de kaart traag kon aanvoelen bij het kiezen van een downloadgebied.

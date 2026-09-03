@@ -1,3 +1,1 @@
-Denne oppdateringen legger til en lasteindikator mens kartet laster, en påminnelse om å oppdatere hvis appversjonen din er svært utdatert, og større tekst i kom-i-gang-tipsene for bedre lesbarhet.
-
-Offline kartnedlastinger fortsetter nå automatisk hvis appen lukkes under nedlasting. Vi har også forbedret påliteligheten til kartfliser nær grensen mellom Norge og Sverige, og oppdatert personvernerklæringen vår.
+Offline kartnedlastinger fortsetter nå automatisk i bakgrunnen, slik at det å bytte app ikke lenger avbryter dem – og vi har gjort nedlastingene raskere. Vi har også fikset en feil som kunne gjøre kartet trått når man valgte et nedlastingsområde.
