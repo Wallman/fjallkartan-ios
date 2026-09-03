@@ -49,10 +49,11 @@ final class OfflineRegionsModel {
     private static let backgroundLog = Logger(subsystem: Bundle.main.bundleIdentifier ?? "fjallkartan",
                                               category: "OfflineBackgroundTask")
 
-    @ObservationIgnored private var backgroundContinuation: BGContinuedProcessingTask?
+    @ObservationIgnored private var backgroundContinuation: Any?
 
     var hasActiveBackgroundContinuation: Bool { backgroundContinuation != nil }
 
+    @available(iOS 26, *)
     static func registerBackgroundTask() {
         let registered = BGTaskScheduler.shared.register(forTaskWithIdentifier: backgroundTaskConcreteIdentifier, using: nil) { task in
             guard let continuedTask = task as? BGContinuedProcessingTask else {
@@ -69,6 +70,7 @@ final class OfflineRegionsModel {
 
     /// `MLNOfflineStorage` pauses when the app is backgrounded, removing
     /// this observer is what lets a download keep going while the continuation.
+    @available(iOS 26, *)
     static func allowBackgroundDownloads() {
         NotificationCenter.default.removeObserver(
             MLNOfflineStorage.shared,
@@ -187,6 +189,7 @@ final class OfflineRegionsModel {
     }
 
     private func ensureBackgroundContinuationRequested() {
+        guard #available(iOS 26, *) else { return }
         guard backgroundContinuation == nil else { return }
         let request = BGContinuedProcessingTaskRequest(
             identifier: Self.backgroundTaskConcreteIdentifier,
@@ -202,6 +205,7 @@ final class OfflineRegionsModel {
         }
     }
 
+    @available(iOS 26, *)
     private func attachBackgroundContinuation(_ task: BGContinuedProcessingTask) {
         Self.backgroundLog.notice("continuation attached")
         backgroundContinuation = task
@@ -227,8 +231,9 @@ final class OfflineRegionsModel {
         refresh()
     }
 
+    @available(iOS 26, *)
     private func finishBackgroundContinuation(success: Bool) {
-        guard let task = backgroundContinuation else { return }
+        guard let task = backgroundContinuation as? BGContinuedProcessingTask else { return }
         Self.backgroundLog.notice("continuation finished, success=\(success, privacy: .public)")
         backgroundContinuation = nil
         task.setTaskCompleted(success: success)
@@ -238,9 +243,10 @@ final class OfflineRegionsModel {
     }
 
     private func updateBackgroundContinuationProgress() {
+        guard #available(iOS 26, *) else { return }
         let downloading = regions.filter { $0.status == .downloading }
 
-        guard let task = backgroundContinuation else {
+        guard let task = backgroundContinuation as? BGContinuedProcessingTask else {
             return
         }
 

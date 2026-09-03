@@ -9,8 +9,10 @@ struct fjallkartanApp: App {
     init() {
         MetricKitReporter.shared.start()
         MapLibreLoggingBridge.start()
-        OfflineRegionsModel.registerBackgroundTask()
-        OfflineRegionsModel.allowBackgroundDownloads()
+        if #available(iOS 26, *) {
+            OfflineRegionsModel.registerBackgroundTask()
+            OfflineRegionsModel.allowBackgroundDownloads()
+        }
     }
 
     var body: some Scene {
