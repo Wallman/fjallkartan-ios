@@ -29,11 +29,11 @@ struct fjallkartanApp: App {
                         ForceUpdateGate.shared.evaluate(minAppVersion: settings.minAppVersion)
                     }
                 }
-                KartverketTileProxy.ensureRunning()
+                NorwayTileProxy.ensureRunning()
             case .background:
                 reviewPrompter.noteEnteredBackground()
                 if !OfflineRegionsModel.shared.hasActiveBackgroundContinuation {
-                    KartverketTileProxy.stop()
+                    NorwayTileProxy.stop()
                 }
             default: break
             }

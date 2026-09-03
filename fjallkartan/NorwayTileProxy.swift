@@ -3,7 +3,12 @@ import Network
 import OSLog
 import UIKit
 
-nonisolated final class KartverketTileProxy: @unchecked Sendable {
+nonisolated final class NorwayTileProxy: @unchecked Sendable {
+    private enum Kind: String {
+        case kartverket
+        case slope
+    }
+
     /// Kartverket's no-data fill is transparent at low zoom but an opaque
     /// cream (255,255,230) from ~z15. Converts it to transparent.
     enum NoDataFill {
@@ -39,24 +44,24 @@ nonisolated final class KartverketTileProxy: @unchecked Sendable {
     /// `nil` if the local listener could not be started (e.g. some sandboxed
     /// CI environment); callers should fall back to Kartverket's real URL,
     /// which only loses the cream-fill fix, not the map itself.
-    private(set) static var shared = KartverketTileProxy()
+    private(set) static var shared = NorwayTileProxy()
 
     static func ensureRunning() {
         if let shared, shared.listener.state == .ready { return }
-        log.debug("(re)starting Kartverket tile proxy")
+        log.debug("(re)starting Norway tile proxy")
         shared?.listener.cancel()
-        shared = KartverketTileProxy()
+        shared = NorwayTileProxy()
     }
 
     static func stop() {
         guard shared != nil else { return }
-        log.debug("stopping Kartverket tile proxy while backgrounded")
+        log.debug("stopping Norway tile proxy while backgrounded")
         shared?.listener.cancel()
         shared = nil
     }
 
     private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "fjallkartan",
-                                    category: "KartverketTileProxy")
+                                    category: "NorwayTileProxy")
 
     private let upstreamSession: URLSession = {
         let config = URLSessionConfiguration.default
@@ -94,15 +99,19 @@ nonisolated final class KartverketTileProxy: @unchecked Sendable {
         _ = semaphore.wait(timeout: .now() + 5)
 
         guard listener.state == .ready else {
-            Self.log.error("Kartverket tile proxy listener never became ready")
+            Self.log.error("Norway tile proxy listener never became ready")
             listener.cancel()
             return nil
         }
-        Self.log.debug("Kartverket tile proxy listening on 127.0.0.1:\(Self.port.rawValue)")
+        Self.log.debug("Norway tile proxy listening on 127.0.0.1:\(Self.port.rawValue)")
     }
 
-    var tileURLTemplate: String {
-        "http://127.0.0.1:\(Self.port.rawValue)/{z}/{x}/{y}.png"
+    var kartverketTileURLTemplate: String {
+        "http://127.0.0.1:\(Self.port.rawValue)/\(Kind.kartverket.rawValue)/{z}/{x}/{y}.png"
+    }
+
+    var norwaySlopeTileURLTemplate: String {
+        "http://127.0.0.1:\(Self.port.rawValue)/\(Kind.slope.rawValue)/{z}/{x}/{y}.png"
     }
 
     // MARK: - Connection handling
@@ -136,25 +145,31 @@ nonisolated final class KartverketTileProxy: @unchecked Sendable {
         guard let headerText = String(data: headerData, encoding: .utf8),
               let requestLine = headerText.split(separator: "\r\n").first,
               let path = requestLine.split(separator: " ").dropFirst().first,
-              let tile = Self.parseTile(from: String(path)) else {
+              let (kind, tile) = Self.parseRequest(from: String(path)) else {
             respond(status: "400 Bad Request", body: nil, contentType: nil, on: connection)
             return
         }
 
-        let upstreamURL = RemoteSettings.shared.tileURL(server: .kartverket, z: tile.z, x: tile.x, y: tile.y)
-        let shouldRewrite = tile.z >= Self.rewriteMinimumZoom
+        guard !NorwayBoundary.tileIsOutside(z: tile.z, x: tile.x, y: tile.y) else {
+            respond(status: "404 Not Found", body: nil, contentType: nil, on: connection)
+            return
+        }
+
+        let server: TileServer = kind == .kartverket ? .kartverket : .norwaySlope
+        let upstreamURL = RemoteSettings.shared.tileURL(server: server, z: tile.z, x: tile.x, y: tile.y)
+        let shouldRewrite = kind == .kartverket && tile.z >= Self.rewriteMinimumZoom
         upstreamSession.dataTask(with: upstreamURL) { [weak self] data, response, error in
             guard let self else { return }
             guard let http = response as? HTTPURLResponse else {
                 // No HTTP response at all (e.g. connectivity loss, or our own timeout)
-                Self.log.error("Kartverket tile \(tile.z, privacy: .public)/\(tile.x, privacy: .public)/\(tile.y, privacy: .public) fetch failed: \(error?.localizedDescription ?? "no response", privacy: .public)")
+                Self.log.error("\(kind.rawValue, privacy: .public) tile \(tile.z, privacy: .public)/\(tile.x, privacy: .public)/\(tile.y, privacy: .public) fetch failed: \(error?.localizedDescription ?? "no response", privacy: .public)")
                 self.respond(status: "503 Service Unavailable", body: nil, contentType: nil, on: connection)
                 return
             }
             guard (200...299).contains(http.statusCode), let data, error == nil else {
                 if Self.isRetryable(status: http.statusCode) {
                     // Forward throttling/server errors as-is
-                    Self.log.warning("Kartverket tile \(tile.z, privacy: .public)/\(tile.x, privacy: .public)/\(tile.y, privacy: .public) upstream status \(http.statusCode, privacy: .public)")
+                    Self.log.warning("\(kind.rawValue, privacy: .public) tile \(tile.z, privacy: .public)/\(tile.x, privacy: .public)/\(tile.y, privacy: .public) upstream status \(http.statusCode, privacy: .public)")
                     self.respond(status: "\(http.statusCode) \(Self.reasonPhrase(for: http.statusCode))",
                                  body: nil, contentType: nil, on: connection)
                 } else {
@@ -212,13 +227,14 @@ nonisolated final class KartverketTileProxy: @unchecked Sendable {
         }
     }
 
-    private static func parseTile(from path: String) -> (z: Int, x: Int, y: Int)? {
+    private static func parseRequest(from path: String) -> (kind: Kind, tile: (z: Int, x: Int, y: Int))? {
         var trimmed = Substring(path)
         if trimmed.hasPrefix("/") { trimmed = trimmed.dropFirst() }
         if trimmed.hasSuffix(".png") { trimmed = trimmed.dropLast(4) }
         let parts = trimmed.split(separator: "/")
-        guard parts.count == 3,
-              let z = Int(parts[0]), let x = Int(parts[1]), let y = Int(parts[2]) else { return nil }
-        return (z, x, y)
+        guard parts.count == 4,
+              let kind = Kind(rawValue: String(parts[0])),
+              let z = Int(parts[1]), let x = Int(parts[2]), let y = Int(parts[3]) else { return nil }
+        return (kind, (z, x, y))
     }
 }

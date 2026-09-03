@@ -209,7 +209,7 @@ final class OfflineRegionsModel {
     private func attachBackgroundContinuation(_ task: BGContinuedProcessingTask) {
         Self.backgroundLog.notice("continuation attached")
         backgroundContinuation = task
-        KartverketTileProxy.ensureRunning()
+        NorwayTileProxy.ensureRunning()
         task.expirationHandler = { [weak self] in
             Task { @MainActor in
                 Self.backgroundLog.notice("continuation expired")
@@ -238,7 +238,7 @@ final class OfflineRegionsModel {
         backgroundContinuation = nil
         task.setTaskCompleted(success: success)
         if UIApplication.shared.applicationState != .active {
-            KartverketTileProxy.stop()
+            NorwayTileProxy.stop()
         }
     }
 

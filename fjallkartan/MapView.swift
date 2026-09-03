@@ -441,7 +441,8 @@ struct MapView: UIViewRepresentable {
 
     static func buildStyleURL() -> URL {
         let settings = RemoteSettings.shared.settings
-        let kartverketUrl = KartverketTileProxy.shared?.tileURLTemplate ?? settings.kartverketUrl
+        let kartverketUrl = NorwayTileProxy.shared?.kartverketTileURLTemplate ?? settings.kartverketUrl
+        let norwaySlopeUrl = NorwayTileProxy.shared?.norwaySlopeTileURLTemplate ?? settings.norwaySlopeUrl
         let json = """
         {
           "version": 8,
@@ -462,7 +463,7 @@ struct MapView: UIViewRepresentable {
             },
             "norway-slope": {
               "type": "raster",
-              "tiles": ["\(settings.norwaySlopeUrl)"],
+              "tiles": ["\(norwaySlopeUrl)"],
               "tileSize": 256,
               "minzoom": 5,
               "maxzoom": \(TileServer.norwaySlope.sourceMaximumZ)

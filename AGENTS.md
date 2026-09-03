@@ -45,7 +45,8 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 | `fjallkartan/TilePyramid.swift` | Pure functions sizing the offline download estimate for the fixed z7–z14 `MLNTilePyramidOfflineRegion` range. |
 | `fjallkartan/RemoteSettings.swift` | Remotely configurable tile URL templates (`TileSettings`: hosted Sweden/Finland base map, Kartverket, Norwegian slope, Swedish slope, elevation), fetched from `settings.json` with built-in fallbacks. |
 | `fjallkartan/TileServer.swift` | One case per tile source; zoom limits, offline min/max zoom and URL construction shared by the style builder, the offline size estimate and `ElevationService`. |
-| `fjallkartan/KartverketTileProxy.swift` | Loopback-only HTTP server (`Network.framework`) that fronts Kartverket tiles for MapLibre, rewriting the cream no-data fill (nested `NoDataFill` enum) for tiles at z≥15 before MapLibre's ambient cache stores the response. |
+| `fjallkartan/NorwayTileProxy.swift` | Loopback-only HTTP server (`Network.framework`) that fronts Kartverket base tiles and slope tiles for MapLibre: rewrites Kartverket's cream no-data fill (nested `NoDataFill` enum) for tiles at z≥15, and rejects any tile outside `NorwayBoundary` with a 404 before it reaches either upstream. |
+| `fjallkartan/NorwayBoundary.swift` | Polygon approximating Norway, decoded once from `resources/norway-boundary.geojson`; `tileIsOutside(z:x:y:)` is `NorwayTileProxy`'s point-in-polygon/edge-crossing test. |
 | `fjallkartan/LegendCatalog.swift` | All legend entries — grouped into sections. |
 | `fjallkartan/LegendView.swift` | `LegendCountry` and `LegendSheet`; renders the bundled per-country legend PDFs (`legend_no` / `legend_se`) via PDFKit. |
 | `fjallkartan/AboutView.swift` | `AboutButton` and `AboutSheet`: data-source attribution (Kartverket, Lantmäteriet, NVE) plus privacy-policy and support links, and the row that reopens the get-started guide. |
@@ -108,9 +109,10 @@ iOS app (SwiftUI + MapLibre) that displays topographic map tiles from Kartverket
 
 - **Kartverket cream fill at the border**
   - From ~z15, Kartverket's opaque cream no-data fill (~255,255,230) covers Lantmäteriet on the Swedish side of the border instead of letting it show through, so the map used to go cream above z15 near the border in Sweden.
-  - Fixed by `KartverketTileProxy`: a loopback-only `NWListener` HTTP server that the "kartverket" raster source's tile URL points at instead of the real host. Rewritten before MapLibre sees it, and MapLibre caches the rewritten tile.
-  - `KartverketTileProxy.NoDataFill.rewritten(_:)` does the actual rewrite. Only applied for `z >= 15` (`KartverketTileProxy.rewriteMinimumZoom`) since the fill never appears below that — tiles below z15 are proxied unmodified, skipping the decode/pixel-scan pass for the vast majority of requests.
-  - Kartverket 429/5xx responses (and connection failures) are forwarded to MapLibre as their real status rather than a 404, so they read as transient and retryable.
+  - Fixed by `NorwayTileProxy`: a loopback-only `NWListener` HTTP server that both the "kartverket" and "norway-slope" raster sources' tile URLs point at instead of their real hosts, routed by a `/kartverket/` or `/slope/` path prefix. Rewritten (Kartverket only) before MapLibre sees it, and MapLibre caches the rewritten/rejected tile either way.
+  - `NorwayTileProxy.NoDataFill.rewritten(_:)` does the actual rewrite. Only applied for `z >= 15` since the fill never appears below that — tiles below z15 are proxied unmodified, skipping the decode/pixel-scan pass for the vast majority of requests.
+  - Before either upstream is contacted, `NorwayBoundary.tileIsOutside(z:x:y:)` rejects tiles with a plain 404 if they have no overlap with Norway — no network round-trip for tiles outside the country.
+  - Kartverket/NVE 429/5xx responses (and connection failures) are forwarded to MapLibre as their real status rather than a 404, so they read as transient and retryable.
   - The proxy uses a fixed loopback port (`8062`). Because iOS suspends the listener in the background, `fjallkartanApp` recreates it when the scene returns from `.background` to `.active`.
 
 - **Diagnostics**
