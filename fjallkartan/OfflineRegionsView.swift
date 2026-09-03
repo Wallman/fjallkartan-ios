@@ -33,6 +33,8 @@ final class OfflineRegionsModel {
     private(set) var hasInterruptedDownloads = false
     private var didPromptForInterruptedDownloads = false
 
+    private(set) var shouldShowLegacyRegionsWipedAlert = false
+
     private var failureMessages: [String: String] = [:]
 
     private var elevationProgressByID: [String: (done: Int, total: Int, bytes: Int)] = [:]
@@ -80,7 +82,7 @@ final class OfflineRegionsModel {
     }
 
     init() {
-        Self.performOneTimeWipeIfNeeded()
+        shouldShowLegacyRegionsWipedAlert = Self.performOneTimeWipeIfNeeded()
         packsObserver = MLNOfflineStorage.shared.observe(\.packs, options: [.new]) { _, _ in
             Task { @MainActor [weak self] in self?.refresh() }
         }
@@ -90,8 +92,9 @@ final class OfflineRegionsModel {
 
     private static let didWipeLegacyRegionsKey = "OfflineRegionsModel.didWipeLegacyRegions"
 
-    private static func performOneTimeWipeIfNeeded() {
-        guard !UserDefaults.standard.bool(forKey: didWipeLegacyRegionsKey) else { return }
+    @discardableResult
+    private static func performOneTimeWipeIfNeeded() -> Bool {
+        guard !UserDefaults.standard.bool(forKey: didWipeLegacyRegionsKey) else { return false }
 
         for pack in MLNOfflineStorage.shared.packs ?? [] {
             MLNOfflineStorage.shared.removePack(pack) { _ in }
@@ -100,10 +103,16 @@ final class OfflineRegionsModel {
         let legacyElevationDirectory = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("ElevationTiles", isDirectory: true)
+        let hadLegacyData = FileManager.default.fileExists(atPath: legacyElevationDirectory.path)
         try? FileManager.default.removeItem(at: legacyElevationDirectory)
 
         UserDefaults.standard.removeObject(forKey: pausedIDsDefaultsKey)
         UserDefaults.standard.set(true, forKey: didWipeLegacyRegionsKey)
+        return hadLegacyData
+    }
+
+    func dismissLegacyRegionsWipedAlert() {
+        shouldShowLegacyRegionsWipedAlert = false
     }
     
     func refresh() {

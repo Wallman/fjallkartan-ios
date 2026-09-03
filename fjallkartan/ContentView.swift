@@ -359,6 +359,19 @@ struct ContentView: View {
             } message: {
                 Text("Some offline downloads didn't finish. Resume them now?")
             }
+            .alert(
+                "Offline regions removed",
+                isPresented: Binding(
+                    get: { offlineModel.shouldShowLegacyRegionsWipedAlert },
+                    set: { isPresented in
+                        if !isPresented { offlineModel.dismissLegacyRegionsWipedAlert() }
+                    }
+                )
+            ) {
+                Button("OK", role: .cancel) { offlineModel.dismissLegacyRegionsWipedAlert() }
+            } message: {
+                Text("This update changes how offline maps are stored. Your previously downloaded offline regions were removed and need to be downloaded again.")
+            }
             .sheet(isPresented: $isElevationPresented) {
                 ElevationProfileSheet(profile: elevation)
             }

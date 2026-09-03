@@ -4624,6 +4624,73 @@
         }
       }
     },
+    "Offline regions removed" : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offlineregioner fjernet"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline-Regionen entfernt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regiones sin conexión eliminadas"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline-alueet poistettu"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Régions hors ligne supprimées"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regioni offline rimosse"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offlineregioner fjernet"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offlineregio's verwijderd"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offlineregioner borttagna"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "离线区域已移除"
+          }
+        }
+      }
+    },
+    "OK" : {
+
+    },
     "One finger draws" : {
       "localizations" : {
         "da" : {
@@ -8333,6 +8400,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "此路线在覆盖区域之外。"
+          }
+        }
+      }
+    },
+    "This update changes how offline maps are stored. Your previously downloaded offline regions were removed and need to be downloaded again." : {
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denne opdatering ændrer den måde, offlinekort gemmes på. Dine tidligere downloadede offlineregioner er blevet fjernet og skal downloades igen."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Update ändert die Art und Weise, wie Offlinekarten gespeichert werden. Deine zuvor heruntergeladenen Offline-Regionen wurden entfernt und müssen erneut heruntergeladen werden."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta actualización cambia la forma en que se almacenan los mapas sin conexión. Las regiones sin conexión descargadas anteriormente se eliminaron y deben descargarse de nuevo."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tämä päivitys muuttaa offline-karttojen tallennustapaa. Aiemmin ladatut offline-alueet poistettiin, ja ne on ladattava uudelleen."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette mise à jour modifie la façon dont les cartes hors ligne sont stockées. Vos régions hors ligne précédemment téléchargées ont été supprimées et doivent être retéléchargées."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questo aggiornamento modifica il modo in cui vengono archiviate le mappe offline. Le regioni offline scaricate in precedenza sono state rimosse e devono essere scaricate di nuovo."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denne oppdateringen endrer måten offlinekart lagres på. Tidligere nedlastede offlineregioner er fjernet og må lastes ned på nytt."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deze update verandert hoe offlinekaarten worden opgeslagen. Je eerder gedownloade offlineregio's zijn verwijderd en moeten opnieuw worden gedownload."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den här uppdateringen ändrar hur offlinekartor lagras. Dina tidigare nedladdade offline-regioner har tagits bort och måste laddas ned igen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此更新更改了离线地图的存储方式。你之前下载的离线区域已被移除，需要重新下载。"
           }
         }
       }
