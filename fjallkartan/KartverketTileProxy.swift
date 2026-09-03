@@ -61,6 +61,7 @@ nonisolated final class KartverketTileProxy: @unchecked Sendable {
     private let upstreamSession: URLSession = {
         let config = URLSessionConfiguration.default
         config.urlCache = nil
+        config.timeoutIntervalForRequest = 20
         return URLSession(configuration: config)
     }()
 
@@ -145,7 +146,7 @@ nonisolated final class KartverketTileProxy: @unchecked Sendable {
         upstreamSession.dataTask(with: upstreamURL) { [weak self] data, response, error in
             guard let self else { return }
             guard let http = response as? HTTPURLResponse else {
-                // No HTTP response at all (e.g. connectivity loss)
+                // No HTTP response at all (e.g. connectivity loss, or our own timeout)
                 Self.log.error("Kartverket tile \(tile.z, privacy: .public)/\(tile.x, privacy: .public)/\(tile.y, privacy: .public) fetch failed: \(error?.localizedDescription ?? "no response", privacy: .public)")
                 self.respond(status: "503 Service Unavailable", body: nil, contentType: nil, on: connection)
                 return
