@@ -18,11 +18,20 @@
 			remoteGlobalIDString = 34A3ECD83012055400F6C867;
 			remoteInfo = fjallkartan;
 		};
+		BCFC3A4430DA0694C96F4BC5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 34A3ECD13012055300F6C867 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 34A3ECD83012055400F6C867;
+			remoteInfo = fjallkartan;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		341440E3304BFFDA00BC60A2 /* fjallkartan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = fjallkartan.xctestplan; sourceTree = "<group>"; };
 		34A3ECD93012055400F6C867 /* fjallkartan.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = fjallkartan.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		34CDC75F3016669600CB00A8 /* fjallkartanTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = fjallkartanTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		770D5D1FBF8933186D67EC5C /* fjallkartanUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = fjallkartanUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -49,6 +58,11 @@
 			path = fjallkartanTests;
 			sourceTree = "<group>";
 		};
+		E2DD8F5C478346A668EAAE45 /* fjallkartanUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = fjallkartanUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -67,14 +81,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C3ED4E69109F80C2914786CE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		34A3ECD03012055300F6C867 = {
 			isa = PBXGroup;
 			children = (
+				341440E3304BFFDA00BC60A2 /* fjallkartan.xctestplan */,
 				34A3ECDB3012055400F6C867 /* fjallkartan */,
 				34CDC7603016669600CB00A8 /* fjallkartanTests */,
+				E2DD8F5C478346A668EAAE45 /* fjallkartanUITests */,
 				34A3ECDA3012055400F6C867 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -84,6 +107,7 @@
 			children = (
 				34A3ECD93012055400F6C867 /* fjallkartan.app */,
 				34CDC75F3016669600CB00A8 /* fjallkartanTests.xctest */,
+				770D5D1FBF8933186D67EC5C /* fjallkartanUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -135,6 +159,27 @@
 			productReference = 34CDC75F3016669600CB00A8 /* fjallkartanTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		A5D34F83FB10A5B883BBC046 /* fjallkartanUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B0A2E3129E944FC8A91F13AD /* Build configuration list for PBXNativeTarget "fjallkartanUITests" */;
+			buildPhases = (
+				24509CBAEA79A196E8FEF6B6 /* Sources */,
+				C3ED4E69109F80C2914786CE /* Frameworks */,
+				78FDE3D44DF1948C3AF226DB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C8C427B0229F93BC0C0CE538 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				E2DD8F5C478346A668EAAE45 /* fjallkartanUITests */,
+			);
+			name = fjallkartanUITests;
+			productName = fjallkartanUITests;
+			productReference = 770D5D1FBF8933186D67EC5C /* fjallkartanUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -149,6 +194,10 @@
 						CreatedOnToolsVersion = 26.6;
 					};
 					34CDC75E3016669600CB00A8 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = 34A3ECD83012055400F6C867;
+					};
+					A5D34F83FB10A5B883BBC046 = {
 						CreatedOnToolsVersion = 26.6;
 						TestTargetID = 34A3ECD83012055400F6C867;
 					};
@@ -183,6 +232,7 @@
 			targets = (
 				34A3ECD83012055400F6C867 /* fjallkartan */,
 				34CDC75E3016669600CB00A8 /* fjallkartanTests */,
+				A5D34F83FB10A5B883BBC046 /* fjallkartanUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -202,9 +252,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		78FDE3D44DF1948C3AF226DB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		24509CBAEA79A196E8FEF6B6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		34A3ECD53012055400F6C867 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -226,6 +290,11 @@
 			isa = PBXTargetDependency;
 			target = 34A3ECD83012055400F6C867 /* fjallkartan */;
 			targetProxy = 34CDC7633016669600CB00A8 /* PBXContainerItemProxy */;
+		};
+		C8C427B0229F93BC0C0CE538 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 34A3ECD83012055400F6C867 /* fjallkartan */;
+			targetProxy = BCFC3A4430DA0694C96F4BC5 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -483,6 +552,51 @@
 			};
 			name = Release;
 		};
+		B359F23C1D6ADE00AF122360 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6U3WA7JRVA;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = fjallkartan.fjallkartanUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = fjallkartan;
+			};
+			name = Debug;
+		};
+		F443F09D94EBD0AAABE335DE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6U3WA7JRVA;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = fjallkartan.fjallkartanUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = fjallkartan;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -509,6 +623,15 @@
 			buildConfigurations = (
 				34CDC7653016669600CB00A8 /* Debug */,
 				34CDC7663016669600CB00A8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B0A2E3129E944FC8A91F13AD /* Build configuration list for PBXNativeTarget "fjallkartanUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B359F23C1D6ADE00AF122360 /* Debug */,
+				F443F09D94EBD0AAABE335DE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

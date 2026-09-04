@@ -501,6 +501,7 @@ struct MapView: UIViewRepresentable {
 
         let mapView = MLNMapView(frame: .zero, styleURL: Self.buildStyleURL())
         mapView.delegate = context.coordinator
+        mapView.accessibilityIdentifier = "map"
         mapView.logoView.isHidden = true
         mapView.attributionButton.isHidden = true
         mapView.compassViewMargins = CGPoint(x: 12, y: 12)
@@ -922,15 +923,18 @@ struct MapView: UIViewRepresentable {
 
         func mapView(_ mapView: MLNMapView, leftCalloutAccessoryViewFor annotation: MLNAnnotation) -> UIView? {
             guard annotation is SearchResultAnnotation else { return nil }
-            return calloutButton(systemName: "bookmark", tint: .systemOrange, tag: 0)
+            return calloutButton(systemName: "bookmark", tint: .systemOrange, tag: 0,
+                                  accessibilityIdentifier: "searchResult.save")
         }
 
         func mapView(_ mapView: MLNMapView, rightCalloutAccessoryViewFor annotation: MLNAnnotation) -> UIView? {
             guard annotation is SearchResultAnnotation else { return nil }
-            return calloutButton(systemName: "xmark", tint: .secondaryLabel, tag: 1)
+            return calloutButton(systemName: "xmark", tint: .secondaryLabel, tag: 1,
+                                  accessibilityIdentifier: "searchResult.close")
         }
 
-        private func calloutButton(systemName: String, tint: UIColor, tag: Int) -> UIButton {
+        private func calloutButton(systemName: String, tint: UIColor, tag: Int,
+                                    accessibilityIdentifier: String) -> UIButton {
             let button = UIButton(type: .system)
             let symbol = UIImage(systemName: systemName,
                                  withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold))
@@ -938,6 +942,7 @@ struct MapView: UIViewRepresentable {
             button.tintColor = tint
             button.tag = tag
             button.frame = CGRect(x: 0, y: 0, width: 32, height: 32)
+            button.accessibilityIdentifier = accessibilityIdentifier
             return button
         }
 

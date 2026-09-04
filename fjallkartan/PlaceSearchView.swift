@@ -107,6 +107,7 @@ struct PlaceSearchSheet: View {
                 .autocorrectionDisabled()
                 .submitLabel(.search)
                 .focused($isFieldFocused)
+                .accessibilityIdentifier("placeSearch.field")
             if !model.query.isEmpty {
                 Button {
                     model.clear()

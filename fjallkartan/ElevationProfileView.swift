@@ -24,9 +24,11 @@ struct ElevationProfileSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
+                        .accessibilityIdentifier("elevationProfile.done")
                 }
             }
         }
+        .accessibilityIdentifier("elevationProfile.sheet")
     }
 
     private var chart: some View {
@@ -64,6 +66,7 @@ struct ElevationProfileSheet: View {
             .chartXAxisLabel("km")
             .chartYAxisLabel("m")
             .frame(minHeight: 220)
+            .accessibilityIdentifier("elevationProfile.chart")
 
             if profile.isPartial {
                 Label("Part of this route is outside the covered area, so the totals are a minimum.",

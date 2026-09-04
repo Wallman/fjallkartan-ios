@@ -20,6 +20,7 @@ struct DebugSheet: View {
                 Toggle(isOn: $showsZoomOverlay) {
                     Text(verbatim: "Show zoom level")
                 }
+                .accessibilityIdentifier("debug.showsZoomOverlay")
                 Section {
                     Button {
                         exportLogs()
@@ -48,10 +49,12 @@ struct DebugSheet: View {
                         }
                     }
                     .disabled(isClearingTileCache)
+                    .accessibilityIdentifier("debug.clearTileCache")
                     if let tileCacheClearedMessage {
                         Text(verbatim: tileCacheClearedMessage)
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("debug.tileCacheClearedMessage")
                     }
                 }
             }
@@ -60,6 +63,7 @@ struct DebugSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button { dismiss() } label: { Text(verbatim: "Done") }
+                        .accessibilityIdentifier("debug.done")
                 }
             }
             .sheet(item: $exportedLogURL) { url in
@@ -94,6 +98,7 @@ struct DebugSheet: View {
     private func clearTileCache() {
         tileCacheClearedMessage = nil
         isClearingTileCache = true
+        URLCache.shared.removeAllCachedResponses()
         MLNOfflineStorage.shared.clearAmbientCache { error in
             isClearingTileCache = false
             if let error {

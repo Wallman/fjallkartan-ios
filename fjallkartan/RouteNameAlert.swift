@@ -19,8 +19,11 @@ private struct RouteNameAlertModifier: ViewModifier {
         content
             .alert(title, isPresented: $isPresented) {
                 TextField("Name", text: $name)
+                    .accessibilityIdentifier("routeNameAlert.field")
                 Button("Cancel", role: .cancel) {}
+                    .accessibilityIdentifier("routeNameAlert.cancel")
                 Button("Save") { onCommit(name) }
+                    .accessibilityIdentifier("routeNameAlert.save")
             }
             .onChange(of: isPresented) { _, presented in
                 if presented { name = initialName }
@@ -48,8 +51,11 @@ private struct RouteNameAlertItemModifier<Item: Identifiable>: ViewModifier {
                 presenting: item
             ) { item in
                 TextField("Name", text: $name)
+                    .accessibilityIdentifier("routeNameAlert.field")
                 Button("Cancel", role: .cancel) {}
+                    .accessibilityIdentifier("routeNameAlert.cancel")
                 Button("Save") { onCommit(item, name) }
+                    .accessibilityIdentifier("routeNameAlert.save")
             }
             .onChange(of: item?.id) { _, _ in
                 if let item { name = initialName(item) }

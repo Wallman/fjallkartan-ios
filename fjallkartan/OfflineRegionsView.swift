@@ -530,6 +530,7 @@ struct OfflineRegionsSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
+                        .accessibilityIdentifier("offlineRegions.done")
                 }
             }
         }
@@ -587,6 +588,7 @@ struct RegionDownloadBar: View {
             }
             .buttonStyle(.plain)
             .disabled(exceedsGuard || insufficientStorage)
+            .accessibilityIdentifier("offlineRegions.startDownload")
         }
         .padding(12)
         .background(Color(.systemBackground).opacity(0.9), in: RoundedRectangle(cornerRadius: 14))
@@ -655,6 +657,7 @@ private struct RegionRow: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
                     .frame(width: 20, height: 20)
+                    .accessibilityIdentifier("offlineRegions.complete.\(region.name)")
             }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -664,6 +667,7 @@ private struct RegionRow: View {
                     Text(failureMessage)
                         .font(.caption)
                         .foregroundStyle(.red)
+                        .accessibilityIdentifier("offlineRegions.error.\(region.name)")
                 } else {
                     Text(ByteCountFormatter.string(fromByteCount: Int64(region.bytes), countStyle: .file))
                         .font(.caption)
@@ -680,6 +684,7 @@ private struct RegionRow: View {
                     Image(systemName: "pause.circle")
                 }
                 .buttonStyle(.borderless)
+                .accessibilityIdentifier("offlineRegions.pause.\(region.name)")
             } else if isPaused {
                 Button {
                     model.resume(region.id)
@@ -702,6 +707,7 @@ private struct RegionRow: View {
                 Image(systemName: "trash")
             }
             .buttonStyle(.borderless)
+            .accessibilityIdentifier("offlineRegions.delete.\(region.name)")
             .confirmationDialog(
                 "Delete this offline region?",
                 isPresented: $isConfirmingDelete,

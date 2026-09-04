@@ -18,6 +18,7 @@ struct MapLoadingView: View {
             }
         }
         .transition(.opacity)
+        .accessibilityIdentifier("mapLoading.overlay")
     }
 }
 

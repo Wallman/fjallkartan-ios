@@ -78,6 +78,7 @@ struct AboutSheet: View {
                     }
                     LabeledContent("Version", value: appVersion)
                         .contentShape(Rectangle())
+                        .accessibilityIdentifier("about.version")
                         // Undiscoverable on purpose
                         .onLongPressGesture { isShowingTileMetrics = true }
                 }
@@ -87,6 +88,7 @@ struct AboutSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
+                        .accessibilityIdentifier("about.done")
                 }
             }
             .sheet(isPresented: $isShowingTileMetrics) {

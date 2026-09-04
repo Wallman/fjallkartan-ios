@@ -117,6 +117,7 @@ struct ContentView: View {
                     .foregroundStyle(Color.primary)
                     .buttonStyle()
             }
+            .accessibilityIdentifier("mapControls.search")
 
             Button {
                 toggleTrackingMode()
@@ -164,6 +165,7 @@ struct ContentView: View {
                                         ? Color.orange : Color.primary)
                     .buttonStyle()
             }
+            .accessibilityIdentifier("mapControls.toggleMore")
 
             if isShowingMoreControls {
                 Button {
@@ -175,6 +177,7 @@ struct ContentView: View {
                         .symbolVariant(isPickingRegion ? .fill : .none)
                         .buttonStyle(MapControlLabel.download)
                 }
+                .accessibilityIdentifier("mapControls.download")
                 .transition(.scale.combined(with: .opacity))
 
                 if isPickingRegion {
@@ -186,6 +189,7 @@ struct ContentView: View {
                             .foregroundStyle(Color.blue)
                             .buttonStyle(MapControlLabel.regions)
                     }
+                    .accessibilityIdentifier("mapControls.regions")
                     .transition(.scale.combined(with: .opacity))
                 }
 
@@ -293,6 +297,7 @@ struct ContentView: View {
             }
             .overlay(alignment: .bottomTrailing) {
                 AboutButton { isAboutPresented = true }
+                    .accessibilityIdentifier("about.open")
                     .padding([.bottom, .trailing], 18)
                     .transition(.opacity)
                     .sheet(isPresented: $isAboutPresented) {
@@ -549,6 +554,7 @@ struct MeasureControlsView: View {
                     .foregroundStyle(measurement.isMeasuring ? Color.orange : Color.primary)
                     .buttonStyle()
             }
+            .accessibilityIdentifier("mapControls.measure")
 
             if measurement.isMeasuring {
                 Button {
@@ -635,6 +641,7 @@ struct MeasureReadoutView: View {
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                         .labelStyle(.titleAndIcon)
+                        .accessibilityIdentifier("measureReadout.elevationSummary")
                     }
                 }
                 .contentShape(Rectangle())
@@ -642,6 +649,8 @@ struct MeasureReadoutView: View {
                     guard elevation.hasData else { return }
                     onOpenElevation()
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("measureReadout.distance")
 
                 if hasRoute {
                     Divider().frame(height: 24)

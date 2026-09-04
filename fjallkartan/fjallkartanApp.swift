@@ -7,6 +7,7 @@ struct fjallkartanApp: App {
     private let reviewPrompter = ReviewPrompter.shared
 
     init() {
+        NetworkTestHooks.installIfNeeded()
         MetricKitReporter.shared.start()
         MapLibreLoggingBridge.start()
         if #available(iOS 26, *) {

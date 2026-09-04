@@ -1,0 +1,39 @@
+{
+  "configurations" : [
+    {
+      "id" : "FCA7EF77-0FC0-42BD-9893-F1296C4D022B",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:fjallkartan.xcodeproj",
+      "identifier" : "34A3ECD83012055400F6C867",
+      "name" : "fjallkartan"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:fjallkartan.xcodeproj",
+        "identifier" : "34CDC75E3016669600CB00A8",
+        "name" : "fjallkartanTests"
+      }
+    },
+    {
+      "enabled" : false,
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:fjallkartan.xcodeproj",
+        "identifier" : "A5D34F83FB10A5B883BBC046",
+        "name" : "fjallkartanUITests"
+      }
+    }
+  ],
+  "version" : 1
+}
