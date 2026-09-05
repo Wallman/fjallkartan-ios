@@ -1,1 +1,1 @@
-Offline kortdownloads fortsætter nu automatisk i baggrunden, så det ikke længere afbryder dem at skifte app – og vi har gjort downloads hurtigere. Vi har også rettet et problem, der kunne gøre kortet trægt, når man valgte et downloadområde.
+Fejlrettelser

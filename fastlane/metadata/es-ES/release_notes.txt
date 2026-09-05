@@ -1,1 +1,1 @@
-Las descargas de mapas sin conexión ahora continúan automáticamente en segundo plano, así que cambiar de app ya no las interrumpe, y hemos acelerado las descargas. También hemos solucionado un problema que podía hacer que el mapa fuera lento al elegir una zona de descarga.
+Corrección de errores

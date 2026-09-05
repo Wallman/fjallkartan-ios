@@ -1,1 +1,1 @@
-Offline kartnedlastinger fortsetter nå automatisk i bakgrunnen, slik at det å bytte app ikke lenger avbryter dem – og vi har gjort nedlastingene raskere. Vi har også fikset en feil som kunne gjøre kartet trått når man valgte et nedlastingsområde.
+Feilrettinger

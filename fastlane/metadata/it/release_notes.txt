@@ -1,1 +1,1 @@
-I download delle mappe offline ora continuano automaticamente in background, quindi passare a un'altra app non li interrompe più, e abbiamo velocizzato i download. Abbiamo anche risolto un problema che poteva rendere la mappa poco reattiva durante la scelta di un'area di download.
+Correzioni di bug

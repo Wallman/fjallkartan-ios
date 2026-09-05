@@ -1,1 +1,1 @@
-Offline map downloads now continue automatically in the background, so switching apps no longer interrupts them — and we've sped up downloads. We've also fixed an issue that could make the map feel sluggish while choosing a download area.
+Bug fixes

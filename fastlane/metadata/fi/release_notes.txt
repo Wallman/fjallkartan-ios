@@ -1,1 +1,1 @@
-Offline-karttalataukset jatkuvat nyt automaattisesti taustalla, joten sovelluksen vaihtaminen ei enää keskeytä niitä – ja olemme nopeuttaneet latauksia. Korjasimme myös ongelman, joka saattoi tehdä kartasta hitaan latausalueen valinnan aikana.
+Virhekorjauksia

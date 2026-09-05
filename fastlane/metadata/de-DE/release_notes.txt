@@ -1,1 +1,1 @@
-Offline-Kartendownloads werden jetzt automatisch im Hintergrund fortgesetzt, sodass ein App-Wechsel sie nicht mehr unterbricht – außerdem haben wir die Downloads beschleunigt. Wir haben zudem einen Fehler behoben, durch den die Karte beim Auswählen eines Downloadbereichs träge reagieren konnte.
+Fehlerbehebungen

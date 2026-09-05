@@ -1,1 +1,1 @@
-Offline kaartdownloads gaan nu automatisch door op de achtergrond, zodat wisselen van app ze niet meer onderbreekt – en we hebben de downloads versneld. Ook hebben we een probleem opgelost waardoor de kaart traag kon aanvoelen bij het kiezen van een downloadgebied.
+Bugfixes

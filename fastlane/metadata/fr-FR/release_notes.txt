@@ -1,1 +1,1 @@
-Les téléchargements de cartes hors ligne se poursuivent désormais automatiquement en arrière-plan, de sorte que changer d'application ne les interrompt plus, et nous avons accéléré les téléchargements. Nous avons également corrigé un problème qui pouvait rendre la carte peu réactive lors du choix d'une zone de téléchargement.
+Corrections de bugs

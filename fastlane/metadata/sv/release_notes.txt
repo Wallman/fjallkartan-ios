@@ -1,1 +1,1 @@
-Nedladdningar av offlinekartor fortsätter nu automatiskt i bakgrunden, så att byta app inte längre avbryter dem – och vi har snabbat upp nedladdningarna. Vi har även åtgärdat ett problem som kunde göra kartan trögstartad när man valde ett nedladdningsområde.
+Buggfixar
