@@ -1,1 +1,1 @@
-Virhekorjauksia
+Viilausta, hienosäätöä ja muutama nitistetty bugi. Vähemmän aikaa sovelluksessa, enemmän aikaa tunturissa. Hyvää retkeä!
