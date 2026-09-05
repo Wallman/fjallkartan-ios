@@ -1014,8 +1014,8 @@ struct MapView: UIViewRepresentable {
             applyPendingRoute(on: mapView)
         }
 
-        func mapViewDidFinishRenderingMap(_ mapView: MLNMapView, fullyRendered: Bool) {
-            guard fullyRendered, !hasReportedFirstFrame else { return }
+        func mapViewDidBecomeIdle(_ mapView: MLNMapView) {
+            guard !hasReportedFirstFrame else { return }
             hasReportedFirstFrame = true
             onFirstFrameRendered?()
         }
