@@ -669,7 +669,9 @@ private struct RegionRow: View {
                         .foregroundStyle(.red)
                         .accessibilityIdentifier("offlineRegions.error.\(region.name)")
                 } else {
-                    Text(ByteCountFormatter.string(fromByteCount: Int64(region.bytes), countStyle: .file))
+                    Text(region.status == .complete
+                        ? ByteCountFormatter.string(fromByteCount: Int64(region.bytes), countStyle: .file)
+                        : "\(Int(doneFraction * 100))%")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
