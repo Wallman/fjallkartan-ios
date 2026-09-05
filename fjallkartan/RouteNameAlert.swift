@@ -13,20 +13,24 @@ private struct RouteNameAlertModifier: ViewModifier {
     @Binding var isPresented: Bool
     let initialName: String
     let onCommit: (String) -> Void
-    @State private var name = ""
+    @State private var editedName: String?
+
+    private var name: Binding<String> {
+        Binding(get: { editedName ?? initialName }, set: { editedName = $0 })
+    }
 
     func body(content: Content) -> some View {
         content
             .alert(title, isPresented: $isPresented) {
-                TextField("Name", text: $name)
+                TextField("Name", text: name)
                     .accessibilityIdentifier("routeNameAlert.field")
                 Button("Cancel", role: .cancel) {}
                     .accessibilityIdentifier("routeNameAlert.cancel")
-                Button("Save") { onCommit(name) }
+                Button("Save") { onCommit(name.wrappedValue) }
                     .accessibilityIdentifier("routeNameAlert.save")
             }
             .onChange(of: isPresented) { _, presented in
-                if presented { name = initialName }
+                if !presented { editedName = nil }
             }
     }
 }
@@ -38,7 +42,7 @@ private struct RouteNameAlertItemModifier<Item: Identifiable>: ViewModifier {
     @Binding var item: Item?
     let initialName: (Item) -> String
     let onCommit: (Item, String) -> Void
-    @State private var name = ""
+    @State private var editedName: String?
 
     func body(content: Content) -> some View {
         content
@@ -50,15 +54,19 @@ private struct RouteNameAlertItemModifier<Item: Identifiable>: ViewModifier {
                 ),
                 presenting: item
             ) { item in
-                TextField("Name", text: $name)
+                let name = Binding(
+                    get: { editedName ?? initialName(item) },
+                    set: { editedName = $0 }
+                )
+                TextField("Name", text: name)
                     .accessibilityIdentifier("routeNameAlert.field")
                 Button("Cancel", role: .cancel) {}
                     .accessibilityIdentifier("routeNameAlert.cancel")
-                Button("Save") { onCommit(item, name) }
+                Button("Save") { onCommit(item, name.wrappedValue) }
                     .accessibilityIdentifier("routeNameAlert.save")
             }
-            .onChange(of: item?.id) { _, _ in
-                if let item { name = initialName(item) }
+            .onChange(of: item?.id) { _, newValue in
+                if newValue == nil { editedName = nil }
             }
     }
 }

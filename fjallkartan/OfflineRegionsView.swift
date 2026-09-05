@@ -392,6 +392,17 @@ final class OfflineRegionsModel {
         }
     }
 
+    func nextDefaultName() -> String {
+        let taken = Set(regions.map(\.name))
+        var number = 1
+        while taken.contains(Self.defaultName(number)) { number += 1 }
+        return Self.defaultName(number)
+    }
+
+    static func defaultName(_ number: Int) -> String {
+        String(localized: "Region \(number)")
+    }
+
     func startDownload(name: String, rect: MKMapRect) {
         let id = UUID().uuidString
         guard let contextData = try? JSONEncoder().encode(id) else { return }
@@ -488,13 +499,6 @@ private extension MKMapRect {
     }
 }
 
-
-private let regionNameFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .medium
-    formatter.timeStyle = .short
-    return formatter
-}()
 
 /// The area actually offered for download: an inset of the visible
 /// viewport, matching the dashed preview rectangle drawn on the map.
@@ -610,11 +614,11 @@ struct RegionDownloadBar: View {
         .routeNameAlert(
             "Name this region",
             isPresented: $isNamingRegion,
-            initialName: ""
+            initialName: model.nextDefaultName()
         ) { name in
             let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
             model.startDownload(
-                name: trimmed.isEmpty ? regionNameFormatter.string(from: Date()) : trimmed,
+                name: trimmed.isEmpty ? model.nextDefaultName() : trimmed,
                 rect: rect
             )
             onDownload()
